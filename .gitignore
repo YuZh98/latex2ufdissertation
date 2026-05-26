@@ -33,3 +33,7 @@ Thumbs.db
 
 # Local
 *.local
+
+# Source distribution (only bundled copy under pipeline/template/ is tracked)
+/Dissertation___Thesis_Example_File/
+/Dissertation___Thesis_Example_File.zip
