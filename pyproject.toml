@@ -31,20 +31,17 @@ dependencies = []
 dev = ["pytest>=7", "ruff>=0.6", "pytest-cov"]
 
 [project.scripts]
-latex2ufdissertation = "converter:main"
+latex2ufdissertation = "latex2ufdissertation.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/YuZh98/latex2ufdissertation"
 Issues = "https://github.com/YuZh98/latex2ufdissertation/issues"
 
-[tool.setuptools]
-py-modules = ["converter"]
-
 [tool.setuptools.packages.find]
-include = ["pipeline*"]
+include = ["latex2ufdissertation*"]
 
 [tool.setuptools.package-data]
-"pipeline" = ["template/**/*"]
+"latex2ufdissertation.pipeline" = ["template/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

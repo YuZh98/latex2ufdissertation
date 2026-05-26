@@ -1,7 +1,7 @@
 import pytest
 
-from pipeline.main_tex import detect_main_tex
-from pipeline.types import ConverterError
+from latex2ufdissertation.pipeline.main_tex import detect_main_tex
+from latex2ufdissertation.pipeline.types import ConverterError
 
 
 def _write(d, name, content):
@@ -62,6 +62,28 @@ def test_detect_returns_non_ufd_master_when_only_choice(tmp_path):
     # so checks.py can fire E1 (wrong document class).
     p = _write(tmp_path, "article.tex", r"\documentclass{article}")
     assert detect_main_tex(tmp_path) == p
+
+
+def test_detect_ignores_documentclass_in_verb_blocks(tmp_path):
+    """A documentation file that starts with \\documentclass{article} but
+    mentions \\documentclass[editMode]{ufdissertation} inside \\verb|...|
+    must not outrank the real master."""
+    _write(
+        tmp_path,
+        "master.tex",
+        r"\documentclass[editMode]{ufdissertation}" + "\n" + r"\setAbstractFile{a}",
+    )
+    _write(
+        tmp_path,
+        "docs.tex",
+        r"\documentclass{article}"
+        + "\n"
+        + r"Example: \verb|\documentclass[editMode]{ufdissertation}|"
+        + "\n"
+        + r"with \setAbstractFile{x} \setAcknowledgementsFile{y} "
+        r"\setReferenceFile{z}{agsm} \setBiographicalFile{w}",
+    )
+    assert detect_main_tex(tmp_path) == tmp_path / "master.tex"
 
 
 def test_detect_skips_commented_documentclass(tmp_path):

@@ -1,4 +1,4 @@
-from pipeline.types import ConverterError, Issues
+from latex2ufdissertation.pipeline.types import ConverterError, Issues
 
 
 def test_issues_starts_empty():

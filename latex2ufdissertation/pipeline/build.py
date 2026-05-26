@@ -5,7 +5,7 @@ import subprocess
 import webbrowser
 from pathlib import Path
 
-from pipeline.types import Issues
+from latex2ufdissertation.pipeline.types import Issues
 
 COMPILE_TIMEOUT = 600  # seconds
 MAX_ERROR_BLOCKS = 5

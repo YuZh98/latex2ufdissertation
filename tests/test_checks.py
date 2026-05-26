@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from pipeline.checks import run_checks
-from pipeline.types import Issues
+from latex2ufdissertation.pipeline.checks import run_checks
+from latex2ufdissertation.pipeline.types import Issues
 
 
 def _project(tmp_path: Path, master: str, extra: dict[str, str] | None = None) -> Path:

@@ -7,14 +7,13 @@ import json
 import sys
 from pathlib import Path
 
-from pipeline.build import compile_pdf, lualatex_available
-from pipeline.checks import run_checks
-from pipeline.init import init_project
-from pipeline.main_tex import detect_main_tex
-from pipeline.resolve import resolve, stem_for_output
-from pipeline.types import ConverterError, Issues
-
-__version__ = "0.1.0"
+from latex2ufdissertation import __version__
+from latex2ufdissertation.pipeline.build import compile_pdf, lualatex_available
+from latex2ufdissertation.pipeline.checks import run_checks
+from latex2ufdissertation.pipeline.init import init_project
+from latex2ufdissertation.pipeline.main_tex import detect_main_tex
+from latex2ufdissertation.pipeline.resolve import resolve, stem_for_output
+from latex2ufdissertation.pipeline.types import ConverterError, Issues
 
 
 def _build_parser() -> argparse.ArgumentParser:
