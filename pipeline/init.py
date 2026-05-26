@@ -10,8 +10,7 @@ from pipeline.types import ConverterError
 
 BUNDLED_TEMPLATE_DIR = Path(__file__).parent / "template"
 UF_IT_TEMPLATE_URL = (
-    "https://it.ufl.edu/wp-content/uploads/2025/11/"
-    "Dissertation___Thesis_Example_File.zip"
+    "https://it.ufl.edu/wp-content/uploads/2025/11/Dissertation___Thesis_Example_File.zip"
 )
 FETCH_TIMEOUT = 30  # seconds
 
@@ -56,10 +55,7 @@ def init_project(target: Path) -> None:
         _fetch_remote(target)
         print("  fetched latest template from UF IT")
     except Exception as e:
-        print(
-            f"  [warn] couldn't reach UF IT site ({type(e).__name__}); "
-            f"using bundled template"
-        )
+        print(f"  [warn] couldn't reach UF IT site ({type(e).__name__}); using bundled template")
         _copy_bundled(target)
 
     print(f"  scaffold ready at {target}/")

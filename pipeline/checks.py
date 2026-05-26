@@ -57,9 +57,7 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
             continue
         candidates = [root / arg] + [root / f"{arg}{s}" for s in suffixes]
         if not any(c.exists() for c in candidates):
-            issues.error(
-                f"{label} file required ({cmd}: {arg!r} not found in project root)"
-            )
+            issues.error(f"{label} file required ({cmd}: {arg!r} not found in project root)")
 
     # W1: editMode option
     if m and m.group(2) and "editMode" in m.group(2):
