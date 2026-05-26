@@ -48,13 +48,9 @@ def _clone_git(url: str, dest: Path) -> Path:
             capture_output=True,
         )
     except subprocess.TimeoutExpired as e:
-        raise ConverterError(
-            f"git clone timed out after {RESOLVE_GIT_TIMEOUT}s: {url}"
-        ) from e
+        raise ConverterError(f"git clone timed out after {RESOLVE_GIT_TIMEOUT}s: {url}") from e
     except subprocess.CalledProcessError as e:
-        raise ConverterError(
-            f"git clone failed: {e.stderr.decode(errors='replace')}"
-        ) from e
+        raise ConverterError(f"git clone failed: {e.stderr.decode(errors='replace')}") from e
     except FileNotFoundError as e:
         raise ConverterError("git is not installed") from e
     return dest

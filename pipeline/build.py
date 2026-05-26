@@ -54,12 +54,8 @@ def compile_pdf(
     log_text = ""
     for pass_n in (1, 2, 3):
         try:
-            r = subprocess.run(
-                cmd, cwd=root, timeout=COMPILE_TIMEOUT, capture_output=True
-            )
-            log_text = r.stdout.decode(errors="replace") + r.stderr.decode(
-                errors="replace"
-            )
+            r = subprocess.run(cmd, cwd=root, timeout=COMPILE_TIMEOUT, capture_output=True)
+            log_text = r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace")
         except subprocess.TimeoutExpired:
             issues.error(f"lualatex timed out after {COMPILE_TIMEOUT}s")
             return None

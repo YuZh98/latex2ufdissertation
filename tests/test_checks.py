@@ -63,9 +63,7 @@ def test_missing_required_command(tmp_path, cmd, msg_fragment):
     master = _project(tmp_path, src, _VALID_FILES)
     issues = Issues()
     run_checks(master, tmp_path, issues)
-    assert any(msg_fragment in e for e in issues.errors), (
-        f"no error mentioning {msg_fragment}"
-    )
+    assert any(msg_fragment in e for e in issues.errors), f"no error mentioning {msg_fragment}"
 
 
 @pytest.mark.parametrize(

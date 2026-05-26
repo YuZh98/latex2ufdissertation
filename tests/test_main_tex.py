@@ -46,9 +46,22 @@ def test_detect_explicit_hint_missing_raises(tmp_path):
 
 
 def test_detect_no_master_raises(tmp_path):
-    _write(tmp_path, "only.tex", r"\documentclass{article}")
+    _write(tmp_path, "only.tex", r"\input{other}")  # no \documentclass at all
     with pytest.raises(ConverterError):
         detect_main_tex(tmp_path)
+
+
+def test_detect_prefers_ufd_over_other_class(tmp_path):
+    _write(tmp_path, "article.tex", r"\documentclass{article}")
+    _write(tmp_path, "ufd.tex", r"\documentclass{ufdissertation}")
+    assert detect_main_tex(tmp_path) == tmp_path / "ufd.tex"
+
+
+def test_detect_returns_non_ufd_master_when_only_choice(tmp_path):
+    # If no ufdissertation master exists, still return the best candidate
+    # so checks.py can fire E1 (wrong document class).
+    p = _write(tmp_path, "article.tex", r"\documentclass{article}")
+    assert detect_main_tex(tmp_path) == p
 
 
 def test_detect_skips_commented_documentclass(tmp_path):
