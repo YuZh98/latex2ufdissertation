@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from pipeline.build import format_errors, lualatex_available
+from latex2ufdissertation.pipeline.build import format_errors, lualatex_available
 
 
 def test_format_errors_extracts_bang_blocks():
@@ -32,10 +32,12 @@ def test_format_errors_empty():
 
 
 def test_lualatex_available_when_installed():
-    with patch("pipeline.build.shutil.which", return_value="/usr/bin/lualatex"):
+    with patch(
+        "latex2ufdissertation.pipeline.build.shutil.which", return_value="/usr/bin/lualatex"
+    ):
         assert lualatex_available()
 
 
 def test_lualatex_unavailable_when_missing():
-    with patch("pipeline.build.shutil.which", return_value=None):
+    with patch("latex2ufdissertation.pipeline.build.shutil.which", return_value=None):
         assert not lualatex_available()

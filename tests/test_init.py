@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from pipeline.init import BUNDLED_TEMPLATE_DIR, init_project
-from pipeline.types import ConverterError
+from latex2ufdissertation.pipeline.init import BUNDLED_TEMPLATE_DIR, init_project
+from latex2ufdissertation.pipeline.types import ConverterError
 
 
 def test_bundled_template_exists():
@@ -13,7 +13,9 @@ def test_bundled_template_exists():
 
 def test_init_uses_bundled_when_fetch_fails(tmp_path):
     target = tmp_path / "out"
-    with patch("pipeline.init._fetch_remote", side_effect=ConnectionError("offline")):
+    with patch(
+        "latex2ufdissertation.pipeline.init._fetch_remote", side_effect=ConnectionError("offline")
+    ):
         init_project(target)
     assert (target / "exampleMasterFile.tex").exists()
     assert (target / "ufdissertation.cls").exists()
@@ -29,6 +31,6 @@ def test_init_refuses_nonempty_target(tmp_path):
 
 def test_init_creates_parent_dirs(tmp_path):
     target = tmp_path / "deep" / "nested" / "out"
-    with patch("pipeline.init._fetch_remote", side_effect=ConnectionError):
+    with patch("latex2ufdissertation.pipeline.init._fetch_remote", side_effect=ConnectionError):
         init_project(target)
     assert target.exists()

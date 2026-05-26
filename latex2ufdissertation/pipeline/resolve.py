@@ -8,7 +8,7 @@ import zipfile
 from collections.abc import Callable
 from pathlib import Path
 
-from pipeline.types import ConverterError
+from latex2ufdissertation.pipeline.types import ConverterError
 
 RESOLVE_GIT_TIMEOUT = 300  # seconds
 

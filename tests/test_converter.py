@@ -17,7 +17,7 @@ _MIN_VALID = r"""\documentclass{ufdissertation}
 
 def _run(*args, cwd=None):
     return subprocess.run(
-        [sys.executable, "-m", "converter", *args],
+        [sys.executable, "-m", "latex2ufdissertation.cli", *args],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -78,8 +78,8 @@ def test_init_creates_target(tmp_path):
             "-c",
             (
                 "import sys; from unittest.mock import patch; "
-                "import pipeline.init as I; "
-                "from converter import main; "
+                "import latex2ufdissertation.pipeline.init as I; "
+                "from latex2ufdissertation.cli import main; "
                 "patcher = patch.object(I, '_fetch_remote', "
                 "side_effect=ConnectionError('offline')); "
                 "patcher.start(); "

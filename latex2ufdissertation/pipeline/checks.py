@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 
-from pipeline.types import Issues
+from latex2ufdissertation.pipeline.types import Issues
 
 _DOCCLASS_RE = re.compile(r"\\documentclass(\[([^\]]*)\])?\{([^}]+)\}")
 _REQUIRED_TOPLEVEL = (

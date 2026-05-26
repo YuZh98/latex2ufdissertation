@@ -6,7 +6,7 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
-from pipeline.types import ConverterError
+from latex2ufdissertation.pipeline.types import ConverterError
 
 BUNDLED_TEMPLATE_DIR = Path(__file__).parent / "template"
 UF_IT_TEMPLATE_URL = (

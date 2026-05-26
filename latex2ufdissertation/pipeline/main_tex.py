@@ -3,10 +3,9 @@
 import re
 from pathlib import Path
 
-from pipeline.types import ConverterError
+from latex2ufdissertation.pipeline.types import ConverterError
 
-_DOCCLASS_ANY = re.compile(r"(?m)^\s*\\documentclass(\[[^\]]*\])?\{[^}]+\}")
-_DOCCLASS_UFD = re.compile(r"(?m)^\s*\\documentclass(\[[^\]]*\])?\{ufdissertation\}")
+_FIRST_DOCCLASS = re.compile(r"(?m)^\s*\\documentclass(\[[^\]]*\])?\{([^}]+)\}")
 _SETFILE_RE = re.compile(r"\\set[A-Z][A-Za-z]*File\b")
 
 
@@ -15,19 +14,21 @@ def _strip_comments(text: str) -> str:
 
 
 def _score(path: Path) -> int | None:
-    """Return a master-score for `path` or None if no \\documentclass present.
+    """Return a master-score for `path` or None if no real \\documentclass present.
 
-    Score = 100 * (ufdissertation match) + setfile-count + (-len(path)) tiebreak.
+    Only the FIRST \\documentclass line counts — later occurrences are typically
+    in \\verb / verbatim blocks inside documentation files.
     """
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
     nc = _strip_comments(text)
-    if not _DOCCLASS_ANY.search(nc):
+    m = _FIRST_DOCCLASS.search(nc)
+    if not m:
         return None
     score = len(_SETFILE_RE.findall(nc))
-    if _DOCCLASS_UFD.search(nc):
+    if m.group(2).strip() == "ufdissertation":
         score += 100
     return score
 

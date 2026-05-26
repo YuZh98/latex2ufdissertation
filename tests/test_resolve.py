@@ -2,8 +2,8 @@ import zipfile
 
 import pytest
 
-from pipeline.resolve import RESOLVE_GIT_TIMEOUT, _looks_like_git_url, resolve
-from pipeline.types import ConverterError
+from latex2ufdissertation.pipeline.resolve import RESOLVE_GIT_TIMEOUT, _looks_like_git_url, resolve
+from latex2ufdissertation.pipeline.types import ConverterError
 
 
 def test_resolve_directory(tmp_path):
