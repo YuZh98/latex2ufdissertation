@@ -1,0 +1,220 @@
+\documentclass{article}
+\usepackage{hyperref}
+\usepackage[margin=2cm]{geometry}
+\hypersetup{%               %           Setup the coloring of the links. 
+%                           %           Currently the only necessary one is "colorlinks=true" and "linkcolor=blue".
+    colorlinks   = true,    %           Colours links instead of ugly boxes
+    urlcolor     = blue,    %           Colour for external hyperlinks
+    linkcolor    = blue,    %           Colour of internal links
+    citecolor    = blue     %           Colour of citations, could be ``red''
+    }
+
+\title{\LaTeX{} Thesis and Dissertation Template\\ Version 1.0}
+\author{Original Author: Jason Nowell \\ Current Revision Author: Jason Nowell}
+\date{Current Revision: Summer 2019}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+
+\section{Introduction}
+    This is a redesign of the \LaTeX{} template that is provided by the UF Graduate school for use in publishing dissertations and theses. This is a supplemental documentation, not using the original class file, for a quick reference. Most notably the intent is to establish both a quick usage guide, as well as helpful reference in the event that a user is running into compilation errors. As a user that is having errors trying to use the class file can't compile things with it, this pdf is deliberately designed using a minimum number of packages and specialized content in order to help a user still compile this document to troubleshoot the class file. Note that if the user cannot compile this document that almost certainly means there is an underlying corruption in their installation of \LaTeX{} and not an issue with the class file itself.
+
+\section{User Guide: Quick-reference}
+    This section is intended to provide the user with the basic setup used in almost all circumstances. For more specific errors or edge cases (such as over-riding basic formatting rules set forth by the template) please see the section \ref{Sec: In-Depth Guide}. 
+    
+
+        
+        
+        
+        
+
+\section{In-depth Guide}\label{Sec: In-Depth Guide}
+
+    \subsection{Initial Template}
+    
+        Along with the class file, you should have received a template with a pre-written preamble. If you didn't, you can copy the preamble included in section \ref{SubSec: Template Preamble}. We will go through each of the lines here to explain what they do and what to do with them.
+        
+        \verb|\documentclass[editMode]{ufdissertation}\sloppy|:\\
+        This should be the very first line of your tex document. The \verb|\documentclass[editMode]{ufdissertation}| command loads the ufdissertation class file, with the class option \textit{editMode}. You can see more about the available class options in section \ref{SubSec: Class Options}. The \verb|\sloppy| command at the end allows the LaTeX engine to break lines up a bit better to avoid blank whitespace and overfull lines into the margins (both of which are not allowed by the graduate school). Keep in mind that this command only helps, it won't force a linebreak if text flows into the margin (especially for things like math display mode or hbox setups) as doing so would have some very bad global effects that are fairly unpredictable.
+        
+        \verb|\usepackage{CustomMacros}|:\\ Chances are good that, if you use LaTeX regularly, you have developed a number of custom macros that you use throughout your work (or at least throughout your dissertation or thesis). You can either put these in a .sty file in your dissertation folder and load it as a package, or you can copy and paste your commands over this line (in which case, make sure to get rid of the usepackage command at the start of this paragraph, either by commenting it out with a $\%$ in front, or by simply deleting it.)
+        
+        \verb|\haveTablestrue| and \verb|\haveFigurestrue|: \\ These two commands tell LaTeX whether you have any Tables or Figures to display. If you don't have any in your file, then you want to comment these out with a $\%$ at the start of the line. If you do have one or the other, make sure they are not commented out. This has to do with when the table of contents for each are generated and thus we cannot easily ``detect" whether you have figures or tables and then choose to display them, while still meeting the requirements of the graduate school for formatting.
+        
+        \verb|\title{My-Thesis-Title}|: \\ This line is for the title of your thesis or dissertation. Replace the ``My-Thesis-Title" with the correct title.
+        
+        \verb|\degreeType{Doctorate of Philosophy}|: \\ This is the formal degree type. For most PhDs it is a ``Doctorate of Philosophy" but you should look up the precise wording of your degree type and enter it here. Note that this does not include the subject. Thus a PhD in mathematics should only include the ``Doctorate of Philosophy" here.
+        
+        \verb|\major{Mathematics}|:\\ This is where the department for your subject goes. Remember to capitalize the department name for any proper nouns; eg for mathematics you would write ``Mathematics".
+        
+        \verb|\author{Your-Name}|:\\ This is your name. Hopefully you remember how to write that properly.
+        
+        \verb|\thesisType{Dissertation}|: \\ This is the type of document you are writing. The two most common options are either \verb|Dissertation| if you are getting a PhD, or \verb|Thesis| if you are getting a Masters. However, if your document type has a different technical name, you should enter that here.
+        
+        \verb|\degreeYear{2019}| and \verb|\degreeMonth{August}|: \\ This is the year and month \textit{of your graduation}. This is \textbf{not} the year and month that you submit or plan to have your document accepted. There are three (normal) months of graduation: May for Spring graduation, August for Summer graduation, and December for Fall graduation.
+        
+        \verb|\chair{Chairs-Name}|: \\ This is the chair of your committee. If you have a co-chair in your committee you can include them by using an optional argument. In particular, you would use the command: \verb|\chair[Co-Chair-Name]{Chairs-Name}|.
+        
+        \verb|\set(SectionName)File{FileName}|:\\ These are all required sections that must be in every dissertation or thesis. In each case, the content should be a separate tex file with no additional formatting is necessary; so you don't need to include a header in the file that declares it to be the abstract or dedication etc; all of that is handled by the class file. The commands are as follows: 
+        \begin{itemize}
+            \item \verb|\setDedicationFile{dedication}| The dedication file.
+            \item \verb|\setAcknowledgementsFile{acknowledgements}| The acknowledgements file.
+            \item \verb|\setAbstractFile{abstract}| The abstract file.
+            \item \verb|\setReferenceFile{references}{amsplain}| The first argument is the list of refences (typically a .bbl file for using bibtex). The second argument is the bibtex format file that is specific to your discipline. The easiest way to get such a formatting file is to find a journal that your discipline regularly publishes to and find their bibtex formatting file. For example, for mathematics one can use the ``amsplain" format.
+            \item \verb|\setBiographicalFile{biography}| The bibliography file. Note that this should be formatted using third person and can list things like your academic achievements.
+        \end{itemize}
+        
+        \verb|\set(SectionName)File{FileName}| Part Two:\\ These are all optional sections that may or may not apply to you. The same notes apply as in the first part on these sections; eg no formatting required, and each should be it's own file.
+        \begin{itemize}
+            \item \verb|\setAbbreviationsFile{abbreviations}| A file of abbreviations specific to your document. Note that this is not the same as a glossary or appendix.
+            \item \verb|\setAppendixFile{appendix}| An appendix for your document.
+        \end{itemize}
+        
+        
+
+        
+    \subsection{Class Options}\label{SubSec: Class Options}
+        There are a few class options that can be added to the document class by using an optional argument. Each option should be separated by a comma. Thus, if you want to use editMode and overrideTitles, you would type \verb|\documentclass[editMode,overrideTitles]{ufdissertation}|. The following are the available package options:
+        
+        \begin{description}
+            \item[\textbf{editMode:}] The package option editMode allows one to add in comments between the author and an editor that will stand out, while not having them present when compiled without the option. Specifically, while editMode is active (ie while it is listed as a package option) two commands can be used; \verb|\authorRemark| and \verb|\editorRemark|. The \verb|\authorRemark| will take all the text enclosed in the command and print it in blue; so that an author can include comments to themselves or to their editor (be it a member of the Application Support Center, their Adviser, or the Review committee). The command \verb|editorRemark| works the same way, but displays its text in red, allowing the editor/adviser/reviewer to easily inject comments into the paper that will stand out to the author. In both cases, once the ``editMode" option is removed, all the comments (editor and author) will be suppressed, so you don't have to worry about missing a comment when you are removing them, and having the comment show up in your latest presentation draft.
+            \item[\textbf{overrideTitles:}] In very rare circumstances certain titles will need to not be all uppercase letters. In order to turn off auto-capitalization, you can include the ``overrideTitles" package option, which will stop the title from being automatically capitalized.
+            \item[\textbf{overrideChapter:}] This is the same as overrideTitles, but for Chapter names. Again this is a very rare circumstance where this is needed, so chances are, if you aren't looking for how to do this, you probably don't want to use this option.
+        \end{description}
+        
+    \subsection{Listing Tables and Figures}
+        The command \verb|\haveTablestrue| will display a table of contents for your tables. If you have tables, you should make sure this is not commented out in the preamble. If you don't have tables anywhere, then you want to make sure this is commented out. If you are unsure if you need this, you can make sure it is not commented out and compile; if you get a ``List of Tables" page and nothing listed, then you don't want this line in your preamble.\\
+        The command \verb|haveFigurestrue| is the same as the tables command, but for figures. All the same rules apply.
+        
+    \subsection{Listing Objects}
+        Currently not implemented. This will be done soon.
+    
+    \subsection{Overriding Features}
+        If you have problems with certain features that need to be prevented, chances are good that it is in the Class Options section above (section \ref{SubSec: Class Options}). This includes overriding the auto-capitalization of document title and chapters currently.
+    
+    \subsection{Common class warnings and errors.}
+        The most common warning will be for missing files. For each of the warnings you should see, as part of the warning message, how to address it. For example, the warning \verb|You haven't specified a committee co-chair using the| \verb|optional argument of the command \chair. Hopefully this is intentional!| is a warning about not giving a co-chair, and it tells you that you can assign one if you want by using an optional argument on the \verb|\chair| command.
+    
+    \subsection{Template Preamble}\label{SubSec: Template Preamble}
+        This is the preamble that should have been included in the original template. If you didn't get a preamble, you can copy this one. If you got a preamble that looks different, it is likely that someone updated the class file and forgot to update this documentation. Most of the preamble should be similar, but if you don't see the line here that you are having issues with, please contact the relevant people with your questions (insert email here?)
+        
+    \begin{verbatim}
+    \documentclass[editMode]{ufdissertation}\sloppy
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%                 User Package and Style File loading.
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    %\usepackage{CustomMacros}%  This is a user macro/style file.
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%                     User Configuration commands
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    %% Uncomment the relevant line below if you have tables or figures.
+    %\haveTablestrue%        Uncomment this if you have tables in your thesis.
+    %\haveFigurestrue%       Uncomment this if you have figures in your thesis.
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%% Below are the commands to set the degree type, department, graduation time, and chair. 
+    %       Most of these are self explanatory. 
+    %       Note: The \chair command takes an optional argument for a cochair. 
+    %           So if John was your chair and Jacob was a cochair, 
+    %               you would use \chair[Jacob]{John}.
+    %           If John was your chair and you had no cochair, 
+    %               you can simply use \chair{John}.
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    \title{My-Thesis-Title}%  Put your title here.
+    
+    \degreeType{Doctorate of Philosophy}%   Official name of your degree; 
+    %                                           eg "Doctorate of Philosophy".
+    \major{Mathematics}%                    Your official Department
+    \author{Your-Name}%                     Your Name
+    \thesisType{Dissertation}%              Dissertation (PhD) or Thesis (Masters)
+    \degreeYear{2019}%                      Intended graduation year (not the year you submit 
+    %                                           the thesis)
+    \degreeMonth{August}%                   Month of graduation should be: 
+    %                                           May, August, or December.
+    \chair{Chairs-Name}%                    Chair and Cochair (see comment block above).
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%% For each of the following, type in the name of the file that contains each section. 
+    %       They are assumed to be tex files, but if they aren't the command takes an 
+    %       optional argument for the extension.
+    %       So, you could load dedication.tex as your dedication file using 
+    %       \setDedicationFile{dedication}
+    %       You could load dedication.txt instead with \setDedicationFile[txt]{dedication}.
+    %       NOTE: For some compilers they may or may not add a .tex to the end of the file 
+    %           automatically.
+    %           If you get a "couldn't find dedication.tex.tex" type error, try the command 
+    %           with an empty optional argument, e.g. \setDedicationFile[]{dedication}
+    %%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    %%% These are REQUIRED sections; easiest to do via these commands.
+    
+    \setDedicationFile{dedication}%                 Dedication Page
+    \setAcknowledgementsFile{acknowledgements}%     Acknowledgements Page
+    \setAbstractFile{abstract}%                     Abstract Page (This should only 
+    %                                                   include the abstract itself)
+    \setReferenceFile{references}{amsplain}%        References. First argument is your bibtex 
+    %                                                   source file. The second argument is 
+    %                                                   your bibtex style file.
+    \setBiographicalFile{biography}%                Biography file of the Author (you).
+    
+    %%% These are NOT required, so only use them if you actually need/have them.
+    
+    %\setAbbreviationsFile{abbreviations}%           Abbreviations Page
+    %\setAppendixFile{appendix}%                     Appendix Content 
+    %                                                   Note: hyperlinking might be weird.
+    
+    %%%%%%%                     End of File Assignment
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \end{verbatim}
+    
+
+\section{FAQ}
+
+    \subsection{How do I use non-capital letters in my title?}
+        You can accomplish this by including the ``overrideTitles" option in the document class optional argument. See section \ref{SubSec: Class Options} for more information and other class options.
+
+
+
+
+\section{Current Graduate School Technical Specs and Requirements}
+
+\section{Packages (with Versions) contained in the cls File}
+    This section shouldn't be relevant to most users. However, if you are getting weird package missing or package clash errors, this section contains the packages that the cls file loads, along with the version of those packages that were used at the time of the last revision (or at least, at the time of the last revision of this documentation). As the cls file was known to compile at that time, you can try to force the use of the correct package versions by placing those packages in the folder with your dissertation file and try to compile. If it still does not compile, then your \LaTeX{} installation is certainly corrupted and needs to be fully deleted and reinstalled from scratch to ensure a clean reinstall.\\
+    Package List:
+    \begin{itemize}
+        \item pdflatex      Version: 3.14159265-2.6-1.40.20
+        \item etoolbox      Version: 2018/08/19 v2.5f
+        \item tabularx      Version: 2016/02/03 v2.11b 
+        \item xcolor        Version: 2016/05/11 v2.12
+        \item caption       Version: 2018/10/06 v3.3-154
+        \item hyperref      Version: 2018/11/30 v6.88e
+        \item titlesec      Version: 2016/03/21 v2.10.2
+        \item titletoc      Version: 2011/12/15 v1.6
+        \item float         Version: 2001/11/08 v1.3d
+        \item geometry      Version: 2018/04/16 v5.8
+        \item mathptmx      Version: 2005/04/12 PSNFSS-v9.2a
+        \item helvet        Version: 2005/04/12 PSNFSS-v9.2a
+        \item fancyhdr      Version: 2019/01/31 v3.10
+        \item setspace      Version: 2011/12/19 v6.7a
+        \item indentfirst   Version: 1995/11/23 v1.03
+        \item longtable     Version: 2014/10/28 v4.11
+        \item flafter       Version: 2018/11/28 v1.4d
+        \item amsthm        Version: 2017/10/31 v2.20.4
+        \item amssymb       Version: 2013/01/14 v3.01
+        \item amsfont       Version: 2013/01/14 v3.01
+        \item amsmath       Version: 2018/12/01 v2.17b
+        \item natbib        Version: 2010/09/13 8.31b
+    \end{itemize}
+
+
+\end{document}
