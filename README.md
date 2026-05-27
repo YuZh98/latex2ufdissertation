@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 
-A safety-net validator for UF doctoral dissertations using the Fall 2025+ University of Florida LaTeX template. Given a project archive, project directory, or compiled PDF, it produces a grouped, severity-tiered report citing the originating UF rule for each finding — one more pair of eyes before clicking submit.
+A safety-net validator for UF doctoral dissertations using the Fall 2025+ University of Florida LaTeX template. Given a project archive, project directory, or git URL, it produces a severity-tiered report citing the originating UF rule for each finding — one more pair of eyes before clicking submit. (PDF-only input and a separate PDF-layer of checks are planned for v1.0.)
 
 > **The validator is advisory.** It is not a substitute for review by the UF Graduate Editorial Office. A clean report means none of the documented mechanical formatting rules in [`docs/uf-rules.md`](./docs/uf-rules.md) were violated; it does not guarantee UF will accept the dissertation. The student remains responsible.
 
@@ -21,7 +21,7 @@ A hand-crafted UF dissertation that satisfies every must-fix rule lives at [**`e
 - Browse the source: [`examples/demo_dissertation/`](./examples/demo_dissertation/)
 - View the compiled output: [`examples/demo_dissertation/main.pdf`](./examples/demo_dissertation/main.pdf) (26 pages, LuaLaTeX + TeX Live 2025)
 - Local compile: `cd examples/demo_dissertation && lualatex main && bibtex main && lualatex main && lualatex main`
-- From an install: `latex2ufdissertation --demo` prints the location and link
+- From an install: `latex2ufdissertation --demo` prints the GitHub link (and a local path when run from a source checkout)
 
 ## Quickstart
 

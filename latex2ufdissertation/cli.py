@@ -61,7 +61,7 @@ def _emit_json(issues: Issues) -> None:
 def _summary(issues: Issues) -> None:
     n_err = len(issues.errors)
     n_warn = len(issues.warnings)
-    print(f"\nSummary: {n_err} error(s), {n_warn} warning(s)")
+    print(f"\nSummary: {n_err} error(s), {n_warn} warning(s)", file=sys.stderr)
 
 
 def _resolve_output_path(input_str: str, root: Path, explicit: str | None) -> Path:
@@ -137,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
         master = detect_main_tex(root, hint=args.main)
         issues.main_tex = str(master.relative_to(root))
 
-        print(f"  validating {issues.main_tex}")
+        print(f"  validating {issues.main_tex}", file=sys.stderr)
         run_checks(master, root, issues)
 
         if args.dry_run:
@@ -155,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
 
         output = _resolve_output_path(args.input, root, args.output)
         issues.output_path = str(output)
-        print(f"  compiling to {output}")
+        print(f"  compiling to {output}", file=sys.stderr)
         pdf = compile_pdf(master, root, output, issues)
         if pdf is None:
             _summary(issues)

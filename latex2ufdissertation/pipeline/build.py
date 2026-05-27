@@ -2,6 +2,7 @@
 
 import shutil
 import subprocess
+import sys
 import webbrowser
 from pathlib import Path
 
@@ -76,8 +77,8 @@ def compile_pdf(
         issues.error("lualatex did not produce a PDF")
         formatted = format_errors(log_text)
         if formatted:
-            print("\n--- last compile errors ---")
-            print(formatted)
+            print("\n--- last compile errors ---", file=sys.stderr)
+            print(formatted, file=sys.stderr)
         return None
 
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
