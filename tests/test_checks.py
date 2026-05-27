@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from latex2ufdissertation.pipeline.checks import run_checks
+from latex2ufdissertation.pipeline.rules import MUST_FIX, REVIEW
 from latex2ufdissertation.pipeline.types import Issues
 
 
@@ -33,24 +34,32 @@ _VALID_FILES = {
 }
 
 
-def test_valid_project_no_errors(tmp_path):
+def _rule_ids(issues: Issues) -> set[str]:
+    return {f.rule_id for f in issues.findings}
+
+
+def test_valid_project_no_findings(tmp_path):
     master = _project(tmp_path, _VALID, _VALID_FILES)
     issues = Issues()
     run_checks(master, tmp_path, issues)
-    assert issues.errors == []
-    assert issues.warnings == []
+    assert issues.findings == []
+    assert issues.must_fix_count() == 0
+    assert issues.review_count() == 0
 
 
-def test_e1_wrong_class(tmp_path):
+def test_wrong_documentclass_fires_uf_f13(tmp_path):
     src = r"\documentclass{article}" + "\n" + _VALID.split("\n", 1)[1]
     master = _project(tmp_path, src, _VALID_FILES)
     issues = Issues()
     run_checks(master, tmp_path, issues)
-    assert any("wrong document class" in e for e in issues.errors)
+    assert "UF-F13" in _rule_ids(issues)
+    f = next(f for f in issues.findings if f.rule_id == "UF-F13")
+    assert f.severity == MUST_FIX
+    assert "article" in (f.observed or "")
 
 
 @pytest.mark.parametrize(
-    "cmd,msg_fragment",
+    "cmd,label",
     [
         (r"\title{X}", r"\title"),
         (r"\author{Y}", r"\author"),
@@ -58,51 +67,60 @@ def test_e1_wrong_class(tmp_path):
         (r"\thesisType{Dissertation}", r"\thesisType"),
     ],
 )
-def test_missing_required_command(tmp_path, cmd, msg_fragment):
+def test_missing_required_command_fires_uf_f14(tmp_path, cmd, label):
     src = _VALID.replace(cmd, "")
     master = _project(tmp_path, src, _VALID_FILES)
     issues = Issues()
     run_checks(master, tmp_path, issues)
-    assert any(msg_fragment in e for e in issues.errors), f"no error mentioning {msg_fragment}"
+    f14_findings = [f for f in issues.findings if f.rule_id == "UF-F14"]
+    assert f14_findings, "expected at least one UF-F14 finding"
+    assert any(label in (f.observed or "") for f in f14_findings)
+    assert all(f.severity == MUST_FIX for f in f14_findings)
 
 
 @pytest.mark.parametrize(
-    "set_cmd,file_name,msg_fragment",
+    "set_cmd,file_name,cmd_label",
     [
-        (r"\setAcknowledgementsFile{ack}", "ack.tex", "Acknowledgements"),
-        (r"\setAbstractFile{abs}", "abs.tex", "Abstract"),
-        (r"\setReferenceFile{refs}{agsm}", "refs.bib", "Reference"),
-        (r"\setBiographicalFile{bio}", "bio.tex", "Biographical"),
+        (r"\setAcknowledgementsFile{ack}", "ack.tex", r"\setAcknowledgementsFile"),
+        (r"\setAbstractFile{abs}", "abs.tex", r"\setAbstractFile"),
+        (r"\setReferenceFile{refs}{agsm}", "refs.bib", r"\setReferenceFile"),
+        (r"\setBiographicalFile{bio}", "bio.tex", r"\setBiographicalFile"),
     ],
 )
-def test_missing_setfile_command(tmp_path, set_cmd, file_name, msg_fragment):
+def test_missing_setfile_fires_uf_f8(tmp_path, set_cmd, file_name, cmd_label):
     src = _VALID.replace(set_cmd, "")
     files = dict(_VALID_FILES)
     files.pop(file_name, None)
     master = _project(tmp_path, src, files)
     issues = Issues()
     run_checks(master, tmp_path, issues)
-    assert any(msg_fragment in e for e in issues.errors)
+    f8_findings = [f for f in issues.findings if f.rule_id == "UF-F8"]
+    assert f8_findings, "expected at least one UF-F8 finding"
+    assert any(cmd_label in (f.observed or "") for f in f8_findings)
+    assert all(f.severity == MUST_FIX for f in f8_findings)
 
 
 @pytest.mark.parametrize(
-    "file_name,msg_fragment",
+    "file_name,cmd_label",
     [
-        ("ack.tex", "Acknowledgements"),
-        ("abs.tex", "Abstract"),
-        ("refs.bib", "Reference"),
-        ("bio.tex", "Biographical"),
+        ("ack.tex", r"\setAcknowledgementsFile"),
+        ("abs.tex", r"\setAbstractFile"),
+        ("refs.bib", r"\setReferenceFile"),
+        ("bio.tex", r"\setBiographicalFile"),
     ],
 )
-def test_missing_setfile_target_file(tmp_path, file_name, msg_fragment):
+def test_missing_setfile_target_fires_uf_p1(tmp_path, file_name, cmd_label):
     files = {k: v for k, v in _VALID_FILES.items() if k != file_name}
     master = _project(tmp_path, _VALID, files)
     issues = Issues()
     run_checks(master, tmp_path, issues)
-    assert any(msg_fragment in e for e in issues.errors)
+    p1_findings = [f for f in issues.findings if f.rule_id == "UF-P1"]
+    assert p1_findings, "expected at least one UF-P1 finding"
+    assert any(cmd_label in (f.observed or "") for f in p1_findings)
+    assert all(f.severity == MUST_FIX for f in p1_findings)
 
 
-def test_w1_editmode_warn(tmp_path):
+def test_editmode_fires_uf_d1_review(tmp_path):
     src = _VALID.replace(
         r"\documentclass{ufdissertation}",
         r"\documentclass[editMode]{ufdissertation}",
@@ -110,12 +128,17 @@ def test_w1_editmode_warn(tmp_path):
     master = _project(tmp_path, src, _VALID_FILES)
     issues = Issues()
     run_checks(master, tmp_path, issues)
-    assert any("editMode" in w for w in issues.warnings)
+    assert "UF-D1" in _rule_ids(issues)
+    d1 = next(f for f in issues.findings if f.rule_id == "UF-D1")
+    assert d1.severity == REVIEW
 
 
-def test_w2_pdflatex_magic_comment(tmp_path):
+def test_pdflatex_hint_fires_uf_d2_must_fix(tmp_path):
     src = "% !TEX program = pdflatex\n" + _VALID
     master = _project(tmp_path, src, _VALID_FILES)
     issues = Issues()
     run_checks(master, tmp_path, issues)
-    assert any("LuaLaTeX" in w for w in issues.warnings)
+    assert "UF-D2" in _rule_ids(issues)
+    d2 = next(f for f in issues.findings if f.rule_id == "UF-D2")
+    # Per the spec rebrand: D2 is must-fix (was warn in v0.1).
+    assert d2.severity == MUST_FIX

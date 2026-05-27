@@ -12,8 +12,18 @@ from latex2ufdissertation.pipeline.build import compile_pdf, lualatex_available
 from latex2ufdissertation.pipeline.checks import run_checks
 from latex2ufdissertation.pipeline.init import init_project
 from latex2ufdissertation.pipeline.main_tex import detect_main_tex
+from latex2ufdissertation.pipeline.report import exit_code, format_human, format_json
 from latex2ufdissertation.pipeline.resolve import resolve, stem_for_output
-from latex2ufdissertation.pipeline.types import ConverterError, Issues
+from latex2ufdissertation.pipeline.rules import (
+    EXIT_REASON_MISSING_TOOLCHAIN,
+    EXIT_REASON_UNREADABLE_INPUT,
+)
+from latex2ufdissertation.pipeline.types import (
+    ConverterError,
+    Issues,
+    MissingToolchain,
+    UnreadableInput,
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -35,7 +45,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         dest="json_out",
-        help="Machine-readable summary on stdout",
+        help="Machine-readable summary on stdout (JSON schema v1)",
     )
     p.add_argument(
         "--version",
@@ -46,22 +56,19 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _emit_json(issues: Issues) -> None:
-    payload = {
-        "input": issues.input_path,
-        "output": issues.output_path,
-        "main_tex": issues.main_tex,
-        "dry_run": issues.dry_run,
-        "errors": issues.errors,
-        "warnings": issues.warnings,
-        "compile_result": issues.compile_result,
-    }
-    print(json.dumps(payload, indent=2))
+    # sort_keys keeps byte-identical output across runs on the same input.
+    print(json.dumps(format_json(issues), indent=2, sort_keys=True))
 
 
-def _summary(issues: Issues) -> None:
-    n_err = len(issues.errors)
-    n_warn = len(issues.warnings)
-    print(f"\nSummary: {n_err} error(s), {n_warn} warning(s)", file=sys.stderr)
+def _emit_report(issues: Issues, json_out: bool) -> None:
+    """Emit the human report (always, to stderr) and optionally the JSON
+    payload (to stdout). Keeping the human report on stderr means
+    `--json | jq ...` works without any extra filtering, and the user
+    still sees findings as they happen via Issues.add's diagnostic line.
+    """
+    print(format_human(issues), file=sys.stderr)
+    if json_out:
+        _emit_json(issues)
 
 
 def _resolve_output_path(input_str: str, root: Path, explicit: str | None) -> Path:
@@ -129,8 +136,17 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         root, cleanup = resolve(args.input)
-    except ConverterError as e:
+    except UnreadableInput as e:
+        issues.set_exit_reason(EXIT_REASON_UNREADABLE_INPUT)
         print(f"Error: {e}", file=sys.stderr)
+        if args.json_out:
+            _emit_json(issues)
+        return 2
+    except ConverterError as e:
+        issues.set_exit_reason(e.exit_reason)
+        print(f"Error: {e}", file=sys.stderr)
+        if args.json_out:
+            _emit_json(issues)
         return 2
 
     try:
@@ -141,34 +157,33 @@ def main(argv: list[str] | None = None) -> int:
         run_checks(master, root, issues)
 
         if args.dry_run:
-            _summary(issues)
-            if args.json_out:
-                _emit_json(issues)
-            return 1 if issues.errors else 0
+            _emit_report(issues, args.json_out)
+            return exit_code(issues)
 
         if not lualatex_available():
-            issues.error("lualatex not found — install TeX Live 2025")
-            _summary(issues)
-            if args.json_out:
-                _emit_json(issues)
+            issues.set_exit_reason(EXIT_REASON_MISSING_TOOLCHAIN)
+            print("Error: lualatex not found — install TeX Live 2025", file=sys.stderr)
+            _emit_report(issues, args.json_out)
             return 3
 
         output = _resolve_output_path(args.input, root, args.output)
         issues.output_path = str(output)
         print(f"  compiling to {output}", file=sys.stderr)
-        pdf = compile_pdf(master, root, output, issues)
-        if pdf is None:
-            _summary(issues)
-            if args.json_out:
-                _emit_json(issues)
-            return 1
+        try:
+            compile_pdf(master, root, output, issues)
+        except MissingToolchain as e:
+            issues.set_exit_reason(EXIT_REASON_MISSING_TOOLCHAIN)
+            print(f"Error: {e}", file=sys.stderr)
+            _emit_report(issues, args.json_out)
+            return 3
 
-        _summary(issues)
+        _emit_report(issues, args.json_out)
+        return exit_code(issues)
+    except ConverterError as e:
+        issues.set_exit_reason(e.exit_reason)
+        print(f"Error: {e}", file=sys.stderr)
         if args.json_out:
             _emit_json(issues)
-        return 1 if issues.errors else 0
-    except ConverterError as e:
-        print(f"Error: {e}", file=sys.stderr)
         return 2
     finally:
         cleanup()

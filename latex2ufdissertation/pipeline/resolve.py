@@ -8,7 +8,7 @@ import zipfile
 from collections.abc import Callable
 from pathlib import Path
 
-from latex2ufdissertation.pipeline.types import ConverterError
+from latex2ufdissertation.pipeline.types import ConverterError, UnreadableInput
 
 RESOLVE_GIT_TIMEOUT = 300  # seconds
 
@@ -70,7 +70,7 @@ def resolve(input_str: str) -> tuple[Path, Callable[[], None]]:
 
     p = Path(input_str)
     if not p.exists():
-        raise ConverterError(f"input not found: {input_str}")
+        raise UnreadableInput(f"input not found: {input_str}")
 
     if p.is_dir():
         return p, lambda: None
@@ -80,7 +80,7 @@ def resolve(input_str: str) -> tuple[Path, Callable[[], None]]:
         root = _zip_extract_unwrapping(p, tmp)
         return root, lambda: shutil.rmtree(tmp, ignore_errors=True)
 
-    raise ConverterError(f"unsupported input type: {input_str}")
+    raise UnreadableInput(f"unsupported input type: {input_str}")
 
 
 def stem_for_output(input_str: str, root: Path) -> str:

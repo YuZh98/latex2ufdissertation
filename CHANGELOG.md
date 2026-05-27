@@ -19,6 +19,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - `.github/dependabot.yml` — weekly grouped minor/patch updates for both pip and github-actions ecosystems.
 - README CI status, license, and Python-version badges at the top so visitors landing on the public repo see project status at a glance.
 - `docs/v1.0-rule-rebrand.md` — design document for v1.0 sub-project #1 (rule rebrand + ID system). Locked architecture, finding shape, v0.1 → UF-* mapping, JSON schema v1 freeze, and testing strategy.
+- **v1.0 sub-project #1 implementation: rule rebrand + ID system.**
+  - `latex2ufdissertation/pipeline/rules.py` — single-source-of-truth registry for every `UF-*` rule. `Rule` dataclass + `RULES` dict mirror the 29 entries in `docs/uf-rules.md`. Severity / layer / `exit_reason` literals are constants in this module so a typo fails at import time.
+  - `latex2ufdissertation/pipeline/types.py` — new `Finding` dataclass with the eight v1 schema fields (`severity`, `rule_id`, `layer`, `location`, `observed`, `required`, `fix_hint`, `source_url`). `Issues` collector replaces `errors` / `warnings` lists with `findings: list[Finding]`; `Issues.add(rule_id, ...)` resolves metadata from `RULES`. New `ConverterError` subclasses (`UnreadableInput`, `UnsupportedTemplate`, `ThesisInput`, `MissingToolchain`) carry per-exception `exit_reason`.
+  - `latex2ufdissertation/pipeline/report.py` — `format_human(issues)` (grouped by layer + rule category, sorted for determinism) and `format_json(issues)` (JSON schema v1: `schema_version`, `input`, `template_version`, `findings`, `summary`). Both buffer-then-emit; checks never print directly.
+  - `latex2ufdissertation/pipeline/checks.py` — every v0.1 emit site rebranded to `issues.add(rule_id="UF-XYZ", ...)` per the mapping in `docs/v1.0-rule-rebrand.md`.
+  - Public API frozen via `__all__` in `latex2ufdissertation/__init__.py`: `Issues`, `Finding`, `Rule`, `RULES`, `run_checks`, exception types, `__version__`.
+  - Tests: `tests/test_rules.py` asserts every `UF-*` ID in `docs/uf-rules.md` has a matching `Rule` entry (and vice versa); `tests/test_report.py` exercises the v1 JSON schema shape and sort order; `tests/test_determinism.py` runs the validator twice on the demo dissertation with `--dry-run --json` and asserts byte-identical stdout (xfail placeholder removed).
+  - Coverage floor ratcheted 60% → 70%; actual coverage 74.54%.
 
 ### Fixed
 - `--json` stdout was being contaminated by progress / diagnostic output, breaking the documented "stdout is JSON only" contract. All progress messages (`[warn]` / `[error]` lines, `Summary:` line, `validating` / `compiling` lines, compile-error blocks, all `--init` scaffold log lines including the final "scaffold ready" line) now route to stderr. The `--demo` output block and the `--json` payload stay on stdout; `--version` uses argparse's built-in stdout path. New regression test in `tests/test_cli.py` guards the split.
@@ -26,7 +34,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - README `--demo` line now explicitly says the local path appears only for source checkouts.
 
 ### Changed
-- README rewritten to honestly distinguish v0.1 (shipping) from v1.0 (planned): advisory framing prominent up front, current v0.1 input modes (directory / zip / git URL), current v0.1 severity vocabulary (`error` / `warn`) with a forward pointer to the v1.0 rebrand, current four-code exit surface, and a `--dry-run` on-ramp for users without LuaLaTeX.
+- README rewritten to honestly distinguish what's shipping (source-layer validation, three input modes, `--dry-run` on-ramp) from what's planned (PDF input + PDF layer, `--guide`). Severity-tier section now describes the v1.0 `must-fix` / `review` vocabulary and the JSON schema v1 shape directly (no more "v0.1 emits errors/warns" framing).
+
+### Changed (breaking)
+- **JSON output schema is the new v1 shape.** Old keys (`errors`, `warnings`, `dry_run`, `main_tex`, `compile_result`) are removed from `--json` stdout; the new payload has `schema_version`, `input`, `template_version`, `findings: [{severity, rule_id, layer, location, observed, required, fix_hint, source_url}]`, and `summary: {must_fix_count, review_count, exit_code, exit_reason}`. Downstream consumers parsing the old shape must update.
+- **Human-readable report format changed.** Findings group by layer + rule category, each tagged with severity + `UF-*` ID + location + source URL. Old `[warn] / [error]` prefixed lines are replaced by `[must-fix] / [review] UF-XYZ` lines.
+- **`Issues.warn()` / `Issues.error()` removed.** Public collector API is `Issues.add(rule_id=..., location=..., observed=..., required=..., fix_hint=...)`. Downstream code calling the old methods will fail.
 - `docs/uf-rules.md` citations now reference the canonical `latex2ufdissertation/pipeline/template/ufdissertation.cls`; the fixture copy carries a 22-line provenance header and is no longer the citation target.
 
 ### Removed

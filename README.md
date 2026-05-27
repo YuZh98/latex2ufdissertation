@@ -47,26 +47,38 @@ PDF-only input and a separate PDF-layer of checks are planned for v1.0; see [`do
 
 ## Outputs
 
-- **Human-readable report** (default): each finding prints with a severity tag, the rule, and the location.
-- **Machine-readable JSON** (`--json`): emits `{input, output, main_tex, dry_run, errors, warnings, compile_result}` to stdout; progress messages go to stderr.
+- **Human-readable report** (default): findings grouped by validation layer and rule category, each line tagged with severity, `UF-*` rule ID, file:line location, and a link to the rule's source documentation.
+- **Machine-readable JSON** (`--json`): emits the v1 schema to stdout (single JSON document, `sort_keys=True` for byte-identical output across runs). Progress messages go to stderr so `latex2ufdissertation --json … | jq …` works without filtering.
+
+The JSON schema v1 shape:
+
+```
+{
+  "schema_version": "1.0",
+  "input": "...",
+  "template_version": "..." | null,
+  "findings": [ {severity, rule_id, layer, location, observed, required, fix_hint, source_url}, ... ],
+  "summary": {must_fix_count, review_count, exit_code, exit_reason}
+}
+```
 
 ### Exit codes
 
 | Code | Meaning |
 |---|---|
-| `0` | No errors |
-| `1` | One or more errors |
+| `0` | Zero `must-fix` findings (`review`-only findings are advisory) |
+| `1` | One or more `must-fix` findings |
 | `2` | Fatal on this input (unsupported template, compile failure, unreadable input) |
 | `3` | Fatal on this environment (missing required toolchain, e.g. no LuaLaTeX) |
 
 ## Severity tiers
 
-v0.1 emits two tiers:
+Two tiers only:
 
-- **error** — documented UF rule violation; blocks submission.
-- **warn** — likely issue; review and decide.
+- **`must-fix`** — documented UF rule violation; submission will be rejected. Contributes to exit code 1.
+- **`review`** — likely issue requiring human judgment; the tool flags, the student decides. Does not contribute to exit code.
 
-v1.0 will rebrand these to **must-fix** and **review** respectively, and expand the JSON schema to include `schema_version`, structured `findings`, and per-finding source URLs. See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md).
+Every finding carries a `UF-*` rule ID and a link back to the rule's catalog entry in [`docs/uf-rules.md`](./docs/uf-rules.md). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full output contract.
 
 ## Flags
 
