@@ -12,6 +12,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - `SECURITY.md` — vulnerability reporting policy and supported-version table.
 - `.github/ISSUE_TEMPLATE/{bug_report,feature_request}.md` and `.github/PULL_REQUEST_TEMPLATE.md`.
 - Exit code `3` for missing toolchain (e.g. no LuaLaTeX on `PATH`), distinguishing environment failure from input failure.
+- `.github/workflows/ci.yml` — CI workflow enforcing pre-commit, the Python 3.10/3.11/3.12/3.13 test matrix, a coverage floor, and a deprecation-strict pytest pass.
+- `.pre-commit-config.yaml` — pre-commit hooks for trailing whitespace, EOF newline, merge-conflict markers, YAML/TOML syntax, large-file blocker, and `ruff` format + lint. Vendored upstream files are excluded.
 
 ### Changed
 - README rewritten against the v1.0 spec surface (advisory framing, current input/output table, current exit codes, severity tiers, scope).
