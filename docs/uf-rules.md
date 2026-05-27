@@ -2,7 +2,9 @@
 
 Source: UF Graduate School Editorial Office (https://success.grad.ufl.edu/td/) + UF IT Help Desk (https://it.ufl.edu/helpdesk/graduate-resources/) + the LaTeX template (`ufdissertation.cls` v Fall 2025, fetched 2026-05-27 from UF IT). Cross-referenced against `exampleMasterFile.tex` + `chapter1.tex` of the bundled template.
 
-> **Line numbers will drift.** Citations of the form `C1:153-157` reference the Fall 2025 `ufdissertation.cls` committed at `tests/fixtures/demo_dissertation/ufdissertation.cls`. When UF publishes an updated cls, these line ranges may become stale. Re-verify the citations after every cls update.
+> **Citations are pinned to a snapshot.** Every `C1:NNN` reference below points to specific line numbers in the Fall 2025 release of `ufdissertation.cls` as published by UF, located in this repo at `latex2ufdissertation/pipeline/template/ufdissertation.cls` (the canonical 1083-line copy). Do **not** cite line numbers against `tests/fixtures/demo_dissertation/ufdissertation.cls` — that copy carries a 22-line provenance header prepended by this project, so its line numbers are offset by +22 from the canonical.
+>
+> **When UF publishes a new cls, every citation may shift.** Maintainer obligation on cls re-sync: open each `C1:NNN` citation in this file and confirm the cited line range still contains the construct described. Cited construct moved? Update the number. Cited construct removed or refactored? Update the rule.
 
 This document is the authoritative rule set the validator checks against. Every rule has:
 
@@ -16,6 +18,30 @@ Severity tiers:
 
 - **must-fix** — Documented UF rule. Violations cause submission rejection.
 - **review** — Likely issue. Requires human judgment; tool flags, student decides.
+
+---
+
+## Contents
+
+- [Part 0 — What the template enforces vs what the student can break](#part-0--what-the-template-enforces-vs-what-the-student-can-break)
+- [Sources](#sources)
+- [Formatting rules (UF-F1 … UF-F16)](#formatting-rules)
+- [Submission + structural rules (UF-S1 … UF-S5)](#submission--structural-rules)
+- [Document-class option hygiene (UF-D1 … UF-D3)](#document-class-option-hygiene)
+- [Required file presence + macro argument hygiene (UF-P1)](#required-file-presence--macro-argument-hygiene)
+- [Journal-article dissertation rules (UF-J1 … UF-J2)](#journal-article-dissertation-rules)
+- [Accessibility (UF-A1 … UF-A2)](#accessibility)
+- [Layer + strategy summary](#layer--strategy-summary) — one-line table of every rule
+
+### Rule shape
+
+Every rule entry uses the same five-field shape, so you can skim down the page:
+
+- **Severity** — `must-fix` or `review`
+- **Source** — UF web doc and/or cls line range
+- **Layer** — `source`, `pdf`, or both
+- **Strategy** — what the validator does to detect a violation
+- **Note** *(optional)* — exceptions, allowlists, or caveats
 
 ---
 
@@ -59,10 +85,10 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 | S3 | https://success.grad.ufl.edu/td/faq/ | FAQ — rejection reasons, journal-article handling |
 | S4 | https://it.ufl.edu/helpdesk/graduate-resources/ms-word--latex-templates/ | Template downloads + LuaLaTeX/TeX Live 2025 requirement |
 | S5 | https://www.overleaf.com/blog/accessible-pdfs-with-latex | Accessibility framing |
-| C1 | `pipeline/template/ufdissertation.cls` Fall 2025, fetched from S4 | Class file source of truth |
-| C2 | `pipeline/template/exampleMasterFile.tex` | Reference student-facing entry point |
-| C3 | `pipeline/template/abstractFile.tex` | Source of 350-word abstract cap |
-| C4 | `pipeline/template/chapter1.tex` | Source of heading rules, sub-section pairing rule |
+| C1 | `latex2ufdissertation/pipeline/template/ufdissertation.cls` Fall 2025, fetched from S4 | Class file source of truth |
+| C2 | `latex2ufdissertation/pipeline/template/exampleMasterFile.tex` | Reference student-facing entry point |
+| C3 | `latex2ufdissertation/pipeline/template/abstractFile.tex` | Source of 350-word abstract cap |
+| C4 | `latex2ufdissertation/pipeline/template/chapter1.tex` | Source of heading rules, sub-section pairing rule |
 
 ---
 
@@ -402,49 +428,3 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 | J2 co-author ack | review (checklist) | content | manual checklist if article mode signaled |
 | A1 PDF tagged | review | pdf | `/StructTreeRoot` parse |
 | A2 template caveats | review | pdf | informational surfacing |
-
----
-
-## Demo dissertation fixture spec
-
-Per user request, v0.2 includes a hand-crafted demo dissertation that **follows every rule above**. Purpose:
-
-1. Known-good fixture for tests — every rule's check must pass on this input
-2. Self-documenting reference — students can `latex2ufdissertation --init demo/` then `compile` to see what compliance looks like
-3. Showcase rendered output for screenshots / docs
-
-Lives at: `tests/fixtures/demo_dissertation/` (and bundled as `--init --demo` for end-user discovery)
-
-Contents:
-- `main.tex` — minimal master file w/ all required `\set*File` + macros; `editMode` OFF
-- `chapter1.tex` — Introduction (real intro chapter)
-- `chapter2.tex` — Main body w/ a section, two paired subsections, one figure, one table, one equation
-- `chapter3.tex` — Closing summary (third chapter, satisfies F10)
-- `abstractFile.tex` — 350-words-or-fewer real abstract
-- `acknowledgementsFile.tex` — brief acknowledgment
-- `biographyFile.tex` — brief bio
-- `dedicationFile.tex` — one-line dedication (optional)
-- `referenceFile.bib` — 3–5 valid bib entries
-- `Images/` — 1–2 placeholder figures (PNG/PDF)
-
-Acceptance: `latex2ufdissertation tests/fixtures/demo_dissertation/` reports zero must-fix, zero review.
-
----
-
-## Open questions
-
-1. **Old vs new template detection.** Old template (Summer 2026 cutoff) used roman front-matter page numbering. Discriminator likely `\documentclass{ufthesis}` (old) vs `\documentclass{ufdissertation}` (new), or version metadata in cls. v1.0 stance: if not `ufdissertation`, exit 2 w/ "old template not supported, see migration guide" message.
-2. **F15 abstract word count threshold.** Sourced from C3 template prose, not UF web docs. Worth verifying w/ help desk before final lock. If UF web docs state different number, that wins.
-3. **D1 editMode promotion.** Tracked here as review. If help desk confirms editMode-on submissions are formally rejected, promote to must-fix.
-4. **F11 `\paragraph` discouragement enforcement strength.** Template comments say "Do not use the Paragraph heading feature in LaTeX." Promote to must-fix or keep as part of F11 review tier? Lean: include in F11 must-fix scan but only as a structured warning, not exit-blocker. Decide during implementation.
-
----
-
-## Coverage approach (development quality bar, not spec promise)
-
-- **Must-fix rules** in the table above are the v1.0 implementation target. The validator should detect each on synthetic broken inputs.
-- **Review rules** are best-effort. Some (F12 blank gaps, F16 subsection pairing) require careful heuristics to avoid false positives.
-- **False-positive bar** on the demo fixture: zero. Demo dissertation must produce a clean report. If a check fires on the demo, either the check is wrong or the demo is wrong — both need fixing.
-- **False-negative bar** on synthetic broken inputs: each must-fix rule needs at least one test fixture that triggers it.
-
-Coverage is measured during development, not promised in the spec.

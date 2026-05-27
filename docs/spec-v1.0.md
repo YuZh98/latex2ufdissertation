@@ -88,9 +88,10 @@ A versioned schema documented in `docs/json-schema.md` (forthcoming, see § 8 ac
 
 - `0` — zero must-fix findings (review-only state still exits 0; review findings are advisory)
 - `1` — at least one must-fix finding
-- `2` — fatal: unsupported template, compile failure, missing required tool (e.g. no LuaLaTeX), unreadable input, master's thesis input (out-of-scope), pre-Fall-2025 template
+- `2` — fatal: unsupported template, compile failure, unreadable input, master's thesis input (out-of-scope), pre-Fall-2025 template
+- `3` — missing required toolchain (e.g. no LuaLaTeX on `PATH`)
 
-Exit code `2` is overloaded across several failure modes. Downstream scripts that need to distinguish them parse the stderr message (and the `summary.exit_reason` field in JSON output). The runtime keeps the three-code surface narrow on purpose: machine consumers either succeed (`0`), fail validation (`1`), or cannot proceed (`2`), and the precise reason lives in the message rather than in the exit code.
+Exit code `2` is overloaded across several failure modes. Downstream scripts that need to distinguish them parse the stderr message (and the `summary.exit_reason` field in JSON output). Code `3` is kept separate so wrappers can distinguish "the project is broken" (2) from "the host machine is missing tools" (3) without parsing strings. Machine consumers thus see four states: succeed (`0`), fail validation (`1`), cannot proceed on this input (`2`), or cannot proceed in this environment (`3`).
 
 ---
 
@@ -99,12 +100,12 @@ Exit code `2` is overloaded across several failure modes. Downstream scripts tha
 ### Architecture
 
 ```
-input ──► resolve() ──► template-version detect ──►
+input ──► normalize ──► template-version detect ──►
    ├──► source layer (checks) ──┐
    └──► pdf layer    (checks) ──┴──► findings aggregator ──► report (human or JSON)
 ```
 
-`resolve()` normalizes any input to a workspace containing project files and (where applicable) a PDF. Template-version detection happens before any check fires. If `\documentclass` is not `ufdissertation`, or the cls signals a pre-Fall-2025 version, the tool exits 2 with a clear message pointing at the UF migration guide.
+Input normalization produces a workspace containing project files and (where applicable) a PDF. Template-version detection happens before any check fires. If `\documentclass` is not `ufdissertation`, or the cls signals a pre-Fall-2025 version, the tool exits 2 with a clear message pointing at the UF migration guide.
 
 ### Severity tiers (locked)
 
@@ -119,7 +120,7 @@ No check requires network access in the default code path. Future network-depend
 
 ### Determinism
 
-Same input → same output. No timestamps, randomized check ordering, or system-state leaks in JSON output. Findings sort by `(layer, rule_id, location)`. Temporary paths produced by zip extraction are normalized to the input-relative form before emission so the JSON output does not leak system-dependent directories. A dedicated regression test asserts byte-identical JSON across two consecutive runs on the same input.
+Same input → same output. No timestamps, randomized check ordering, or system-state leaks in JSON output. Findings sort by `(layer, rule_id, location)`. Temporary paths produced by zip extraction are normalized to the input-relative form before emission so the JSON output does not leak system-dependent directories.
 
 ---
 
@@ -131,14 +132,13 @@ Same input → same output. No timestamps, randomized check ordering, or system-
 2. **Source layer is primary; PDF layer is defense-in-depth.** When a rule can be checked precisely at the source layer, that's where it lives. PDF layer exists for properties source cannot predict and as a check on the source layer's assumption that the template did its job.
 3. **Template-enforced rules are checked by override-scan, not by re-implementation.** The `ufdissertation` class already enforces margins, fonts, spacing, alignment, page numbering, paragraph indent, page order, and heading styles. The validator looks for student-introduced overrides of those defaults, not for the rules themselves.
 4. **Two severity tiers: must-fix and review.** No additional tiers.
-5. **Exit codes: 0 / 1 / 2.** Clean / must-fix present / fatal. No mid-range codes.
+5. **Exit codes: 0 / 1 / 2 / 3.** Clean / must-fix present / fatal for this input / fatal for this environment (missing toolchain). No other codes.
 6. **Offline by default.** Any check that requires network sits behind an explicit opt-in flag, defaulting off.
 7. **Determinism.** Same input → byte-identical JSON output. Same input → human-readable output identical except for any ANSI color codes when stdout is a TTY.
 8. **Dissertation only.** Encountering `\thesisType{Thesis}` triggers exit 2 with a "master's theses are out of scope for v1.0" message.
 9. **Fall 2025+ template only.** Encountering an older template version triggers exit 2 with a "old template not supported, see migration guide" message and a link to the UF resource.
 10. **JSON schema is versioned and stable.** Once v1.0 ships, the JSON schema does not change without a major-version bump. Schema version field is mandatory.
-11. **Public API is frozen at v1.0.** `__all__` in the package's `__init__.py` lists every name downstream wrappers (Chrome extension, VS Code extension, CI integrations) may depend on. Anything not in `__all__` is internal and may change without notice.
-12. **No AI/agent/audit mentions in committed artifacts.** Per the global Claude rules: commit messages, PR descriptions, README, CHANGELOG, and any docs in the published package describe what the change is, not the process that produced it.
+11. **Public API is frozen at v1.0.** A documented export list enumerates every name downstream wrappers (Chrome extension, VS Code extension, CI integrations) may depend on. Anything not on that list is internal and may change without notice.
 
 ### 7.2 Soft rules (temporary, subject to revision)
 
@@ -159,20 +159,14 @@ These are decisions that are committed *for now* but may change before the v1.0 
 5. **Journal-article-specific checks (UF-J1, UF-J2) are surfaced only in `--guide` output, not auto-detected.**
    *Revisit if:* a reliable discriminator for journal-article mode emerges (e.g., a UF-published class option).
 
-6. **The compiled PDF is bundled into the demo fixture and committed to git.**
-   *Rationale:* PDF-layer tests need a known-good PDF without requiring TeX installation on every CI machine. *Revisit if:* CI grows to include a LuaLaTeX step and on-the-fly compilation becomes cheap.
-
-7. **`ufdissertation.cls` is duplicated into the demo fixture for self-contained compilation.**
-   *Rationale:* same as above. *Revisit if:* a conftest fixture that copies the cls at test time turns out to be cleaner.
-
-8. **Solo-subsection detection (UF-F16) is `review`, not `must-fix`.**
+6. **Solo-subsection detection (UF-F16) is `review`, not `must-fix`.**
    *Source:* the template's `chapter1.tex` instructs this in prose, but the UF web docs do not state it as a formal rejection rule. *Revisit if:* the Editorial Office confirms it as a formal rule.
 
-9. **Output format is plain text by default; JSON is opt-in via `--json`.**
+7. **Output format is plain text by default; JSON is opt-in via `--json`.**
    *Revisit if:* significant downstream usage emerges and JSON-by-default becomes the more useful default.
 
-10. **The validator runs all applicable checks every time; there is no `--only=<rule_id>` filter in v1.0.**
-    *Revisit if:* run time becomes long enough that selective re-checking is needed.
+8. **The validator runs all applicable checks every time; there is no `--only=<rule_id>` filter in v1.0.**
+   *Revisit if:* run time becomes long enough that selective re-checking is needed.
 
 ---
 
@@ -185,15 +179,13 @@ A release is v1.0.0 when **all** of the following hold:
 3. Each `must-fix` rule has at least one synthetic broken-input fixture in `tests/fixtures/` that triggers the rule and only that rule (or a documented set if the input naturally violates multiple).
 4. All three input modes (`zip`, `dir`, `pdf`) are exercised in the test suite.
 5. The JSON output schema is documented in `docs/json-schema.md` and version field is mandatory.
-6. The public API is documented and exposed via `__all__`.
+6. The public API is documented as a stable, enumerated export list.
 7. The README states clearly that the tool is advisory and the student remains responsible.
-8. CI runs on Python 3.10, 3.11, 3.12, 3.13.
-9. Test coverage is at least 85% in CI, with a CI gate.
-10. Pre-commit hooks cover formatting, trailing whitespace, EOF newline, merge-conflict markers, YAML / TOML syntax.
-11. `pytest -W error::DeprecationWarning` passes.
-12. PyPI classifier is `Development Status :: 5 - Production/Stable`.
+8. PyPI classifier is `Development Status :: 5 - Production/Stable`.
 
 These are gates, not aspirations. A release that misses any of them is not v1.0.0.
+
+Project-engineering gates (CI matrix, coverage threshold, pre-commit hook set, deprecation-strict pytest pass) are tracked in [`CONTRIBUTING.md`](../CONTRIBUTING.md), not here. Those are how the project is built; the criteria above are what v1.0 *is*.
 
 ---
 

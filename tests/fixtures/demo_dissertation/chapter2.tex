@@ -137,7 +137,7 @@ shoelace.
 %%% the body text reads continuously above.
 %%% =====================================================================
 
-%%% --- Table 2-1: simple two-column table ------------------------------
+%%% --- Table 2-1 -------------------------------------------------------
 \begin{table}[h]
 \caption{Severity tiers used in the validator's report.}
 \label{tab:severity}
@@ -152,7 +152,7 @@ review   & Likely issue requiring human judgment. \\
 \end{tabular}
 \end{table}
 
-%%% --- Table 2-2: threeparttable with footnote -------------------------
+%%% --- Table 2-2 -------------------------------------------------------
 \begin{table}[h]
 \caption{Per-rule layer assignment (subset).}
 \label{tab:layers}
@@ -178,7 +178,7 @@ template's defaults; the template itself enforces the rule.
 \end{threeparttable}
 \end{table}
 
-%%% --- Table 2-3: longtable (auto-single-spaced per cls:199) -----------
+%%% --- Table 2-3 -------------------------------------------------------
 \begin{longtable}{lll}
 \caption{Documented formatting rules ($F$-series), severity, and primary
 detection layer. Continues across page breaks if the table grows.}
@@ -215,7 +215,7 @@ UF-F15 Abstract $\leq 350$ words & must-fix & source + pdf \\
 UF-F16 Subsection pairing       & review   & source \\
 \end{longtable}
 
-%%% --- Figure 2-1: two-layer architecture diagram (TikZ, colorful) -----
+%%% --- Figure 2-1 ------------------------------------------------------
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}[
@@ -244,7 +244,7 @@ UF-F16 Subsection pairing       & review   & source \\
 \label{fig:architecture}
 \end{figure}
 
-%%% --- Figure 2-2: input-mode routing flowchart (TikZ) -----------------
+%%% --- Figure 2-2 ------------------------------------------------------
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}[
@@ -276,7 +276,7 @@ UF-F16 Subsection pairing       & review   & source \\
 \label{fig:input-modes}
 \end{figure}
 
-%%% --- Figure 2-3: pgfplots bar chart of rule counts -------------------
+%%% --- Figure 2-3 ------------------------------------------------------
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}
@@ -302,6 +302,6 @@ UF-F16 Subsection pairing       & review   & source \\
 };
 \end{axis}
 \end{tikzpicture}
-\caption{Number of documented rules by category. The formatting series dominates the rule catalog; submission, doc-class, presence, journal, and accessibility categories contribute smaller but still meaningful coverage.}
+\caption{Number of documented rules by category. The formatting series dominates the rule catalog; submission, doc-class, presence, journal, and accessibility categories contribute smaller but still meaningful coverage. The submission bar counts three rules rather than the five UF-S identifiers in the catalog: UF-S2 shares a code path with UF-F8 (it is a marketing-friendly grouping in the report output, not a separate check), and UF-S4 (external URL liveness) is deferred to v1.1.}
 \label{fig:rule-counts}
 \end{figure}
