@@ -21,7 +21,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - `docs/v1.0-rule-rebrand.md` — design document for v1.0 sub-project #1 (rule rebrand + ID system). Locked architecture, finding shape, v0.1 → UF-* mapping, JSON schema v1 freeze, and testing strategy.
 
 ### Fixed
-- `--json` stdout was being contaminated by progress / diagnostic output, breaking the documented "stdout is JSON only" contract. All progress messages (`[warn]` / `[error]` lines, `Summary:` line, `validating` / `compiling` lines, compile-error blocks, `--init` scaffold log lines) now route to stderr. `--demo`, `--version`, `--init` final paths, and the `--json` payload itself stay on stdout. New regression test in `tests/test_cli.py` guards the split.
+- `--json` stdout was being contaminated by progress / diagnostic output, breaking the documented "stdout is JSON only" contract. All progress messages (`[warn]` / `[error]` lines, `Summary:` line, `validating` / `compiling` lines, compile-error blocks, all `--init` scaffold log lines including the final "scaffold ready" line) now route to stderr. The `--demo` output block and the `--json` payload stay on stdout; `--version` uses argparse's built-in stdout path. New regression test in `tests/test_cli.py` guards the split.
 - README opening sentence no longer advertises PDF input (the v0.1 resolver rejects `.pdf`; PDF input is a v1.0 plan documented later in the README).
 - README `--demo` line now explicitly says the local path appears only for source checkouts.
 
