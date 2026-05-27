@@ -6,7 +6,7 @@ import sys
 import webbrowser
 from pathlib import Path
 
-from latex2ufdissertation.pipeline.types import Issues
+from latex2ufdissertation.pipeline.types import ConverterError, MissingToolchain
 
 COMPILE_TIMEOUT = 600  # seconds
 MAX_ERROR_BLOCKS = 5
@@ -43,13 +43,11 @@ def compile_pdf(
     main_tex: Path,
     root: Path,
     output_pdf: Path,
-    issues: Issues,
     open_pdf: bool = True,
 ) -> Path | None:
     """Run LuaLaTeX (+ biber if needed) and copy the resulting PDF to output_pdf."""
     if not lualatex_available():
-        issues.error("lualatex not found — install TeX Live 2025")
-        return None
+        raise MissingToolchain("lualatex not found — install TeX Live 2025")
 
     cmd = ["lualatex", "-interaction=nonstopmode", "-halt-on-error", main_tex.name]
     log_text = ""
@@ -57,9 +55,8 @@ def compile_pdf(
         try:
             r = subprocess.run(cmd, cwd=root, timeout=COMPILE_TIMEOUT, capture_output=True)
             log_text = r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace")
-        except subprocess.TimeoutExpired:
-            issues.error(f"lualatex timed out after {COMPILE_TIMEOUT}s")
-            return None
+        except subprocess.TimeoutExpired as exc:
+            raise ConverterError(f"lualatex timed out after {COMPILE_TIMEOUT}s") from exc
 
         if pass_n == 1 and biber_available():
             stem = main_tex.stem
@@ -74,16 +71,14 @@ def compile_pdf(
 
     produced = root / f"{main_tex.stem}.pdf"
     if not produced.exists():
-        issues.error("lualatex did not produce a PDF")
         formatted = format_errors(log_text)
         if formatted:
             print("\n--- last compile errors ---", file=sys.stderr)
             print(formatted, file=sys.stderr)
-        return None
+        raise ConverterError("lualatex did not produce a PDF")
 
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(produced, output_pdf)
-    issues.compile_result = {"pdf": str(output_pdf), "passes": 3}
 
     if open_pdf:
         try:

@@ -44,7 +44,7 @@ def test_version_flag_exits_zero() -> None:
     assert exc_info.value.code == 0
 
 
-def test_warn_and_error_go_to_stderr_not_stdout(
+def test_issues_add_goes_to_stderr_not_stdout(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     # README + spec promise --json stdout stays a single JSON document.
@@ -53,9 +53,7 @@ def test_warn_and_error_go_to_stderr_not_stdout(
     from latex2ufdissertation.pipeline.types import Issues
 
     issues = Issues()
-    issues.warn("a warning")
-    issues.error("an error")
+    issues.add("UF-F13", observed="bad class")
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert "[warn] a warning" in captured.err
-    assert "[error] an error" in captured.err
+    assert "UF-F13" in captured.err
