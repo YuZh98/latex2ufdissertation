@@ -7,7 +7,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 ### Added
 - `docs/spec-v1.0.md` — locked v1.0 product specification (goal, scope, users, inputs, outputs, behavior, hard rules, soft rules, acceptance criteria).
 - `docs/uf-rules.md` — canonical UF rule catalog (UF-F1 … UF-A2) with stable IDs, UF source citations, severity tiers, detection strategies, and validation layer per rule.
-- `tests/fixtures/demo_dissertation/` — hand-crafted known-good dissertation that satisfies every must-fix rule; doubles as a teaching reference. Includes a committed compiled `main.pdf` so PDF-layer tests run without a TeX installation.
+- `examples/demo_dissertation/` — hand-crafted known-good dissertation that satisfies every must-fix rule; doubles as a teaching reference. Includes a committed compiled `main.pdf` so PDF-layer tests run without a TeX installation. (Previously located at `tests/fixtures/demo_dissertation/`; promoted to a top-level `examples/` directory for student discoverability.)
+- `--demo` CLI flag prints the location and GitHub URL of the bundled demo dissertation so students can quickly find a known-good reference project.
 - `CONTRIBUTING.md` — engineering gates (CI matrix, coverage threshold, pre-commit hook set, deprecation-strict pytest pass, determinism pinning test) and committed-artifact policy.
 - `SECURITY.md` — vulnerability reporting policy and supported-version table.
 - `.github/ISSUE_TEMPLATE/{bug_report,feature_request}.md` and `.github/PULL_REQUEST_TEMPLATE.md`.

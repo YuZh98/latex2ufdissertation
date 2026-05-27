@@ -10,6 +10,15 @@ A safety-net validator for UF doctoral dissertations using the Fall 2025+ Univer
 
 Requires Python 3.10+ and (for the compile path) LuaLaTeX with TeX Live 2025.
 
+## Demo dissertation
+
+A hand-crafted UF dissertation that satisfies every must-fix rule lives at [**`examples/demo_dissertation/`**](./examples/demo_dissertation/) — a known-good reference you can compile and read top-to-bottom to see what a compliant project looks like. Every section file is annotated with the UF rule it satisfies, so the demo doubles as a teaching aid for students.
+
+- Browse the source: [`examples/demo_dissertation/`](./examples/demo_dissertation/)
+- View the compiled output: [`examples/demo_dissertation/main.pdf`](./examples/demo_dissertation/main.pdf) (26 pages, LuaLaTeX + TeX Live 2025)
+- Local compile: `cd examples/demo_dissertation && lualatex main && bibtex main && lualatex main && lualatex main`
+- From an install: `latex2ufdissertation --demo` prints the location and link
+
 ## Quickstart
 
 Scaffold a new project from the bundled UF template, then validate + compile:
@@ -61,6 +70,7 @@ v1.0 will rebrand these to **must-fix** and **review** respectively, and expand 
 |---|---|
 | (no flag) | Validate + compile → emit PDF |
 | `--init DIR` | Scaffold a new project at DIR |
+| `--demo` | Print location of the bundled demo dissertation and exit |
 | `--dry-run` | Validate only, skip compile |
 | `--main FILE` | Override master `.tex` auto-detect |
 | `--json` | Machine-readable summary on stdout |
@@ -78,7 +88,7 @@ v1.0 will rebrand these to **must-fix** and **review** respectively, and expand 
 
 - [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) — what v1.0 is and is not (locked sections + acceptance criteria).
 - [`docs/uf-rules.md`](./docs/uf-rules.md) — the rule catalog the validator checks against (UF-F1 … UF-A2 with citations).
-- [`tests/fixtures/demo_dissertation/`](./tests/fixtures/demo_dissertation/) — a hand-crafted dissertation that satisfies every must-fix rule; doubles as a teaching reference.
+- [`examples/demo_dissertation/`](./examples/demo_dissertation/) — the known-good demo dissertation linked above; doubles as a teaching reference.
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — engineering gates and what goes in committed artifacts.
 - [`CHANGELOG.md`](./CHANGELOG.md) — release history.
 

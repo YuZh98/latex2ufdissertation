@@ -8,8 +8,8 @@
 exclude: |
   (?x)^(
     latex2ufdissertation/pipeline/template/.*|
-    tests/fixtures/demo_dissertation/ufdissertation\.cls|
-    tests/fixtures/demo_dissertation/main\.pdf|
+    examples/demo_dissertation/ufdissertation\.cls|
+    examples/demo_dissertation/main\.pdf|
     .*\.pdf
   )$
 

@@ -27,6 +27,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dry-run", action="store_true", help="Validate only, skip compile")
     p.add_argument("--main", metavar="FILE", help="Override master .tex auto-detect")
     p.add_argument(
+        "--demo",
+        action="store_true",
+        help="Print the location of the bundled demo dissertation and exit",
+    )
+    p.add_argument(
         "--json",
         action="store_true",
         dest="json_out",
@@ -71,9 +76,38 @@ def _resolve_output_path(input_str: str, root: Path, explicit: str | None) -> Pa
     return Path.cwd() / f"{stem}_ufdissertation.pdf"
 
 
+DEMO_GITHUB_URL = (
+    "https://github.com/YuZh98/latex2ufdissertation/tree/main/examples/demo_dissertation"
+)
+
+
+def _print_demo_location() -> int:
+    print("Bundled demo dissertation — a known-good UF project that")
+    print("satisfies every must-fix rule. Read it top-to-bottom as a")
+    print("teaching reference, or run the validator against it to see")
+    print("what a clean report looks like.")
+    print()
+    print(f"  Browse on GitHub: {DEMO_GITHUB_URL}")
+    # If running from a source checkout, surface the local path too.
+    pkg_root = Path(__file__).resolve().parent.parent
+    local = pkg_root / "examples" / "demo_dissertation"
+    if local.is_dir():
+        print(f"  Local path:       {local}")
+        print()
+        print(f"  Validate:         latex2ufdissertation --dry-run {local}")
+    else:
+        print()
+        print("  To use locally, clone the repo or download the directory")
+        print("  from GitHub. A `--demo DEST` copy mode is planned for v1.0.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     issues = Issues()
+
+    if args.demo:
+        return _print_demo_location()
 
     if args.init:
         try:

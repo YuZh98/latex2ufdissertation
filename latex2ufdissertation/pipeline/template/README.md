@@ -18,7 +18,7 @@ The files in this directory are **not authored by the latex2ufdissertation proje
 | `ufdissertation-Doc-and-Troubleshooting.tex` / `.pdf` | UF's template documentation | no |
 | `Images/` | Placeholder figures referenced by the example file | no |
 
-All files are redistributed verbatim. A copy of `ufdissertation.cls` is also vendored at `tests/fixtures/demo_dissertation/ufdissertation.cls` so that the test fixture can compile standalone; that copy carries a 22-line provenance header at the top of the file but is otherwise identical to the canonical copy here.
+All files are redistributed verbatim. A copy of `ufdissertation.cls` is also vendored at `examples/demo_dissertation/ufdissertation.cls` so that the test fixture can compile standalone; that copy carries a 22-line provenance header at the top of the file but is otherwise identical to the canonical copy here.
 
 ## Maintenance
 
@@ -26,7 +26,7 @@ When UF publishes an updated template:
 
 1. Re-download the distribution archive from the source URL above.
 2. Replace the files in this directory with the new versions.
-3. Also re-sync `tests/fixtures/demo_dissertation/ufdissertation.cls` (preserve its 22-line provenance header).
+3. Also re-sync `examples/demo_dissertation/ufdissertation.cls` (preserve its 22-line provenance header).
 4. Re-verify the `C1:NNN` line-range citations in `docs/uf-rules.md` against the new `ufdissertation.cls`; update any that drifted.
 
 ## Rights

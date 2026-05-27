@@ -17,7 +17,7 @@ import pytest
     strict=False,
     reason=(
         "Determinism pinning not yet wired. Once `latex2ufdissertation "
-        "--json tests/fixtures/demo_dissertation/` produces a stable JSON "
+        "--json examples/demo_dissertation/` produces a stable JSON "
         "shape, this test should run it twice and assert byte equality."
     ),
 )
