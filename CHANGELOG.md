@@ -15,6 +15,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - Exit code `3` for missing toolchain (e.g. no LuaLaTeX on `PATH`), distinguishing environment failure from input failure.
 - `.github/workflows/ci.yml` — CI workflow enforcing pre-commit, the Python 3.10/3.11/3.12/3.13 test matrix, a coverage floor, and a deprecation-strict pytest pass.
 - `.pre-commit-config.yaml` — pre-commit hooks for trailing whitespace, EOF newline, merge-conflict markers, YAML/TOML syntax, large-file blocker, and `ruff` format + lint. Vendored upstream files are excluded.
+- `CODE_OF_CONDUCT.md` — adapted from the Contributor Covenant 2.1; reporting flow points at the maintainer with a separate channel for security issues.
+- `.github/dependabot.yml` — weekly grouped minor/patch updates for both pip and github-actions ecosystems.
+- README CI status, license, and Python-version badges at the top so visitors landing on the public repo see project status at a glance.
+- `docs/v1.0-rule-rebrand.md` — design document for v1.0 sub-project #1 (rule rebrand + ID system). Locked architecture, finding shape, v0.1 → UF-* mapping, JSON schema v1 freeze, and testing strategy.
 
 ### Changed
 - README rewritten to honestly distinguish v0.1 (shipping) from v1.0 (planned): advisory framing prominent up front, current v0.1 input modes (directory / zip / git URL), current v0.1 severity vocabulary (`error` / `warn`) with a forward pointer to the v1.0 rebrand, current four-code exit surface, and a `--dry-run` on-ramp for users without LuaLaTeX.
