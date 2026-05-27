@@ -78,12 +78,26 @@ def test_catalog_and_registry_enumerate_the_same_rules():
     )
 
 
+def test_every_rule_in_catalog_has_severity_and_layer_metadata():
+    # Catch silent parse failures: if a catalog edit drops the
+    # `- **Severity:**` / `- **Layer:**` lines, the drift tests below
+    # would otherwise tolerate the gap. Fail loudly instead.
+    parsed = _parse_catalog()
+    missing: list[str] = []
+    for rule_id, meta in parsed.items():
+        if "severity" not in meta:
+            missing.append(f"{rule_id}: no Severity line found")
+        if "layer" not in meta:
+            missing.append(f"{rule_id}: no Layer line found")
+    assert not missing, "catalog metadata gaps: " + "; ".join(missing)
+
+
 def test_catalog_severity_matches_registry():
     parsed = _parse_catalog()
     mismatches: list[str] = []
     for rule_id, meta in parsed.items():
         if "severity" not in meta:
-            continue  # tolerated: a few rules may use shorthand in the catalog
+            continue  # the completeness test above catches this
         # Catalog wording variants → canonical severity literals.
         cat_sev = "must-fix" if meta["severity"].startswith("must") else "review"
         if RULES[rule_id].severity != cat_sev:
@@ -96,7 +110,7 @@ def test_catalog_layer_matches_registry():
     mismatches: list[str] = []
     for rule_id, meta in parsed.items():
         if "layer" not in meta:
-            continue
+            continue  # the completeness test above catches this
         canon = _LAYER_CANON.get(meta["layer"])
         if canon is None:
             # Unknown wording — flag so we extend _LAYER_CANON rather than silently pass.

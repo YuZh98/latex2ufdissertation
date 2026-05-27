@@ -64,10 +64,7 @@ class Issues:
 
     findings: list[Finding] = field(default_factory=list)
     input_path: str | None = None
-    output_path: str | None = None
     main_tex: str | None = None
-    dry_run: bool = False
-    compile_result: dict | None = None
     template_version: str | None = None
     exit_reason: str = EXIT_REASON_CLEAN
 

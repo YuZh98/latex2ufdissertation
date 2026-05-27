@@ -28,7 +28,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
   - `latex2ufdissertation/pipeline/checks.py` — every v0.1 emit site rebranded to `issues.add(rule_id="UF-XYZ", ...)` per the mapping in `docs/v1.0-rule-rebrand.md`.
   - Public API frozen via `__all__` in `latex2ufdissertation/__init__.py`: `Issues`, `Finding`, `Rule`, `RULES`, `run_checks`, exception types, `__version__`.
   - Tests: `tests/test_rules.py` asserts every `UF-*` ID in `docs/uf-rules.md` has a matching `Rule` entry (and vice versa); `tests/test_report.py` exercises the v1 JSON schema shape and sort order; `tests/test_determinism.py` runs the validator twice on the demo dissertation with `--dry-run --json` and asserts byte-identical stdout (xfail placeholder removed).
-  - Coverage floor ratcheted 60% → 70%; actual coverage 74.85%.
+  - Coverage floor ratcheted 60% → 70%; actual coverage 74.65%.
+  - Dead state removed: `Issues.dry_run`, `Issues.output_path`, `Issues.compile_result` were set by `cli.py`/`build.py` but never read after the v1 JSON output dropped them. Removed from the dataclass and from the setters so the frozen public `Issues` surface has no orphan attributes. `compile_pdf()` signature also dropped its unused `issues` parameter.
+  - MissingToolchain fatal paths no longer emit a misleading "Summary: 0 must-fix, 0 review — clean" line to stderr while the process exits 3. JSON consumers still get the structured payload via `_emit_json`.
+  - Drift tests (`test_catalog_severity_matches_registry`, `test_catalog_layer_matches_registry`) gated by a new `test_every_rule_in_catalog_has_severity_and_layer_metadata` so silent parse failures fail loudly instead of letting the equality check tolerate them.
 
 ### Fixed
 - `--json` stdout was being contaminated by progress / diagnostic output, breaking the documented "stdout is JSON only" contract. All progress messages (`[warn]` / `[error]` lines, `Summary:` line, `validating` / `compiling` lines, compile-error blocks, all `--init` scaffold log lines including the final "scaffold ready" line) now route to stderr. The `--demo` output block and the `--json` payload stay on stdout; `--version` uses argparse's built-in stdout path. New regression test in `tests/test_cli.py` guards the split.

@@ -96,7 +96,7 @@ Every finding carries a `UF-*` rule ID and a link back to the rule's catalog ent
 
 **In scope for v0.1 (shipping today).** Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+). Source-layer validation. Three input modes: zip, directory, git URL. CLI as the engine. LuaLaTeX compile driver.
 
-**Planned for v1.0.** PDF-layer validation, PDF-only input mode, machine-readable JSON output (`--json`), ETD-upload walkthrough (`--guide`). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full v1.0 specification.
+**Planned for v1.0.** PDF-layer validation, PDF-only input mode, ETD-upload walkthrough (`--guide`). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full v1.0 specification.
 
 **Out of scope for v1.0.** Master's theses (deferred, same template, different `\thesisType`). The pre-Fall-2025 UF template (refused with a migration message). Source cleanup or Overleaf-export normalization. External URL liveness (reserved for `--check-links` in a future release). MCP server, browser extensions, editor extensions (separate artifacts that wrap the CLI). Hosted web service or GUI.
 
