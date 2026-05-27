@@ -2,6 +2,8 @@
 
 Source: UF Graduate School Editorial Office (https://success.grad.ufl.edu/td/) + UF IT Help Desk (https://it.ufl.edu/helpdesk/graduate-resources/) + the LaTeX template (`ufdissertation.cls` v Fall 2025, fetched 2026-05-27 from UF IT). Cross-referenced against `exampleMasterFile.tex` + `chapter1.tex` of the bundled template.
 
+> **Line numbers will drift.** Citations of the form `C1:153-157` reference the Fall 2025 `ufdissertation.cls` committed at `tests/fixtures/demo_dissertation/ufdissertation.cls`. When UF publishes an updated cls, these line ranges may become stale. Re-verify the citations after every cls update.
+
 This document is the authoritative rule set the validator checks against. Every rule has:
 
 - Stable ID
@@ -118,7 +120,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
   - `ragged2e` package w/ overrides
   - `\begin{flushleft}`/`\end{flushleft}` mass usage (acceptable in local contexts)
 - **Note:** Default `report` class justifies. Template's `\raggedright` is what makes ragged-right the actual behavior. Without it, output would justify. So this rule is real.
-- **Not-an-override allowlist:** `\sloppy` (and the equivalent `sloppypar` environment) loosens LaTeX's line-breaking criteria to reduce overfull-hbox warnings but does **not** justify text. The bundled UF example file uses `\sloppy` on the same line as `\documentclass`. The validator must not flag `\sloppy` under F5.
+- **Not-an-override allowlist:** `\sloppy` (and the equivalent `sloppypar` environment) loosens LaTeX's line-breaking criteria to reduce overfull-hbox warnings but does **not** justify text. The bundled UF example file uses `\sloppy` on the same line as `\documentclass`, in the form `\documentclass[editMode]{ufdissertation}\sloppy`. The validator's F5 override scan must allowlist `\sloppy` regardless of position — on its own line, on the same line as `\documentclass`, or anywhere else in the preamble or body.
 
 ### UF-F6 — Page numbering (arabic, bottom-center)
 
