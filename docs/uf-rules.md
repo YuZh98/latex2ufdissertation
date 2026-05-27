@@ -2,7 +2,7 @@
 
 Source: UF Graduate School Editorial Office (https://success.grad.ufl.edu/td/) + UF IT Help Desk (https://it.ufl.edu/helpdesk/graduate-resources/) + the LaTeX template (`ufdissertation.cls` v Fall 2025, fetched 2026-05-27 from UF IT). Cross-referenced against `exampleMasterFile.tex` + `chapter1.tex` of the bundled template.
 
-> **Citations are pinned to a snapshot.** Every `C1:NNN` reference below points to specific line numbers in the Fall 2025 release of `ufdissertation.cls` as published by UF, located in this repo at `latex2ufdissertation/pipeline/template/ufdissertation.cls` (the canonical 1083-line copy). Do **not** cite line numbers against `tests/fixtures/demo_dissertation/ufdissertation.cls` — that copy carries a 22-line provenance header prepended by this project, so its line numbers are offset by +22 from the canonical.
+> **Citations are pinned to a snapshot.** Every `C1:NNN` reference below points to specific line numbers in the Fall 2025 release of `ufdissertation.cls` as published by UF, located in this repo at `latex2ufdissertation/pipeline/template/ufdissertation.cls` (the canonical 1083-line copy). Do **not** cite line numbers against `examples/demo_dissertation/ufdissertation.cls` — that copy carries a 22-line provenance header prepended by this project, so its line numbers are offset by +22 from the canonical.
 >
 > **When UF publishes a new cls, every citation may shift.** Maintainer obligation on cls re-sync: open each `C1:NNN` citation in this file and confirm the cited line range still contains the construct described. Cited construct moved? Update the number. Cited construct removed or refactored? Update the rule.
 

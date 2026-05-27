@@ -7,14 +7,10 @@ Only the latest minor release receives security updates. The pre-1.0 series is t
 | Version | Supported |
 |---|---|
 | 0.1.x | yes |
-| < 0.1 | no |
 
 ## Reporting a vulnerability
 
-If you find a security issue in `latex2ufdissertation`, please report it privately rather than opening a public issue.
-
-- **Preferred:** open a [GitHub Security Advisory](https://github.com/YuZh98/latex2ufdissertation/security/advisories/new) on this repository. GitHub will keep the report private until a fix is published.
-- **Alternative:** email the maintainer listed in `pyproject.toml` with the subject line `latex2ufdissertation security report`.
+If you find a security issue in `latex2ufdissertation`, please report it privately rather than opening a public issue. Open a [GitHub Security Advisory](https://github.com/YuZh98/latex2ufdissertation/security/advisories/new) on this repository — GitHub keeps the report private until a fix is published.
 
 Please include:
 

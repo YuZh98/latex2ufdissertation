@@ -4,7 +4,7 @@ Status: **draft**, locked sections marked.
 
 This document defines what version 1.0.0 of latex2ufdissertation is and is not. Rules are split into **hard rules** (locked design decisions) and **soft rules** (temporary decisions subject to revision). Implementation details that don't change what the tool *is* belong in code, not here.
 
-For the rule set the validator checks against, see [`uf-rules.md`](./uf-rules.md). For the known-good fixture demonstrating compliance, see [`../tests/fixtures/demo_dissertation/`](../tests/fixtures/demo_dissertation/).
+For the rule set the validator checks against, see [`uf-rules.md`](./uf-rules.md). For the known-good demo dissertation demonstrating compliance, see [`../examples/demo_dissertation/`](../examples/demo_dissertation/).
 
 ---
 
@@ -175,7 +175,7 @@ These are decisions that are committed *for now* but may change before the v1.0 
 A release is v1.0.0 when **all** of the following hold:
 
 1. Every `must-fix` rule in [`uf-rules.md`](./uf-rules.md) has at least one passing check in the codebase.
-2. The known-good demo fixture at `tests/fixtures/demo_dissertation/` produces a report with zero must-fix and zero review findings.
+2. The known-good demo dissertation at `examples/demo_dissertation/` produces a report with zero must-fix and zero review findings.
 3. Each `must-fix` rule has at least one synthetic broken-input fixture in `tests/fixtures/` that triggers the rule and only that rule (or a documented set if the input naturally violates multiple).
 4. All three input modes (`zip`, `dir`, `pdf`) are exercised in the test suite.
 5. The JSON output schema is documented in `docs/json-schema.md` and version field is mandatory.
