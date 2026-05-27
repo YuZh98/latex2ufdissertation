@@ -21,7 +21,7 @@ If this PR changes anything a user observes (CLI output, exit codes, JSON schema
 
 - [ ] Existing tests still pass locally (`pytest`).
 - [ ] New tests added covering the change (red → green for behavior changes).
-- [ ] Demo fixture at `tests/fixtures/demo_dissertation/` still produces zero must-fix / zero review findings.
+- [ ] Demo dissertation at `examples/demo_dissertation/` still produces zero must-fix / zero review findings.
 - [ ] If this touches a `must-fix` rule, a synthetic broken-input fixture demonstrates the rule fires (and only that rule).
 
 ## Spec / docs

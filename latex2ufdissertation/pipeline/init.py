@@ -1,6 +1,7 @@
 """--init: scaffold a new UF dissertation project."""
 
 import shutil
+import sys
 import urllib.request
 import zipfile
 from io import BytesIO
@@ -53,10 +54,13 @@ def init_project(target: Path) -> None:
 
     try:
         _fetch_remote(target)
-        print("  fetched latest template from UF IT")
+        print("  fetched latest template from UF IT", file=sys.stderr)
     except Exception as e:
-        print(f"  [warn] couldn't reach UF IT site ({type(e).__name__}); using bundled template")
+        print(
+            f"  [warn] couldn't reach UF IT site ({type(e).__name__}); using bundled template",
+            file=sys.stderr,
+        )
         _copy_bundled(target)
 
-    print(f"  scaffold ready at {target}/")
-    print("  edit exampleMasterFile.tex to start writing.")
+    print(f"  scaffold ready at {target}/", file=sys.stderr)
+    print("  edit exampleMasterFile.tex to start writing.", file=sys.stderr)

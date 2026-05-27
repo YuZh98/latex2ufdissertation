@@ -28,7 +28,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "ruff>=0.6", "pytest-cov"]
+dev = ["pytest>=7", "ruff>=0.6", "pytest-cov", "pre-commit>=4"]
 
 [project.scripts]
 latex2ufdissertation = "latex2ufdissertation.cli:main"
@@ -45,6 +45,16 @@ include = ["latex2ufdissertation*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["latex2ufdissertation"]
+
+[tool.coverage.report]
+# Floor ratchets up as coverage improves; target is 85% by v1.0 release.
+# Bump this number whenever a PR raises the actual coverage so the gate
+# does not regress. CONTRIBUTING.md documents the ratchet policy.
+fail_under = 60
+show_missing = true
 
 [tool.ruff]
 line-length = 100

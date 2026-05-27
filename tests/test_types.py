@@ -14,8 +14,11 @@ def test_issues_collects_warn_and_error(capsys):
     assert issues.warnings == ["a warning"]
     assert issues.errors == ["an error"]
     captured = capsys.readouterr()
-    assert "[warn] a warning" in captured.out
-    assert "[error] an error" in captured.out
+    # Progress / diagnostic output goes to stderr so --json stdout
+    # stays a single JSON document for downstream consumers.
+    assert "[warn] a warning" in captured.err
+    assert "[error] an error" in captured.err
+    assert captured.out == ""
 
 
 def test_converter_error_is_exception():

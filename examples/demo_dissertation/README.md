@@ -4,7 +4,7 @@ This directory is a hand-crafted UF dissertation project that satisfies
 every must-fix rule in `docs/uf-rules.md`. It serves two purposes:
 
 1. **Regression fixture.** Running
-   `latex2ufdissertation tests/fixtures/demo_dissertation/`
+   `latex2ufdissertation examples/demo_dissertation/`
    must produce a clean report — zero must-fix findings, zero review
    findings. Any check that fires on this input is either wrong or the
    demo is wrong; both need fixing.
