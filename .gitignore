@@ -34,6 +34,10 @@ Thumbs.db
 # Local
 *.local
 
+# Internal planning + design docs (stay local, not tracked)
+docs/plans/
+docs/design/
+
 # Source distribution (only bundled copy under pipeline/template/ is tracked)
 /Dissertation___Thesis_Example_File/
 /Dissertation___Thesis_Example_File.zip
