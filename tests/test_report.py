@@ -59,8 +59,16 @@ def test_format_json_clean_run_has_exit_reason_clean():
 def test_format_json_per_finding_has_all_eight_fields():
     payload = format_json(_populated_issues())
     assert payload["findings"], "expected at least one finding"
-    expected = {"severity", "rule_id", "layer", "location",
-                "observed", "required", "fix_hint", "source_url"}
+    expected = {
+        "severity",
+        "rule_id",
+        "layer",
+        "location",
+        "observed",
+        "required",
+        "fix_hint",
+        "source_url",
+    }
     for f in payload["findings"]:
         assert set(f.keys()) == expected
 
@@ -89,16 +97,18 @@ def test_format_human_groups_by_layer_and_category():
     assert "UF-D1" in out
 
 
-def test_findings_sorted_by_layer_then_category_then_id_then_location():
+def test_human_report_groups_by_category_then_rule_id():
+    # The human view interpolates category rank between layer and
+    # rule_id so the F-series block appears before the D-series block
+    # under the source layer. The JSON sort key is different (spec-
+    # mandated lex on rule_id); see the dedicated JSON sort test.
     issues = Issues()
     issues.add("UF-D1", location="x.tex", observed="x")
     issues.add("UF-F14", location="b.tex", observed="b")
     issues.add("UF-F13", location="a.tex", observed="a")
-    payload = format_json(issues)
-    ids = [f["rule_id"] for f in payload["findings"]]
-    # All three are source-layer; F-series sorts before D-series; within F:
-    # F13 before F14 lexicographically.
-    assert ids == ["UF-F13", "UF-F14", "UF-D1"]
+    out = format_human(issues)
+    # F13 line appears before F14 line appears before D1 line.
+    assert out.index("UF-F13") < out.index("UF-F14") < out.index("UF-D1")
 
 
 def test_exit_code_reflects_must_fix_only():
@@ -107,3 +117,39 @@ def test_exit_code_reflects_must_fix_only():
     assert exit_code(issues) == 0
     issues.add("UF-F13", observed="must-fix finding")
     assert exit_code(issues) == 1
+
+
+def test_format_json_exit_code_reflects_fatal_exit_reason():
+    # On fatal-path payloads (no findings, but the process exits 2 or 3),
+    # summary.exit_code must mirror the actual exit state, not a
+    # findings-derived 0. Guard against the C1 regression spotted in
+    # PR #7 review.
+    issues = Issues()
+    issues.set_exit_reason("unreadable_input")
+    payload = format_json(issues)
+    assert payload["summary"]["exit_code"] == 2
+    assert payload["summary"]["exit_reason"] == "unreadable_input"
+
+    issues2 = Issues()
+    issues2.set_exit_reason("missing_toolchain")
+    payload2 = format_json(issues2)
+    assert payload2["summary"]["exit_code"] == 3
+
+    issues3 = Issues()
+    issues3.set_exit_reason("compile_failure")
+    payload3 = format_json(issues3)
+    assert payload3["summary"]["exit_code"] == 2
+
+
+def test_findings_in_json_use_spec_sort_key_layer_rule_id_location():
+    # Spec (docs/spec-v1.0.md §6) requires (layer, rule_id, location)
+    # ordering verbatim. Category-rank tiebreakers belong only in the
+    # human-readable view. Guard the C2 fix.
+    issues = Issues()
+    issues.add("UF-P1", observed="p")  # P-series — sorts before S lexicographically
+    issues.add("UF-S3", observed="s")  # S-series
+    issues.add("UF-F13", observed="f")  # F-series
+    payload = format_json(issues)
+    ids = [f["rule_id"] for f in payload["findings"]]
+    # All three are source layer; pure lex order on rule_id.
+    assert ids == sorted(ids), f"JSON sort order diverged from spec: {ids}"

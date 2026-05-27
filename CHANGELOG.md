@@ -4,6 +4,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+- **Version bumped to 0.2.0.** The JSON output schema and the public `Issues` API both broke compatibly with v0.1.0; pre-1.0 SemVer allows breaking changes in a minor release, but the version bump makes the break visible to PyPI installers and to consumers reading `__version__`.
+
 ### Added
 - `docs/spec-v1.0.md` — locked v1.0 product specification (goal, scope, users, inputs, outputs, behavior, hard rules, soft rules, acceptance criteria).
 - `docs/uf-rules.md` — canonical UF rule catalog (UF-F1 … UF-A2) with stable IDs, UF source citations, severity tiers, detection strategies, and validation layer per rule.
@@ -26,7 +28,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
   - `latex2ufdissertation/pipeline/checks.py` — every v0.1 emit site rebranded to `issues.add(rule_id="UF-XYZ", ...)` per the mapping in `docs/v1.0-rule-rebrand.md`.
   - Public API frozen via `__all__` in `latex2ufdissertation/__init__.py`: `Issues`, `Finding`, `Rule`, `RULES`, `run_checks`, exception types, `__version__`.
   - Tests: `tests/test_rules.py` asserts every `UF-*` ID in `docs/uf-rules.md` has a matching `Rule` entry (and vice versa); `tests/test_report.py` exercises the v1 JSON schema shape and sort order; `tests/test_determinism.py` runs the validator twice on the demo dissertation with `--dry-run --json` and asserts byte-identical stdout (xfail placeholder removed).
-  - Coverage floor ratcheted 60% → 70%; actual coverage 74.54%.
+  - Coverage floor ratcheted 60% → 70%; actual coverage 74.85%.
 
 ### Fixed
 - `--json` stdout was being contaminated by progress / diagnostic output, breaking the documented "stdout is JSON only" contract. All progress messages (`[warn]` / `[error]` lines, `Summary:` line, `validating` / `compiling` lines, compile-error blocks, all `--init` scaffold log lines including the final "scaffold ready" line) now route to stderr. The `--demo` output block and the `--json` payload stay on stdout; `--version` uses argparse's built-in stdout path. New regression test in `tests/test_cli.py` guards the split.

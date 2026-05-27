@@ -15,11 +15,21 @@ from dataclasses import asdict
 
 from latex2ufdissertation.pipeline.rules import (
     EXIT_REASON_CLEAN,
+    EXIT_REASON_MISSING_TOOLCHAIN,
     EXIT_REASON_MUST_FIX_PRESENT,
 )
 from latex2ufdissertation.pipeline.types import Finding, Issues
 
 SCHEMA_VERSION = "1.0"
+
+# Maps every spec-§5 exit_reason to its exit-code state. Used by
+# format_json so summary.exit_code never lies on a fatal-path payload
+# (any non-clean / non-must-fix / non-missing-toolchain reason → 2).
+_REASON_TO_CODE: dict[str, int] = {
+    EXIT_REASON_CLEAN: 0,
+    EXIT_REASON_MUST_FIX_PRESENT: 1,
+    EXIT_REASON_MISSING_TOOLCHAIN: 3,
+}
 
 _CATEGORY_ORDER = ["F", "S", "D", "P", "J", "A"]
 
@@ -34,14 +44,31 @@ def _category(rule_id: str) -> str:
     return parts[1][0]
 
 
-def _sort_key(f: Finding) -> tuple[str, int, str, str]:
+def _spec_sort_key(f: Finding) -> tuple[str, str, str]:
+    """Sort key the spec requires: (layer, rule_id, location). Used by
+    the JSON serializer so byte-identical output is contractual, not
+    coincidental.
+    """
+    return (f.layer, f.rule_id, f.location)
+
+
+def _human_sort_key(f: Finding) -> tuple[str, int, str, str]:
+    """Sort key the human report uses so category headers (F-series,
+    S-series, ...) render in a sensible order. Diverges from
+    `_spec_sort_key` only at the category-rank tiebreaker; both keys
+    agree within a category.
+    """
     cat = _category(f.rule_id)
     cat_rank = _CATEGORY_ORDER.index(cat) if cat in _CATEGORY_ORDER else len(_CATEGORY_ORDER)
     return (f.layer, cat_rank, f.rule_id, f.location)
 
 
-def _sorted_findings(issues: Issues) -> list[Finding]:
-    return sorted(issues.findings, key=_sort_key)
+def _sorted_for_json(issues: Issues) -> list[Finding]:
+    return sorted(issues.findings, key=_spec_sort_key)
+
+
+def _sorted_for_human(issues: Issues) -> list[Finding]:
+    return sorted(issues.findings, key=_human_sort_key)
 
 
 def exit_code(issues: Issues) -> int:
@@ -64,12 +91,12 @@ def format_human(issues: Issues) -> str:
     must_fix = issues.must_fix_count()
     review = issues.review_count()
     if not issues.findings:
-        return f"\nSummary: 0 must-fix, 0 review — clean.\n"
+        return "\nSummary: 0 must-fix, 0 review — clean.\n"
 
     lines: list[str] = []
     current_layer = None
     current_cat = None
-    for f in _sorted_findings(issues):
+    for f in _sorted_for_human(issues):
         cat = _category(f.rule_id)
         if f.layer != current_layer:
             lines.append(f"\n[{f.layer} layer]")
@@ -96,18 +123,25 @@ def format_json(issues: Issues) -> dict:
     just builds the dict.
     """
     exit_reason = (
-        issues.exit_reason if issues.exit_reason != EXIT_REASON_CLEAN
+        issues.exit_reason
+        if issues.exit_reason != EXIT_REASON_CLEAN
         else _default_exit_reason(issues)
     )
+    # exit_code reflects the actual process exit state. On any fatal-
+    # reason payload (unreadable_input, compile_failure, etc.) findings
+    # may be empty but the process exited 2 — `exit_code(issues)` alone
+    # would falsely report 0. Resolve via the exit_reason mapping
+    # instead, defaulting non-mapped reasons to 2 (fatal-on-input).
+    code = _REASON_TO_CODE.get(exit_reason, 2)
     return {
         "schema_version": SCHEMA_VERSION,
         "input": issues.input_path,
         "template_version": issues.template_version,
-        "findings": [asdict(f) for f in _sorted_findings(issues)],
+        "findings": [asdict(f) for f in _sorted_for_json(issues)],
         "summary": {
             "must_fix_count": issues.must_fix_count(),
             "review_count": issues.review_count(),
-            "exit_code": exit_code(issues),
+            "exit_code": code,
             "exit_reason": exit_reason,
         },
     }
