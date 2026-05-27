@@ -1,3 +1,25 @@
+%%% =====================================================================
+%%% UF Dissertation LaTeX template — vendored copy
+%%% =====================================================================
+%%%
+%%% This file is NOT authored by the latex2ufdissertation project.
+%%% It is the LaTeX class file maintained by the University of Florida
+%%% Information Technology Help Desk for the UF Graduate School's
+%%% Thesis and Dissertation Support Center.
+%%%
+%%% Provenance:
+%%%   https://it.ufl.edu/helpdesk/graduate-resources/ms-word--latex-templates/
+%%%   Bundled in: Dissertation___Thesis_Example_File.zip
+%%%   Template generation: Fall 2025; example file updated 2026-04-17.
+%%%
+%%% This copy is vendored into the test fixture solely so the fixture
+%%% can compile standalone without requiring an external download. The
+%%% canonical copy in this repository is at
+%%%   latex2ufdissertation/pipeline/template/ufdissertation.cls
+%%% and must be re-synced when UF publishes an updated version.
+%%%
+%%% All rights to this class file remain with the University of Florida.
+%%% =====================================================================
 \LoadClass[12pt]{report}% The underlying class is the document class "report".
 \usepackage{setspace} % Always before hyperref -- Enable correct footnote link
 

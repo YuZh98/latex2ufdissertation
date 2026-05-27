@@ -76,19 +76,21 @@ Grouped by rule category. Each finding includes:
 
 ### Machine-readable JSON (`--json`)
 
-A versioned schema. Stdout is JSON only; progress goes to stderr. The schema includes:
+A versioned schema documented in `docs/json-schema.md` (forthcoming, see § 8 acceptance criterion 5). Stdout is JSON only; progress goes to stderr. The schema includes:
 
 - `schema_version`
 - `input`: path and detected mode (`zip` / `dir` / `pdf`)
 - `template_version`: detected UF template version, or `unknown`
 - `findings`: array of `{severity, rule_id, layer, location, observed, required, fix_hint, source_url}`
-- `summary`: `{must_fix_count, review_count, exit_code}`
+- `summary`: `{must_fix_count, review_count, exit_code, exit_reason}`
 
 ### Exit codes
 
 - `0` — zero must-fix findings (review-only state still exits 0; review findings are advisory)
 - `1` — at least one must-fix finding
-- `2` — fatal: unsupported template, compile failure, missing required tool (e.g. no LuaLaTeX), unreadable input
+- `2` — fatal: unsupported template, compile failure, missing required tool (e.g. no LuaLaTeX), unreadable input, master's thesis input (out-of-scope), pre-Fall-2025 template
+
+Exit code `2` is overloaded across several failure modes. Downstream scripts that need to distinguish them parse the stderr message (and the `summary.exit_reason` field in JSON output). The runtime keeps the three-code surface narrow on purpose: machine consumers either succeed (`0`), fail validation (`1`), or cannot proceed (`2`), and the precise reason lives in the message rather than in the exit code.
 
 ---
 
@@ -117,7 +119,7 @@ No check requires network access in the default code path. Future network-depend
 
 ### Determinism
 
-Same input → same output. No timestamps, randomized check ordering, or system-state leaks in JSON output. Findings sort by `(layer, rule_id, location)`.
+Same input → same output. No timestamps, randomized check ordering, or system-state leaks in JSON output. Findings sort by `(layer, rule_id, location)`. Temporary paths produced by zip extraction are normalized to the input-relative form before emission so the JSON output does not leak system-dependent directories. A dedicated regression test asserts byte-identical JSON across two consecutive runs on the same input.
 
 ---
 

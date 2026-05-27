@@ -30,9 +30,10 @@ every must-fix rule in `docs/uf-rules.md`. It serves two purposes:
 | `biographyFile.tex` | Required biographical sketch | F8, S2 |
 | `referenceFile.bib` | Bibliography entries cited from the body | F8, S2, S3 |
 
-## Sections exercised in the compiled PDF (21 pages)
+## Sections exercised in the compiled PDF
 
-In page order, with conditional sections marked (cond):
+The current compiled `main.pdf` is **26 pages** (LuaLaTeX, TeX Live 2024
+or later). In rendered order, with conditional sections marked (cond):
 
 1. Title page (unnumbered, F8 #1)
 2. Copyright page (auto-generated, F8 #2)
@@ -43,14 +44,20 @@ In page order, with conditional sections marked (cond):
 7. List of Figures (cond, F8 #7) — driven by `\haveFigurestrue`
 8. List of Objects (cond, F8 #8) — driven by `\haveObjectstrue`
 9. List of Abbreviations (cond, F8 #9) — driven by `\setAbbreviationsFile`
-10. Academic Abstract (F8 #10)
+10. Academic Abstract (F8 #10) — see word count note below
 11. Chapter 1: Introduction (F8 #11, first of ≥3 per F10)
-12. Chapter 2: Methods (F8 #11)
+12. Chapter 2: Methods (F8 #11) — figures and tables follow the body
 13. Chapter 3: Conclusion (F8 #11)
 14. Appendix A: Supplementary Validator Rules (cond, F8 #12)
 15. Appendix B: Sample Broken Inputs (cond, F8 #12)
-16. List of References (F8 #13)
-17. Biographical Sketch (F8 #14)
+16. Appendix C: Submission Checklist for the Student (cond, F8 #12)
+17. List of References (F8 #13)
+18. Biographical Sketch (F8 #14)
+
+The abstract in `abstractFile.tex` is **297 words** (per the most recent
+revision). UF-F15 caps the abstract at 350 words; the fixture stays
+well under the cap. Future edits to the abstract should keep the count
+≤ 350.
 
 ## LaTeX features demonstrated
 
@@ -106,7 +113,10 @@ A copy of `ufdissertation.cls` is included in this directory so the
 fixture is self-contained. The canonical class file lives at
 `latex2ufdissertation/pipeline/template/ufdissertation.cls`; this copy
 is derived from there and must be re-synced when the upstream class
-changes.
+changes. `ufdissertation.cls` is **not** authored by this project — it
+is the UF Information Technology Help Desk's class file, redistributed
+here for fixture-compilation purposes only. See the provenance header
+at the top of the file.
 
 `main.pdf` is committed alongside the source so the PDF-layer checks
 have a known-good fixture to validate against without re-compiling on

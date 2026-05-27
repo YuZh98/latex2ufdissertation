@@ -1,0 +1,14 @@
+###  Vendored UF template (not authored by this project, excluded from
+###  language statistics on GitHub).
+tests/fixtures/demo_dissertation/ufdissertation.cls linguist-vendored=true
+latex2ufdissertation/pipeline/template/ufdissertation.cls linguist-vendored=true
+
+###  Committed PDF artifact (binary; suppress diff noise).
+tests/fixtures/demo_dissertation/main.pdf binary
+
+###  Generated docs binaries similarly suppressed (defensive default).
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
