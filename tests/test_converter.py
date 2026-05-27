@@ -37,7 +37,7 @@ def _make_valid_project(tmp_path):
 def test_version():
     r = _run("--version")
     assert r.returncode == 0
-    assert "0.1.0" in r.stdout
+    assert "0.2.0" in r.stdout
 
 
 def test_missing_input_returns_2(tmp_path):
@@ -62,11 +62,14 @@ def test_dry_run_errors_exit_1(tmp_path):
 def test_json_output_summary(tmp_path):
     proj = _make_valid_project(tmp_path)
     r = _run(str(proj), "--dry-run", "--json")
-    # JSON payload is the trailing object in stdout.
-    start = r.stdout.find("{")
-    payload = json.loads(r.stdout[start:])
-    assert payload["errors"] == []
-    assert payload["dry_run"] is True
+    # stdout is JSON-only per the v1 contract; parse the whole thing.
+    payload = json.loads(r.stdout)
+    assert payload["schema_version"] == "1.0"
+    assert payload["findings"] == []
+    assert payload["summary"]["must_fix_count"] == 0
+    assert payload["summary"]["review_count"] == 0
+    assert payload["summary"]["exit_code"] == 0
+    assert payload["summary"]["exit_reason"] == "clean"
 
 
 def test_init_creates_target(tmp_path):
