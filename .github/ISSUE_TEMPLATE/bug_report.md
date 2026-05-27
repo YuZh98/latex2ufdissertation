@@ -22,7 +22,7 @@ A clear one-line description of the bug.
 - `latex2ufdissertation --version`:
 - Python version (`python --version`):
 - Operating system + version:
-- LuaLaTeX / TeX Live version (`lualatex --version | head -1`):
+- LuaLaTeX / TeX Live version (first line of `lualatex --version`):
 
 ## Additional context
 

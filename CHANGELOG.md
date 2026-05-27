@@ -16,7 +16,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - `.pre-commit-config.yaml` — pre-commit hooks for trailing whitespace, EOF newline, merge-conflict markers, YAML/TOML syntax, large-file blocker, and `ruff` format + lint. Vendored upstream files are excluded.
 
 ### Changed
-- README rewritten against the v1.0 spec surface (advisory framing, current input/output table, current exit codes, severity tiers, scope).
+- README rewritten to honestly distinguish v0.1 (shipping) from v1.0 (planned): advisory framing prominent up front, current v0.1 input modes (directory / zip / git URL), current v0.1 severity vocabulary (`error` / `warn`) with a forward pointer to the v1.0 rebrand, current four-code exit surface, and a `--dry-run` on-ramp for users without LuaLaTeX.
 - `docs/uf-rules.md` citations now reference the canonical `latex2ufdissertation/pipeline/template/ufdissertation.cls`; the fixture copy carries a 22-line provenance header and is no longer the citation target.
 
 ### Removed
@@ -28,7 +28,7 @@ Initial release. Validate + compile UF dissertation/thesis projects with the new
 
 ### Added
 - CLI: `latex2ufdissertation INPUT [OUTPUT.pdf] [--init|--dry-run|--main|--json|--version]`
-- Source-level validation: 9 errors + 2 warns against UF format rules
+- Source-level validation: 9 errors + 2 warns against UF format rules (the v1.0 spec rebrands these severity tiers to `must-fix` / `review`)
 - LuaLaTeX compile driver
 - `--init` scaffolds from UF IT site, falls back to bundled template
 - Accepts zip / directory / git URL inputs

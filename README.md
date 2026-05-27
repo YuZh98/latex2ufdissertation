@@ -18,36 +18,42 @@ Scaffold a new project from the bundled UF template, then validate + compile:
     cd my-thesis/
     latex2ufdissertation .
 
-The default command runs both validation layers and compiles to PDF. Compile-only or validate-only modes are available via flags below.
+The default command validates the project and compiles to PDF with LuaLaTeX. If you do not have a TeX installation, validate without compiling:
+
+    latex2ufdissertation --dry-run .
 
 ## Inputs
 
-| Input | Source layer | PDF layer | Compile |
-|---|---|---|---|
-| Project directory | yes | yes (bundled PDF or compiled output) | only if no PDF present |
-| `*.zip` archive | yes | yes (bundled PDF or compiled output) | only if no PDF in archive |
-| `*.pdf` | skipped (noted in report) | yes | no |
+| Input | Source-layer validation | Compile |
+|---|---|---|
+| Project directory | yes | yes (unless `--dry-run`) |
+| `*.zip` archive | yes | yes (unless `--dry-run`) |
+| Git URL (https or ssh) | yes | yes (unless `--dry-run`) |
+
+PDF-only input and a separate PDF-layer of checks are planned for v1.0; see [`docs/spec-v1.0.md`](./docs/spec-v1.0.md).
 
 ## Outputs
 
-- **Human-readable report** (default): grouped by rule category. Each finding shows severity, UF rule ID, location (file:line or page), observed vs required, fix hint, and a URL to the UF source.
-- **Machine-readable JSON** (`--json`): versioned schema for downstream tooling. Progress goes to stderr; stdout is JSON only.
+- **Human-readable report** (default): each finding prints with a severity tag, the rule, and the location.
+- **Machine-readable JSON** (`--json`): emits `{input, output, main_tex, dry_run, errors, warnings, compile_result}` to stdout; progress messages go to stderr.
 
 ### Exit codes
 
 | Code | Meaning |
 |---|---|
-| `0` | Zero must-fix findings (review-only findings are advisory) |
-| `1` | One or more must-fix findings |
-| `2` | Fatal on this input (unsupported template, compile failure, unreadable input, master's thesis, pre-Fall-2025 template) |
+| `0` | No errors |
+| `1` | One or more errors |
+| `2` | Fatal on this input (unsupported template, compile failure, unreadable input) |
 | `3` | Fatal on this environment (missing required toolchain, e.g. no LuaLaTeX) |
 
 ## Severity tiers
 
-- **must-fix** — documented UF rule violation; submission will be rejected.
-- **review** — likely issue requiring human judgment; the tool flags, the student decides.
+v0.1 emits two tiers:
 
-Two tiers only. No INFO / TIP / SUGGESTION.
+- **error** — documented UF rule violation; blocks submission.
+- **warn** — likely issue; review and decide.
+
+v1.0 will rebrand these to **must-fix** and **review** respectively, and expand the JSON schema to include `schema_version`, structured `findings`, and per-finding source URLs. See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md).
 
 ## Flags
 
@@ -58,12 +64,13 @@ Two tiers only. No INFO / TIP / SUGGESTION.
 | `--dry-run` | Validate only, skip compile |
 | `--main FILE` | Override master `.tex` auto-detect |
 | `--json` | Machine-readable summary on stdout |
-| `--guide` | ETD-upload walkthrough for GIMS |
 | `--version` | Print version and exit |
 
 ## Scope
 
-**In scope.** Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+). Two-layer validation: LaTeX source + compiled PDF. Three input modes: zip, directory, PDF. CLI as the engine. Machine-readable JSON output.
+**In scope for v0.1 (shipping today).** Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+). Source-layer validation. Three input modes: zip, directory, git URL. CLI as the engine. LuaLaTeX compile driver.
+
+**Planned for v1.0.** PDF-layer validation, PDF-only input mode, machine-readable JSON output (`--json`), ETD-upload walkthrough (`--guide`). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full v1.0 specification.
 
 **Out of scope for v1.0.** Master's theses (deferred, same template, different `\thesisType`). The pre-Fall-2025 UF template (refused with a migration message). Source cleanup or Overleaf-export normalization. External URL liveness (reserved for `--check-links` in a future release). MCP server, browser extensions, editor extensions (separate artifacts that wrap the CLI). Hosted web service or GUI.
 
