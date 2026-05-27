@@ -1,25 +1,38 @@
-"""Determinism pinning test (placeholder).
+"""Determinism pinning test.
 
-CONTRIBUTING.md promises a regression test asserting byte-identical JSON
-output across two consecutive runs on the same input. The v1.0 spec
-elevates this to a behavior contract (see docs/spec-v1.0.md, Behavior /
-Determinism). This file is the placeholder gate so the promise is not
-policy fiction; it will be replaced with a real assertion once the
-JSON-output surface and the demo fixture are wired together end-to-end.
+CONTRIBUTING.md and docs/spec-v1.0.md promise byte-identical JSON
+output across two consecutive runs on the same input. This test
+exercises the contract on the demo dissertation via --dry-run + --json,
+captures stdout twice, asserts equality.
 """
 
 from __future__ import annotations
 
+import io
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
+
 import pytest
 
+from latex2ufdissertation.cli import main
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "Determinism pinning not yet wired. Once `latex2ufdissertation "
-        "--json examples/demo_dissertation/` produces a stable JSON "
-        "shape, this test should run it twice and assert byte equality."
-    ),
-)
-def test_json_output_is_byte_identical_across_consecutive_runs() -> None:
-    raise NotImplementedError
+DEMO = Path(__file__).resolve().parent.parent / "examples" / "demo_dissertation"
+
+
+def _run_dry_json() -> tuple[int, str]:
+    """Run the CLI in dry-run + JSON mode, return (exit_code, stdout)."""
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        rc = main(["--dry-run", "--json", str(DEMO)])
+    return rc, out.getvalue()
+
+
+@pytest.mark.skipif(not DEMO.is_dir(), reason="demo dissertation not present in this checkout")
+def test_json_output_is_byte_identical_across_consecutive_runs():
+    rc1, out1 = _run_dry_json()
+    rc2, out2 = _run_dry_json()
+    assert rc1 == rc2
+    assert out1 == out2, "two consecutive --json runs produced divergent stdout"
+    # Sanity: the payload must be non-trivial JSON, not an empty string.
+    assert out1.strip().startswith("{")
+    assert "schema_version" in out1
