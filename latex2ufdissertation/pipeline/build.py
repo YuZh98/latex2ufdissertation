@@ -6,7 +6,7 @@ import sys
 import webbrowser
 from pathlib import Path
 
-from latex2ufdissertation.pipeline.types import ConverterError, Issues, MissingToolchain
+from latex2ufdissertation.pipeline.types import ConverterError, MissingToolchain
 
 COMPILE_TIMEOUT = 600  # seconds
 MAX_ERROR_BLOCKS = 5
@@ -43,7 +43,6 @@ def compile_pdf(
     main_tex: Path,
     root: Path,
     output_pdf: Path,
-    issues: Issues,
     open_pdf: bool = True,
 ) -> Path | None:
     """Run LuaLaTeX (+ biber if needed) and copy the resulting PDF to output_pdf."""
@@ -80,7 +79,6 @@ def compile_pdf(
 
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(produced, output_pdf)
-    issues.compile_result = {"pdf": str(output_pdf), "passes": 3}
 
     if open_pdf:
         try:

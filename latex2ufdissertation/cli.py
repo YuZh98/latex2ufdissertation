@@ -132,7 +132,6 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     issues.input_path = args.input
-    issues.dry_run = args.dry_run
 
     try:
         root, cleanup = resolve(args.input)
@@ -163,18 +162,22 @@ def main(argv: list[str] | None = None) -> int:
         if not lualatex_available():
             issues.set_exit_reason(EXIT_REASON_MISSING_TOOLCHAIN)
             print("Error: lualatex not found — install TeX Live 2025", file=sys.stderr)
-            _emit_report(issues, args.json_out)
+            # Skip the human report on fatal toolchain paths — a "clean"
+            # summary alongside a fatal error is actively misleading.
+            # JSON consumers still get the structured payload.
+            if args.json_out:
+                _emit_json(issues)
             return 3
 
         output = _resolve_output_path(args.input, root, args.output)
-        issues.output_path = str(output)
         print(f"  compiling to {output}", file=sys.stderr)
         try:
-            compile_pdf(master, root, output, issues)
+            compile_pdf(master, root, output)
         except MissingToolchain as e:
             issues.set_exit_reason(EXIT_REASON_MISSING_TOOLCHAIN)
             print(f"Error: {e}", file=sys.stderr)
-            _emit_report(issues, args.json_out)
+            if args.json_out:
+                _emit_json(issues)
             return 3
 
         _emit_report(issues, args.json_out)
