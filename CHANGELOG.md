@@ -20,6 +20,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - README CI status, license, and Python-version badges at the top so visitors landing on the public repo see project status at a glance.
 - `docs/v1.0-rule-rebrand.md` — design document for v1.0 sub-project #1 (rule rebrand + ID system). Locked architecture, finding shape, v0.1 → UF-* mapping, JSON schema v1 freeze, and testing strategy.
 
+### Fixed
+- `--json` stdout was being contaminated by progress / diagnostic output, breaking the documented "stdout is JSON only" contract. All progress messages (`[warn]` / `[error]` lines, `Summary:` line, `validating` / `compiling` lines, compile-error blocks, `--init` scaffold log lines) now route to stderr. `--demo`, `--version`, `--init` final paths, and the `--json` payload itself stay on stdout. New regression test in `tests/test_cli.py` guards the split.
+- README opening sentence no longer advertises PDF input (the v0.1 resolver rejects `.pdf`; PDF input is a v1.0 plan documented later in the README).
+- README `--demo` line now explicitly says the local path appears only for source checkouts.
+
 ### Changed
 - README rewritten to honestly distinguish v0.1 (shipping) from v1.0 (planned): advisory framing prominent up front, current v0.1 input modes (directory / zip / git URL), current v0.1 severity vocabulary (`error` / `warn`) with a forward pointer to the v1.0 rebrand, current four-code exit surface, and a `--dry-run` on-ramp for users without LuaLaTeX.
 - `docs/uf-rules.md` citations now reference the canonical `latex2ufdissertation/pipeline/template/ufdissertation.cls`; the fixture copy carries a 22-line provenance header and is no longer the citation target.
