@@ -1,0 +1,20 @@
+###  LuaLaTeX intermediates produced by compiling this fixture locally.
+###  Only the committed source files, the vendored ufdissertation.cls,
+###  the committed main.pdf, and README.md should appear in the
+###  working tree.
+
+*.aux
+*.log
+*.toc
+*.lof
+*.lot
+*.loa
+*.lol
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
