@@ -24,7 +24,7 @@ every must-fix rule in `docs/uf-rules.md`. It serves two purposes:
 | `acknowledgementsFile.tex` | Required acknowledgements prose | F8, S2 |
 | `abbreviations.tex` | Optional List of Abbreviations as a description list | F8 (conditional) |
 | `chapter1.tex` | Introduction chapter | F10, F11 |
-| `chapter2.tex` | Main body with section, paired subsections, two figures, table, equation, lemma, theorem, block quote, and two `\addObject` calls | F10, F11, F16, F12 |
+| `chapter2.tex` | Main body with section, paired subsections, three figures (TikZ + pgfplots), three tables (simple, `threeparttable` with footnote, `longtable`), equation, lemma, theorem, algorithm pseudocode, block quote, and two `\addObject` calls | F10, F11, F16, F12 |
 | `chapter3.tex` | Closing summary chapter | F10 |
 | `appendix.tex` | Two appendices (A, B); demonstrates `\multipleAppendixtrue` | F8 (conditional) |
 | `biographyFile.tex` | Required biographical sketch | F8, S2 |
@@ -32,8 +32,8 @@ every must-fix rule in `docs/uf-rules.md`. It serves two purposes:
 
 ## Sections exercised in the compiled PDF
 
-The current compiled `main.pdf` is **26 pages** (LuaLaTeX, TeX Live 2024
-or later). In rendered order, with conditional sections marked (cond):
+The current compiled `main.pdf` is **26 pages** (LuaLaTeX, TeX Live
+2025). In rendered order, with conditional sections marked (cond):
 
 1. Title page (unnumbered, F8 #1)
 2. Copyright page (auto-generated, F8 #2)
@@ -61,7 +61,7 @@ well under the cap. Future edits to the abstract should keep the count
 
 ## LaTeX features demonstrated
 
-- `\chapter`, `\section`, `\subsection` — all five heading tiers per F11
+- `\chapter`, `\section`, `\subsection` — three of the five heading tiers per F11 (`\subsubsection` and `\paragraph` are intentionally absent; see "What the demo intentionally does not do" below)
 - Theorem environments (`\begin{theorem}`, `\begin{lemma}`) — defined by the class
 - Equation w/ `\label` and `\ref`
 - Figure environment w/ caption + `\label` and `\ref` (two figures)
@@ -109,18 +109,25 @@ lualatex main
 lualatex main
 ```
 
+### Why the cls and the PDF are bundled
+
 A copy of `ufdissertation.cls` is included in this directory so the
-fixture is self-contained. The canonical class file lives at
+fixture compiles standalone. The canonical class file lives at
 `latex2ufdissertation/pipeline/template/ufdissertation.cls`; this copy
 is derived from there and must be re-synced when the upstream class
 changes. `ufdissertation.cls` is **not** authored by this project — it
 is the UF Information Technology Help Desk's class file, redistributed
 here for fixture-compilation purposes only. See the provenance header
-at the top of the file.
+at the top of the file. (A conftest fixture that copies the cls at
+test time would be cleaner, but duplication is simpler today; this
+arrangement is subject to revision if a copy-on-the-fly approach turns
+out to be lower-maintenance.)
 
 `main.pdf` is committed alongside the source so the PDF-layer checks
-have a known-good fixture to validate against without re-compiling on
-every test run.
+have a known-good fixture to validate against without requiring a TeX
+installation on every CI machine. If CI grows to include a LuaLaTeX
+step and on-the-fly compilation becomes cheap, the committed PDF can
+be dropped in favor of generating it at test time.
 
 **Note on TeX Live version.** If `main.pdf` is compiled on TeX Live
 2024 or earlier, the output PDF will not be tagged for accessibility
