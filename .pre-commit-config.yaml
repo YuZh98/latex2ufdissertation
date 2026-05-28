@@ -10,6 +10,7 @@ exclude: |
     latex2ufdissertation/pipeline/template/.*|
     examples/demo_dissertation/ufdissertation\.cls|
     examples/demo_dissertation/main\.pdf|
+    examples/ufdissertation_samples/.*\.docx|
     .*\.pdf
   )$
 
