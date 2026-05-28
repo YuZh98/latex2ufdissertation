@@ -342,6 +342,23 @@ def test_titleformat_redefine_fires_uf_f11(tmp_path, section_cmd):
     assert f11[0].severity == MUST_FIX
 
 
+@pytest.mark.parametrize(
+    "section_cmd",
+    [r"\chapter", r"\section", r"\subsection"],
+)
+def test_titleformat_starred_form_also_fires_uf_f11(tmp_path, section_cmd):
+    # titlesec's starred \titleformat* is the one-shot variant for a single
+    # tier — functionally equivalent override. Pin both forms.
+    override = f"\\titleformat*{{{section_cmd}}}{{\\Large\\bfseries}}"
+    src = _VALID.replace(r"\begin{document}", override + "\n" + r"\begin{document}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f11 = [f for f in issues.findings if f.rule_id == "UF-F11"]
+    assert len(f11) == 1
+    assert section_cmd in (f11[0].observed or "")
+
+
 def test_paragraph_usage_fires_uf_f11(tmp_path):
     # Catalog § UF-F11: \paragraph usage discouraged per C4.
     body = "\\chapter{Intro}\\paragraph{Heading}\\chapter{Body}\\chapter{Summary}"

@@ -253,7 +253,8 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
         r"\paragraph",
     )
     for tier in _F11_TIERS:
-        pat = r"\\titleformat\s*\{" + re.escape(tier) + r"\}"
+        # Accept both \titleformat and the starred one-shot form \titleformat*.
+        pat = r"\\titleformat\*?\s*\{" + re.escape(tier) + r"\}"
         if re.search(pat, nc):
             issues.add(
                 "UF-F11",
