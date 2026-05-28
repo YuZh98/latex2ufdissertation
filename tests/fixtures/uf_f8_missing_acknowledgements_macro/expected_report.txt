@@ -1,0 +1,8 @@
+
+[source layer]
+  (F-series)
+    [must-fix] UF-F8 main.tex — \setAcknowledgementsFile not set (required: \setAcknowledgementsFile{<acknowledgements-file-stem>})
+      fix: Set the missing \set*File macro in main.tex and ensure the file exists.
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f8--required-page-order--presence
+
+Summary: 1 must-fix, 0 review.
