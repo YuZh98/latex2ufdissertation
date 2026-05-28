@@ -182,6 +182,10 @@ RULES: dict[str, Rule] = {
         BOTH,
         "Abstract word count ≤ 350",
         _anchor("UF-F15", "abstract-word-count--350"),
+        fix_hint=(
+            "Trim the abstract to <= 350 words "
+            "(catalog § UF-F15, template's own abstractFile.tex specifies this cap)."
+        ),
     ),
     "UF-F16": Rule(
         "UF-F16",
