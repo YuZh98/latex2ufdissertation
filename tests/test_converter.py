@@ -15,7 +15,7 @@ _MIN_VALID = r"""\documentclass{ufdissertation}
 \setAbstractFile{abs}
 \setReferenceFile{refs}{agsm}
 \setBiographicalFile{bio}
-\begin{document}\end{document}
+\begin{document}\chapter{Introduction}\chapter{Main Body}\chapter{Closing Summary}\end{document}
 """
 
 

@@ -173,6 +173,32 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
             required=_F7_REQUIRED,
         )
 
+    # UF-F10: chapter scaffold. Catalog § F10 requires >=3 chapters per UF
+    # S1 + S3 (introductory + main body + closing summary). Count \chapter{...}
+    # calls in main.tex AND in any \include / \input target one level deep.
+    # Deeper nesting deferred.
+    _chapter_pat = re.compile(r"\\chapter\s*\{[^}]+\}")
+    chapter_count = len(_chapter_pat.findall(nc))
+    for included in re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", nc):
+        for candidate in (root / included, root / f"{included}.tex"):
+            if candidate.exists() and candidate.is_file():
+                included_nc = _strip_comments(
+                    candidate.read_text(encoding="utf-8", errors="replace")
+                )
+                chapter_count += len(_chapter_pat.findall(included_nc))
+                break
+    if chapter_count < 3:
+        chapters_word = "chapter" if chapter_count == 1 else "chapters"
+        issues.add(
+            "UF-F10",
+            location=rel,
+            observed=(
+                f"{chapter_count} {chapters_word} "
+                "(counted across main.tex + \\include / \\input files)"
+            ),
+            required="at least 3 chapters",
+        )
+
     # UF-F5: text-alignment overrides. Template's \raggedright (cls:171) is the
     # ragged-right behavior UF requires. \justifying and \justify both override
     # it. Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)

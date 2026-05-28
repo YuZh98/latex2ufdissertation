@@ -1,0 +1,8 @@
+
+[source layer]
+  (F-series)
+    [must-fix] UF-F10 main.tex — 1 chapter (counted across main.tex + \include / \input files) (required: at least 3 chapters)
+      fix: Add chapters until the document has at least 3 (UF S1 + S3: introductory + main body + closing summary).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f10--chapter-scaffold
+
+Summary: 1 must-fix, 0 review.
