@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Remove the page-numbering override; UF requires arabic numerals centered at bottom (cls:179-188). `\\pagenumbering{arabic}` is fine.",
+      "layer": "both",
+      "location": "main.tex",
+      "observed": "\\pagenumbering{roman} overrides template's arabic default",
+      "required": "\\pagenumbering{arabic} (template's default)",
+      "rule_id": "UF-F6",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f6--page-numbering-arabic-bottom-center"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}

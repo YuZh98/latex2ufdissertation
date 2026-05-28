@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Remove the margin override; the UF template's `geometry` package (cls:153-157) sets the required 1 inch all around.",
+      "layer": "both",
+      "location": "main.tex",
+      "observed": "margin override pattern present in source",
+      "required": "no \\geometry / \\newgeometry / \\setlength{\\textwidth|textheight} / \\hoffset / \\voffset override (template sets 1 inch all around)",
+      "rule_id": "UF-F1",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f1--margins"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}

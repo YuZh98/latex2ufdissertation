@@ -68,8 +68,28 @@ class Rule:
 
 RULES: dict[str, Rule] = {
     # Formatting (F)
-    "UF-F1": Rule("UF-F1", MUST_FIX, BOTH, "Margins", _anchor("UF-F1", "margins")),
-    "UF-F2": Rule("UF-F2", MUST_FIX, BOTH, "Font family", _anchor("UF-F2", "font-family")),
+    "UF-F1": Rule(
+        "UF-F1",
+        MUST_FIX,
+        BOTH,
+        "Margins",
+        _anchor("UF-F1", "margins"),
+        fix_hint=(
+            "Remove the margin override; the UF template's `geometry` package "
+            "(cls:153-157) sets the required 1 inch all around."
+        ),
+    ),
+    "UF-F2": Rule(
+        "UF-F2",
+        MUST_FIX,
+        BOTH,
+        "Font family",
+        _anchor("UF-F2", "font-family"),
+        fix_hint=(
+            "Remove the font override; UF requires Times New Roman or Arial "
+            "(cls:167-169 loads them); the override produces a non-conforming font."
+        ),
+    ),
     "UF-F3": Rule(
         "UF-F3",
         MUST_FIX,
@@ -81,7 +101,17 @@ RULES: dict[str, Rule] = {
             "the UF template's `\\LoadClass[12pt]` (cls:1) sets 12-point throughout."
         ),
     ),
-    "UF-F4": Rule("UF-F4", MUST_FIX, BOTH, "Line spacing", _anchor("UF-F4", "line-spacing")),
+    "UF-F4": Rule(
+        "UF-F4",
+        MUST_FIX,
+        BOTH,
+        "Line spacing",
+        _anchor("UF-F4", "line-spacing"),
+        fix_hint=(
+            "Remove the line-spacing override; the UF template's `\\doublespacing` "
+            "(cls:198) sets the required body spacing with documented exceptions."
+        ),
+    ),
     "UF-F5": Rule(
         "UF-F5",
         MUST_FIX,
@@ -99,6 +129,10 @@ RULES: dict[str, Rule] = {
         BOTH,
         "Page numbering (arabic, bottom-center)",
         _anchor("UF-F6", "page-numbering-arabic-bottom-center"),
+        fix_hint=(
+            "Remove the page-numbering override; UF requires arabic numerals "
+            "centered at bottom (cls:179-188). `\\pagenumbering{arabic}` is fine."
+        ),
     ),
     "UF-F7": Rule(
         "UF-F7",

@@ -353,6 +353,122 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                         required=f"add {key} to .bib or fix the cite key",
                     )
 
+    # UF-F1: margins (source-half). Template enforces 1 inch all around via
+    # geometry (cls:153-157). Source overrides flagged:
+    # \usepackage[opts]{geometry}, \geometry, \newgeometry,
+    # \setlength{\textwidth/textheight}, \hoffset, \voffset.
+    # PDF-layer backup deferred to v1.0.
+    _F1_PATTERNS = (
+        r"\\usepackage\s*\[[^\]]*\]\s*\{geometry\}",
+        r"\\geometry\s*\{",
+        r"\\newgeometry\s*\{",
+        r"\\setlength\s*\{?\s*\\textwidth\s*\}?\s*\{",
+        r"\\setlength\s*\{?\s*\\textheight\s*\}?\s*\{",
+        r"\\hoffset\s*=",
+        r"\\voffset\s*=",
+    )
+    for pattern in _F1_PATTERNS:
+        if re.search(pattern, nc):
+            issues.add(
+                "UF-F1",
+                location=rel,
+                observed="margin override pattern present in source",
+                required=(
+                    "no \\geometry / \\newgeometry / "
+                    "\\setlength{\\textwidth|textheight} / \\hoffset / \\voffset "
+                    "override (template sets 1 inch all around)"
+                ),
+            )
+            break
+
+    # UF-F2: font family (source-half). Template loads Times (cls:167-169) +
+    # offers Arial via \familydefault override. Source overrides flagged:
+    # \setmainfont (fontspec), known font-replacement packages
+    # (mathpazo / mathptmx / libertine / etc.), manual \fontfamily\selectfont.
+    # PDF-layer backup deferred to v1.0.
+    if re.search(r"\\setmainfont\s*(?:\[[^\]]*\])?\s*\{", nc):
+        issues.add(
+            "UF-F2",
+            location=rel,
+            observed="\\setmainfont override present in source",
+            required="no \\setmainfont override (template loads Times / Arial)",
+        )
+    _F2_PACKAGES = (
+        "mathpazo",
+        "mathptmx",
+        "libertine",
+        "fourier",
+        "kpfonts",
+        "tgpagella",
+        "tgtermes",
+        "bookman",
+        "charter",
+    )
+    for pkg in _F2_PACKAGES:
+        if re.search(r"\\usepackage\s*(?:\[[^\]]*\])?\s*\{" + pkg + r"\}", nc):
+            issues.add(
+                "UF-F2",
+                location=rel,
+                observed=f"font-replacement package `{pkg}` loaded",
+                required=f"remove \\usepackage{{{pkg}}} (template provides Times / Arial)",
+            )
+    if re.search(r"\\fontfamily\s*\{[^}]+\}\s*\\selectfont", nc):
+        issues.add(
+            "UF-F2",
+            location=rel,
+            observed="\\fontfamily{...}\\selectfont override present in source",
+            required="no manual \\fontfamily override (template handles font selection)",
+        )
+
+    # UF-F4: line spacing (source-half). Template enforces \doublespacing
+    # (cls:198) with documented exceptions (captions / longtable / itemize /
+    # abstract / bibliography). Naive scan flags any source-level override;
+    # legitimate scoped uses inside the documented exceptions would also
+    # trip — accepted v0.1 limitation. PDF-layer backup deferred to v1.0.
+    _F4_PATTERNS = (
+        (r"\\singlespacing\b", "\\singlespacing"),
+        (r"\\onehalfspacing\b", "\\onehalfspacing"),
+        (r"\\setstretch\s*\{[^}]+\}", "\\setstretch{...}"),
+        (
+            r"\\renewcommand\s*\{?\s*\\baselinestretch\s*\}?\s*\{[^}]+\}",
+            "\\renewcommand{\\baselinestretch}",
+        ),
+    )
+    for pattern, label in _F4_PATTERNS:
+        if re.search(pattern, nc):
+            issues.add(
+                "UF-F4",
+                location=rel,
+                observed=f"{label} overrides template's \\doublespacing",
+                required=(
+                    "no line-spacing override at source level "
+                    "(template's \\doublespacing applies; documented exceptions "
+                    "handled inside captions / longtable / itemize / abstract / bib)"
+                ),
+            )
+
+    # UF-F6: page numbering (source-half). Template uses arabic, centered at
+    # bottom (cls:179-188). Source overrides flagged:
+    # \pagenumbering{non-arabic} (roman/Roman/alph/Alph), \renewcommand{\thepage}.
+    # \pagenumbering{arabic} matches template default and is silently allowed.
+    # PDF-layer backup deferred to v1.0.
+    for m_pn in re.finditer(r"\\pagenumbering\s*\{([^}]+)\}", nc):
+        style = m_pn.group(1).strip()
+        if style and style != "arabic":
+            issues.add(
+                "UF-F6",
+                location=rel,
+                observed=f"\\pagenumbering{{{style}}} overrides template's arabic default",
+                required="\\pagenumbering{arabic} (template's default)",
+            )
+    if re.search(r"\\renewcommand\s*\{?\s*\\thepage\s*\}?\s*\{", nc):
+        issues.add(
+            "UF-F6",
+            location=rel,
+            observed="\\renewcommand{\\thepage} redefines page-number rendering",
+            required="leave \\thepage to the template",
+        )
+
     # UF-F5: text-alignment overrides. Template's \raggedright (cls:171) is the
     # ragged-right behavior UF requires. \justifying and \justify both override
     # it. Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)

@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Remove the line-spacing override; the UF template's `\\doublespacing` (cls:198) sets the required body spacing with documented exceptions.",
+      "layer": "both",
+      "location": "main.tex",
+      "observed": "\\singlespacing overrides template's \\doublespacing",
+      "required": "no line-spacing override at source level (template's \\doublespacing applies; documented exceptions handled inside captions / longtable / itemize / abstract / bib)",
+      "rule_id": "UF-F4",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f4--line-spacing"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}
