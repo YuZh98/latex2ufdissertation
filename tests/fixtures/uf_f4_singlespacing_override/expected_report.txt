@@ -1,0 +1,8 @@
+
+[both layer]
+  (F-series)
+    [must-fix] UF-F4 main.tex — \singlespacing overrides template's \doublespacing (required: no line-spacing override at source level (template's \doublespacing applies; documented exceptions handled inside captions / longtable / itemize / abstract / bib))
+      fix: Remove the line-spacing override; the UF template's `\doublespacing` (cls:198) sets the required body spacing with documented exceptions.
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f4--line-spacing
+
+Summary: 1 must-fix, 0 review.
