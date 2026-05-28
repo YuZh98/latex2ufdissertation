@@ -214,6 +214,10 @@ RULES: dict[str, Rule] = {
         SOURCE,
         "`overrideTitles` / `overrideChapters` options",
         _anchor("UF-D3", "overridetitles--overridechapters-options"),
+        fix_hint=(
+            "If you didn't need to, remove `overrideTitles` / `overrideChapters` "
+            "from \\documentclass to silence the template's warning."
+        ),
     ),
     # Presence (P)
     "UF-P1": Rule(

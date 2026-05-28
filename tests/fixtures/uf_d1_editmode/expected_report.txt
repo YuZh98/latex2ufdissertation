@@ -1,0 +1,8 @@
+
+[source layer]
+  (D-series)
+    [review] UF-D1 main.tex — editMode option present in \documentclass (required: editMode removed before submission)
+      fix: Remove `editMode` from the \documentclass options before submitting.
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-d1--editmode-option-not-left-on-for-submission
+
+Summary: 0 must-fix, 1 review.

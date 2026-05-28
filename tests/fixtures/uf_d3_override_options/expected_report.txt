@@ -1,0 +1,8 @@
+
+[source layer]
+  (D-series)
+    [review] UF-D3 main.tex — overrideTitles option present in \documentclass (required: overrideTitles removed before submission)
+      fix: If you didn't need to, remove `overrideTitles` / `overrideChapters` from \documentclass to silence the template's warning.
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-d3--overridetitles--overridechapters-options
+
+Summary: 0 must-fix, 1 review.

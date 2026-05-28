@@ -31,7 +31,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - README CI / license / Python-version badges
 - Determinism pinning test: two `--dry-run --json` runs must produce byte-identical stdout
 - Drift tests: catalog ↔ registry parity (ID, severity, layer)
-- 107 tests (was 14); coverage 74.65% (was 0%)
+- `tests/fixtures/` snapshot harness with per-rule `input/` + `expected_findings.json` + `expected_report.txt`; covered rules so far: `UF-D1`, `UF-D2`, `UF-D3` (D-series complete for source-layer detection)
+- `UF-D3` source detector for `overrideTitles` / `overrideChapters` `\documentclass` options (one finding per option present); registry gains a default fix_hint
+- 113 tests (was 14); coverage 74.65% (was 0%)
 
 ### Changed
 - JSON output schema (breaking): old keys removed; new payload `{schema_version, input, template_version, findings: [...], summary: {must_fix_count, review_count, exit_code, exit_reason}}`

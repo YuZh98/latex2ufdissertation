@@ -1,0 +1,8 @@
+
+[source layer]
+  (D-series)
+    [must-fix] UF-D2 main.tex — % !TEX program = pdflatex (required: % !TEX program = lualatex (or omit the directive))
+      fix: Use `% !TEX program = lualatex` (or omit the directive) — UF requires LuaLaTeX.
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-d2--lualatex-compiler-directive
+
+Summary: 1 must-fix, 0 review.
