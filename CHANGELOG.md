@@ -31,12 +31,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - README CI / license / Python-version badges
 - Determinism pinning test: two `--dry-run --json` runs must produce byte-identical stdout
 - Drift tests: catalog ↔ registry parity (ID, severity, layer)
-- `tests/fixtures/` snapshot harness with per-rule `input/` + `expected_findings.json` + `expected_report.txt`; covered rules so far: `UF-D1`, `UF-D2`, `UF-D3` (D-series complete for source-layer detection), `UF-F3`, `UF-F5`, `UF-F8`, `UF-F13`, `UF-F14`, `UF-P1`
+- `tests/fixtures/` snapshot harness with per-rule `input/` + `expected_findings.json` + `expected_report.txt`; covered rules so far: `UF-D1`, `UF-D2`, `UF-D3` (D-series complete for source-layer detection), `UF-F3`, `UF-F5`, `UF-F7`, `UF-F8`, `UF-F13`, `UF-F14`, `UF-P1`
 - `UF-D3` source detector for `overrideTitles` / `overrideChapters` `\documentclass` options (one finding per option present); registry gains a default fix_hint
 - `UF-F14` detector extended from 4 to all 8 catalog-listed required metadata macros (`\degreeYear`, `\degreeMonth`, `\major`, `\chair` added). Closes #16. Tracking-bumped to a true 6/21 must-fix gate-1 coverage; previously was 5/21 + 1 partial.
 - `UF-F14` value-constraint check: `\degreeMonth` must be `May` / `August` / `December` (case-sensitive, per catalog § UF-F14 / C2:41); any other value trips a must-fix finding citing the observed value.
 - `UF-F5` source detector for `\justifying` / `\justify` text-alignment overrides per catalog § UF-F5. Negative-lookahead prevents false positives on `\justifyFoo` and avoids double-counting `\justifying`. Allowlist: `\sloppy` / `\sloppypar` (line-breaking helpers, catalog-explicit), `\raggedright` (template's own command). `\flushleft` mass-usage check deferred (catalog gives no numeric threshold). Registry gains default fix_hint citing template's `\raggedright` at cls:171.
 - `UF-F3` source detector for `\fontsize{<body>}{<baseline>}\selectfont` overrides per catalog § UF-F3. Each match emits a must-fix finding citing the observed args. Registry gains default fix_hint citing template's `\LoadClass[12pt]` at cls:1. Relative-size commands (`\small`, `\large`, ...) deferred — catalog lists them but body-vs-caption/heading context analysis is beyond v0.1 regex-on-comment-stripped-source scope.
+- `UF-F7` source detector for zero-`\parindent` overrides per catalog § UF-F7. Covers both `\setlength{\parindent}{0...}` (with optional inner braces) and `\parindent=0...` assignment forms across all standard LaTeX length units. Decimal-nonzero guard `(?![.\d])` prevents false-positives on `\parindent=0.5em`. Registry gains default fix_hint citing template's `\indentfirst` (cls:203) + `\parindent=1cm` (cls:1010).
 - `tests/fixtures/uf_f14_missing_committee_metadata/`: broken-input fixture covering the 4 newly-checked macros (4 must-fix findings)
 - D-series fixtures (`uf_d1_editmode`, `uf_d2_compiler_directive`, `uf_d3_override_options`) grow committee macros so each fixture is compile-ready end-to-end (no out-of-tree splice required to produce a PDF)
 - `uf_d1_editmode` body grows `\authorRemark` / `\editorRemark` calls so the compiled PDF visibly demonstrates the consequence editMode enables (colored bold inline annotations); validator output unchanged
@@ -62,6 +63,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - README no longer claims PDF input acceptance (PDF input is a v1.0 plan)
 - `MissingToolchain` fatal paths no longer emit a misleading "clean" summary line while exiting 3
 - `_has_command` regex now accepts the LaTeX optional-bracketed argument form (`\chair[Co-chair]{Chair}` per the UF template). Pre-existing bug, masked until `\chair` joined `_REQUIRED_TOPLEVEL`; without this fix the demo dissertation would trip a false-positive UF-F14
+- `UF-F3` detector loop variable renamed `m` → `f3m` to avoid shadowing the outer `\documentclass` match used by UF-D3 downstream. Latent bug (UF-D3 would silently fail to fire on projects where both `\fontsize{...}{...}\selectfont` and `overrideTitles` / `overrideChapters` options coexist) found while developing UF-F7; regression test pinned in `tests/test_checks.py`
 
 ### Removed
 - `docs/plans/` and `docs/design/`: internal planning artifacts stripped from history with `git-filter-repo`; both directories now gitignored

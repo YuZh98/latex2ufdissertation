@@ -106,6 +106,11 @@ RULES: dict[str, Rule] = {
         SOURCE,
         "Paragraph indentation",
         _anchor("UF-F7", "paragraph-indentation"),
+        fix_hint=(
+            "Remove the zero-`\\parindent` override; the UF template's "
+            "`\\indentfirst` (cls:203) + `\\parindent=1cm` (cls:1010) "
+            "produce the required first-line indentation."
+        ),
     ),
     "UF-F8": Rule(
         "UF-F8",
