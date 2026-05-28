@@ -1,0 +1,8 @@
+
+[both layer]
+  (F-series)
+    [must-fix] UF-F15 abs.tex — 351 words in abstract (must be <= 350) (required: abstract content <= 350 words)
+      fix: Trim the abstract to <= 350 words (catalog § UF-F15, template's own abstractFile.tex specifies this cap).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f15--abstract-word-count--350
+
+Summary: 1 must-fix, 0 review.

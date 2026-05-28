@@ -274,6 +274,31 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
             required="omit \\paragraph; use \\subsubsection or restructure",
         )
 
+    # UF-F15: abstract word count <= 350. Locate the file referenced by
+    # \setAbstractFile{name}, strip LaTeX commands, count words. Flag if > 350.
+    # PDF-layer backup deferred to v1.0 PDF layer.
+    abs_arg = _setfile_arg(nc, r"\setAbstractFile")
+    if abs_arg:
+        for candidate in (root / abs_arg, root / f"{abs_arg}.tex"):
+            if candidate.exists() and candidate.is_file():
+                text = candidate.read_text(encoding="utf-8", errors="replace")
+                text = _strip_comments(text)
+                # Strip backslash-commands with optional bracket + brace args;
+                # the brace-arg content stays (so \textbf{word} → word).
+                text = re.sub(r"\\[a-zA-Z]+\*?(?:\[[^\]]*\])?", " ", text)
+                # Strip leftover structural braces / brackets so word-splitting
+                # treats them as boundaries.
+                text = re.sub(r"[{}\[\]\\]", " ", text)
+                word_count = len(text.split())
+                if word_count > 350:
+                    issues.add(
+                        "UF-F15",
+                        location=str(candidate.relative_to(root)),
+                        observed=f"{word_count} words in abstract (must be <= 350)",
+                        required="abstract content <= 350 words",
+                    )
+                break
+
     # UF-F5: text-alignment overrides. Template's \raggedright (cls:171) is the
     # ragged-right behavior UF requires. \justifying and \justify both override
     # it. Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)

@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Trim the abstract to <= 350 words (catalog \u00a7 UF-F15, template's own abstractFile.tex specifies this cap).",
+      "layer": "both",
+      "location": "abs.tex",
+      "observed": "351 words in abstract (must be <= 350)",
+      "required": "abstract content <= 350 words",
+      "rule_id": "UF-F15",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f15--abstract-word-count--350"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}
