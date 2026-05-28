@@ -70,7 +70,17 @@ RULES: dict[str, Rule] = {
     # Formatting (F)
     "UF-F1": Rule("UF-F1", MUST_FIX, BOTH, "Margins", _anchor("UF-F1", "margins")),
     "UF-F2": Rule("UF-F2", MUST_FIX, BOTH, "Font family", _anchor("UF-F2", "font-family")),
-    "UF-F3": Rule("UF-F3", MUST_FIX, SOURCE, "Font size 12pt", _anchor("UF-F3", "font-size-12pt")),
+    "UF-F3": Rule(
+        "UF-F3",
+        MUST_FIX,
+        SOURCE,
+        "Font size 12pt",
+        _anchor("UF-F3", "font-size-12pt"),
+        fix_hint=(
+            "Remove the `\\fontsize{...}{...}\\selectfont` override; "
+            "the UF template's `\\LoadClass[12pt]` (cls:1) sets 12-point throughout."
+        ),
+    ),
     "UF-F4": Rule("UF-F4", MUST_FIX, BOTH, "Line spacing", _anchor("UF-F4", "line-spacing")),
     "UF-F5": Rule(
         "UF-F5",
