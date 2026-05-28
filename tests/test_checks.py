@@ -576,6 +576,30 @@ def test_pagenumbering_override_fires_uf_f6(tmp_path, override):
     assert f6[0].severity == MUST_FIX
 
 
+def test_multiple_f1_patterns_collapse_to_one_finding(tmp_path):
+    # F1 detector emits at most 1 finding regardless of how many margin-
+    # override patterns are present (same root cause). Pin the collapse.
+    override = r"\geometry{margin=0.5in}" + "\n" + r"\hoffset=-1in"
+    src = _VALID.replace(r"\begin{document}", override + "\n" + r"\begin{document}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f1 = [f for f in issues.findings if f.rule_id == "UF-F1"]
+    assert len(f1) == 1
+
+
+def test_multiple_f2_packages_emit_separate_findings(tmp_path):
+    # F2 detector emits one finding per matched pattern (each package is
+    # independently actionable). Pin the divergence from F1's collapse.
+    override = r"\usepackage{mathpazo}" + "\n" + r"\usepackage{libertine}"
+    src = _VALID.replace(r"\begin{document}", override + "\n" + r"\begin{document}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert len(f2) == 2
+
+
 def test_arabic_pagenumbering_does_not_fire_uf_f6(tmp_path):
     # \pagenumbering{arabic} matches the template's default; silent.
     body = "\\chapter{Intro}\\pagenumbering{arabic}\\chapter{Body}\\chapter{Summary}"
