@@ -360,6 +360,26 @@ def test_invalid_degree_month_value_fires_uf_f14(tmp_path, month):
     assert all(f.severity == MUST_FIX for f in f14)
 
 
+def test_fontsize_override_does_not_shadow_documentclass_for_d3(tmp_path):
+    # Regression: F3's re.finditer loop used to assign to `m`, shadowing the
+    # outer documentclass match `m` that D3 reads later. With both present,
+    # D3 would silently fail to fire on overrideTitles. This test pins the
+    # fix (loop var renamed to f3m).
+    src = _VALID.replace(
+        r"\documentclass{ufdissertation}",
+        r"\documentclass[overrideTitles]{ufdissertation}",
+    ).replace(
+        r"\begin{document}",
+        r"\begin{document}" + "\n" + r"\fontsize{14pt}{16pt}\selectfont",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    rule_ids = _rule_ids(issues)
+    assert "UF-F3" in rule_ids
+    assert "UF-D3" in rule_ids
+
+
 def test_override_options_fire_uf_d3_review(tmp_path):
     # Both options present → one finding per option (each is independently
     # a candidate for removal at submission).

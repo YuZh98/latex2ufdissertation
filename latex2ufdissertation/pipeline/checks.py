@@ -130,8 +130,10 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     # commands (\small, \large, ...) as overrides but their legitimate use in
     # captions/headings makes naive scanning false-positive-prone — v0.1 detector
     # skips them (a separate follow-up will need body-vs-context analysis).
-    for m in re.finditer(r"\\fontsize\s*\{([^}]*)\}\s*\{([^}]*)\}\s*\\selectfont", nc):
-        observed = f"\\fontsize{{{m.group(1)}}}{{{m.group(2)}}}\\selectfont"
+    # Loop variable named `f3m` to avoid shadowing the outer documentclass
+    # match `m` which D3 reads later in this function.
+    for f3m in re.finditer(r"\\fontsize\s*\{([^}]*)\}\s*\{([^}]*)\}\s*\\selectfont", nc):
+        observed = f"\\fontsize{{{f3m.group(1)}}}{{{f3m.group(2)}}}\\selectfont"
         issues.add(
             "UF-F3",
             location=rel,
@@ -139,6 +141,36 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
             required=(
                 "no \\fontsize{...}{...}\\selectfont override in source (template's 12pt applies)"
             ),
+        )
+
+    # UF-F7: paragraph-indentation overrides. Template's \indentfirst (cls:203)
+    # + \parindent=1cm (cls:1010) require first-line indent. Setting parindent
+    # to zero (any unit) overrides this. Two LaTeX syntaxes covered separately:
+    # \setlength{\parindent}{0...} and \parindent=0... assignment form.
+    # Zero-detection guard: trailing `0` must be followed by either end-of-arg,
+    # whitespace, or a known unit suffix — NOT a decimal point. This prevents
+    # false-positives on `0.5em` (which starts with a `0` but is nonzero).
+    _ZERO_UNIT = r"0(?:pt|in|em|ex|mm|cm|pc|sp)?\s*"
+    _F7_REQUIRED = "no zero-\\parindent override in source (template's \\parindent=1cm applies)"
+    for _ in re.finditer(
+        r"\\setlength\s*\{?\s*\\parindent\s*\}?\s*\{\s*" + _ZERO_UNIT + r"\}",
+        nc,
+    ):
+        issues.add(
+            "UF-F7",
+            location=rel,
+            observed="\\setlength{\\parindent}{0pt} overrides template's 1cm parindent",
+            required=_F7_REQUIRED,
+        )
+    for _ in re.finditer(
+        r"\\parindent\s*=\s*" + _ZERO_UNIT + r"(?![.\d])",
+        nc,
+    ):
+        issues.add(
+            "UF-F7",
+            location=rel,
+            observed="\\parindent=0pt overrides template's 1cm parindent",
+            required=_F7_REQUIRED,
         )
 
     # UF-F5: text-alignment overrides. Template's \raggedright (cls:171) is the
