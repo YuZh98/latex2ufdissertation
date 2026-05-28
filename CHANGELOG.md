@@ -31,7 +31,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - README CI / license / Python-version badges
 - Determinism pinning test: two `--dry-run --json` runs must produce byte-identical stdout
 - Drift tests: catalog ↔ registry parity (ID, severity, layer)
-- `tests/fixtures/` snapshot harness with per-rule `input/` + `expected_findings.json` + `expected_report.txt`; covered rules so far: `UF-D1`, `UF-D2`, `UF-D3` (D-series complete for source-layer detection)
+- `tests/fixtures/` snapshot harness with per-rule `input/` + `expected_findings.json` + `expected_report.txt`; covered rules so far: `UF-D1`, `UF-D2`, `UF-D3` (D-series complete for source-layer detection), `UF-F13`, `UF-F14`
 - `UF-D3` source detector for `overrideTitles` / `overrideChapters` `\documentclass` options (one finding per option present); registry gains a default fix_hint
 - `UF-F14` detector extended from 4 to all 8 catalog-listed required metadata macros (`\degreeYear`, `\degreeMonth`, `\major`, `\chair` added). Closes #16. Tracking-bumped to a true 6/21 must-fix gate-1 coverage; previously was 5/21 + 1 partial.
 - `UF-F14` value-constraint check: `\degreeMonth` must be `May` / `August` / `December` (case-sensitive, per catalog § UF-F14 / C2:41); any other value trips a must-fix finding citing the observed value.
