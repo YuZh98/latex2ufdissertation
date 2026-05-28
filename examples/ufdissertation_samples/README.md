@@ -10,6 +10,7 @@ These files exist as **authoritative tiebreakers** when the rule catalog in [`..
 - **Retrieved:** 2026-05-28
 - **Origin format:** Microsoft Word (`.docx`) — these are the UF-supplied samples for the Word submission path, not the LaTeX path
 - **Maintained by:** UF Graduate Editorial Office
+- **License:** UF does not publish an explicit license for these samples; vendored here as a dated reference snapshot with provenance, consistent with educational fair use. The live UF page is the authoritative source; if a sample here disagrees with the live page, the live page wins.
 
 ## Status
 
@@ -41,10 +42,11 @@ Treat each sample as an **upper bound on what UF accepts**, not a lower bound on
 The samples are most useful when rendered to PDF and compared side-by-side with the corresponding section of `../demo_dissertation/main.pdf`. To regenerate PDFs locally:
 
     # macOS / Linux with LibreOffice installed:
-    libreoffice --headless --convert-to pdf --outdir _pdf examples/ufdissertation_samples/*.docx
+    mkdir -p _pdf && \
+      libreoffice --headless --convert-to pdf --outdir _pdf examples/ufdissertation_samples/*.docx
 
     # Alternative with pandoc + a LaTeX engine:
-    cd examples/ufdissertation_samples && \
+    cd examples/ufdissertation_samples && mkdir -p _pdf && \
       for f in *.docx; do pandoc "$f" -o "_pdf/${f%.docx}.pdf"; done
 
 PDFs are intentionally **not committed** — they are derivable from the docx originals on demand, and a reference snapshot rendered locally with whatever tooling you have on hand is more useful than a stale committed PDF.
