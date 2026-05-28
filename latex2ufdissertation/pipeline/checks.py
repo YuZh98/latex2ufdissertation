@@ -125,6 +125,22 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
             required="editMode removed before submission",
         )
 
+    # UF-F3: explicit \fontsize{}{}\selectfont overrides. Template's \LoadClass[12pt]
+    # (cls:1) sets the required 12-point default. Catalog also lists relative-size
+    # commands (\small, \large, ...) as overrides but their legitimate use in
+    # captions/headings makes naive scanning false-positive-prone — v0.1 detector
+    # skips them (a separate follow-up will need body-vs-context analysis).
+    for m in re.finditer(r"\\fontsize\s*\{([^}]*)\}\s*\{([^}]*)\}\s*\\selectfont", nc):
+        observed = f"\\fontsize{{{m.group(1)}}}{{{m.group(2)}}}\\selectfont"
+        issues.add(
+            "UF-F3",
+            location=rel,
+            observed=f"{observed} overrides template's 12pt default",
+            required=(
+                "no \\fontsize{...}{...}\\selectfont override in source (template's 12pt applies)"
+            ),
+        )
+
     # UF-F5: text-alignment overrides. Template's \raggedright (cls:171) is the
     # ragged-right behavior UF requires. \justifying and \justify both override
     # it. Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)

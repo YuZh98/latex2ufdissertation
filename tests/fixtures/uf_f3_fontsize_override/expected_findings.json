@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Remove the `\\fontsize{...}{...}\\selectfont` override; the UF template's `\\LoadClass[12pt]` (cls:1) sets 12-point throughout.",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\fontsize{14pt}{16pt}\\selectfont overrides template's 12pt default",
+      "required": "no \\fontsize{...}{...}\\selectfont override in source (template's 12pt applies)",
+      "rule_id": "UF-F3",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f3--font-size-12pt"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}
