@@ -142,3 +142,30 @@ def test_pdflatex_hint_fires_uf_d2_must_fix(tmp_path):
     d2 = next(f for f in issues.findings if f.rule_id == "UF-D2")
     # Per the spec rebrand: D2 is must-fix (was warn in v0.1).
     assert d2.severity == MUST_FIX
+
+
+def test_override_options_fire_uf_d3_review(tmp_path):
+    # Both options present → one finding per option (each is independently
+    # a candidate for removal at submission).
+    src = _VALID.replace(
+        r"\documentclass{ufdissertation}",
+        r"\documentclass[overrideTitles,overrideChapters]{ufdissertation}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    d3_findings = [f for f in issues.findings if f.rule_id == "UF-D3"]
+    assert len(d3_findings) == 2
+    assert {"overrideTitles", "overrideChapters"} == {
+        f.observed.split(" ", 1)[0] for f in d3_findings if f.observed
+    }
+    assert all(f.severity == REVIEW for f in d3_findings)
+
+
+def test_no_override_options_does_not_fire_uf_d3(tmp_path):
+    # Negative case: a clean preamble must not trip D3 (guards against a
+    # regex that matches anything containing the substring).
+    master = _project(tmp_path, _VALID, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-D3" not in _rule_ids(issues)

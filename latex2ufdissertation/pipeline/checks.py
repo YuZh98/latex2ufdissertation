@@ -107,3 +107,17 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
             observed=f"% !TEX program = {hint.group(1)}",
             required="% !TEX program = lualatex (or omit the directive)",
         )
+
+    # UF-D3: overrideTitles / overrideChapters options. Template warns on use;
+    # one finding per option found so a project that ships both gets both flags
+    # (each option is independently a candidate for removal at submission time).
+    if m and m.group(2):
+        opts = [o.strip() for o in m.group(2).split(",")]
+        for opt in ("overrideTitles", "overrideChapters"):
+            if opt in opts:
+                issues.add(
+                    "UF-D3",
+                    location=rel,
+                    observed=f"{opt} option present in \\documentclass",
+                    required=f"{opt} removed before submission",
+                )
