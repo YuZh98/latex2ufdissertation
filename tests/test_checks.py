@@ -162,6 +162,31 @@ def test_chair_with_optional_cochair_bracket_satisfies_uf_f14(tmp_path):
     assert "UF-F14" not in _rule_ids(issues)
 
 
+@pytest.mark.parametrize("month", ["May", "August", "December"])
+def test_valid_degree_month_does_not_fire_uf_f14(tmp_path, month):
+    # Catalog: \degreeMonth must be May / August / December per C2:41.
+    src = _VALID.replace(r"\degreeMonth{May}", f"\\degreeMonth{{{month}}}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F14" not in _rule_ids(issues)
+
+
+@pytest.mark.parametrize("month", ["February", "June", "Spring", "01", "may"])
+def test_invalid_degree_month_value_fires_uf_f14(tmp_path, month):
+    # Anything outside the enum (case-sensitive — "may" is invalid; UF
+    # writes the month with title-case capitalization) trips F14.
+    src = _VALID.replace(r"\degreeMonth{May}", f"\\degreeMonth{{{month}}}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f14 = [f for f in issues.findings if f.rule_id == "UF-F14"]
+    assert any(month in (f.observed or "") for f in f14), (
+        f"expected an F14 finding citing {month!r}; got: {[f.observed for f in f14]}"
+    )
+    assert all(f.severity == MUST_FIX for f in f14)
+
+
 def test_override_options_fire_uf_d3_review(tmp_path):
     # Both options present → one finding per option (each is independently
     # a candidate for removal at submission).
