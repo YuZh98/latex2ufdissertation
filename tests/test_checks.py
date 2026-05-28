@@ -19,6 +19,10 @@ _VALID = r"""\documentclass{ufdissertation}
 \author{Y}
 \degreeType{Doctor of Philosophy}
 \thesisType{Dissertation}
+\degreeYear{2026}
+\degreeMonth{May}
+\major{Computer Science}
+\chair{Advisor}
 \setAcknowledgementsFile{ack}
 \setAbstractFile{abs}
 \setReferenceFile{refs}{agsm}
@@ -65,6 +69,10 @@ def test_wrong_documentclass_fires_uf_f13(tmp_path):
         (r"\author{Y}", r"\author"),
         (r"\degreeType{Doctor of Philosophy}", r"\degreeType"),
         (r"\thesisType{Dissertation}", r"\thesisType"),
+        (r"\degreeYear{2026}", r"\degreeYear"),
+        (r"\degreeMonth{May}", r"\degreeMonth"),
+        (r"\major{Computer Science}", r"\major"),
+        (r"\chair{Advisor}", r"\chair"),
     ],
 )
 def test_missing_required_command_fires_uf_f14(tmp_path, cmd, label):
@@ -142,6 +150,16 @@ def test_pdflatex_hint_fires_uf_d2_must_fix(tmp_path):
     d2 = next(f for f in issues.findings if f.rule_id == "UF-D2")
     # Per the spec rebrand: D2 is must-fix (was warn in v0.1).
     assert d2.severity == MUST_FIX
+
+
+def test_chair_with_optional_cochair_bracket_satisfies_uf_f14(tmp_path):
+    # UF template documents \chair[Co-chair]{Chair} as the optional-cochair
+    # form. The detector must accept that as satisfying the F14 requirement.
+    src = _VALID.replace(r"\chair{Advisor}", r"\chair[Co-chair Example]{Chair Example}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F14" not in _rule_ids(issues)
 
 
 def test_override_options_fire_uf_d3_review(tmp_path):

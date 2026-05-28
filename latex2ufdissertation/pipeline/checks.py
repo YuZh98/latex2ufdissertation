@@ -19,6 +19,10 @@ _REQUIRED_TOPLEVEL = (
     (r"\author", r"\author"),
     (r"\degreeType", r"\degreeType"),
     (r"\thesisType", r"\thesisType"),
+    (r"\degreeYear", r"\degreeYear"),
+    (r"\degreeMonth", r"\degreeMonth"),
+    (r"\major", r"\major"),
+    (r"\chair", r"\chair"),
 )
 _SETFILE_RULES = (
     (r"\setAcknowledgementsFile", (".tex",), "Acknowledgements"),
@@ -33,7 +37,10 @@ def _strip_comments(text: str) -> str:
 
 
 def _has_command(nc: str, cmd: str) -> bool:
-    pat = re.escape(cmd) + r"\s*\{[^}]*\S[^}]*\}"
+    # Allow LaTeX's optional bracketed argument between the command name and
+    # the required braces (e.g. `\chair[Co-chair]{Chair}` per the UF
+    # template), in addition to the bare `\cmd{...}` form.
+    pat = re.escape(cmd) + r"\s*(?:\[[^\]]*\])?\s*\{[^}]*\S[^}]*\}"
     return re.search(pat, nc) is not None
 
 
