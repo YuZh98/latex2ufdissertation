@@ -1,0 +1,8 @@
+
+[source layer]
+  (P-series)
+    [must-fix] UF-P1 main.tex — \setReferenceFile{'refs'} but no file found in project root (required: refs (or refs.bib) exists in project root)
+      fix: Create the named file in the project root (or fix the macro argument).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk
+
+Summary: 1 must-fix, 0 review.
