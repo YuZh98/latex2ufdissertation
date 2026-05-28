@@ -492,6 +492,100 @@ def test_multi_cite_keys_in_one_call_resolve_independently_for_uf_s3(tmp_path):
     assert "realKey" not in observed_all
 
 
+@pytest.mark.parametrize(
+    "override",
+    [
+        r"\usepackage[margin=0.5in]{geometry}",
+        r"\usepackage[left=2cm]{geometry}",
+        r"\geometry{margin=0.5in}",
+        r"\newgeometry{margin=0.5in}",
+        r"\setlength{\textwidth}{7in}",
+        r"\setlength{\textheight}{10in}",
+        r"\hoffset=-1in",
+        r"\voffset=-0.5in",
+    ],
+)
+def test_margin_override_fires_uf_f1(tmp_path, override):
+    src = _VALID.replace(r"\begin{document}", override + "\n" + r"\begin{document}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f1 = [f for f in issues.findings if f.rule_id == "UF-F1"]
+    assert f1
+    assert f1[0].severity == MUST_FIX
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        r"\setmainfont{Comic Sans MS}",
+        r"\usepackage{mathpazo}",
+        r"\usepackage{mathptmx}",
+        r"\usepackage{libertine}",
+        r"\fontfamily{ppl}\selectfont",
+    ],
+)
+def test_font_override_fires_uf_f2(tmp_path, override):
+    src = _VALID.replace(r"\begin{document}", override + "\n" + r"\begin{document}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert f2
+    assert f2[0].severity == MUST_FIX
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        r"\singlespacing",
+        r"\onehalfspacing",
+        r"\setstretch{1.2}",
+        r"\renewcommand{\baselinestretch}{1.5}",
+    ],
+)
+def test_linespacing_override_fires_uf_f4(tmp_path, override):
+    body = "\\chapter{Intro}" + override + "\\chapter{Body}\\chapter{Summary}"
+    src = _VALID.replace(_VALID_BODY, body)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f4 = [f for f in issues.findings if f.rule_id == "UF-F4"]
+    assert f4
+    assert f4[0].severity == MUST_FIX
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        r"\pagenumbering{roman}",
+        r"\pagenumbering{Roman}",
+        r"\pagenumbering{alph}",
+        r"\pagenumbering{Alph}",
+        r"\renewcommand{\thepage}{X-\arabic{page}}",
+    ],
+)
+def test_pagenumbering_override_fires_uf_f6(tmp_path, override):
+    body = "\\chapter{Intro}" + override + "\\chapter{Body}\\chapter{Summary}"
+    src = _VALID.replace(_VALID_BODY, body)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f6 = [f for f in issues.findings if f.rule_id == "UF-F6"]
+    assert f6
+    assert f6[0].severity == MUST_FIX
+
+
+def test_arabic_pagenumbering_does_not_fire_uf_f6(tmp_path):
+    # \pagenumbering{arabic} matches the template's default; silent.
+    body = "\\chapter{Intro}\\pagenumbering{arabic}\\chapter{Body}\\chapter{Summary}"
+    src = _VALID.replace(_VALID_BODY, body)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F6" not in _rule_ids(issues)
+
+
 def test_parindent_zero_in_comment_does_not_fire_uf_f7(tmp_path):
     src = _VALID.replace(
         r"\begin{document}",
