@@ -1,0 +1,53 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Set the missing metadata macro with a non-empty value in main.tex.",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\degreeYear missing or empty",
+      "required": "\\degreeYear{...} with a non-empty argument",
+      "rule_id": "UF-F14",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f14--required-metadata-macros-set"
+    },
+    {
+      "fix_hint": "Set the missing metadata macro with a non-empty value in main.tex.",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\degreeMonth missing or empty",
+      "required": "\\degreeMonth{...} with a non-empty argument",
+      "rule_id": "UF-F14",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f14--required-metadata-macros-set"
+    },
+    {
+      "fix_hint": "Set the missing metadata macro with a non-empty value in main.tex.",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\major missing or empty",
+      "required": "\\major{...} with a non-empty argument",
+      "rule_id": "UF-F14",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f14--required-metadata-macros-set"
+    },
+    {
+      "fix_hint": "Set the missing metadata macro with a non-empty value in main.tex.",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\chair missing or empty",
+      "required": "\\chair{...} with a non-empty argument",
+      "rule_id": "UF-F14",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f14--required-metadata-macros-set"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 4,
+    "review_count": 0
+  },
+  "template_version": null
+}

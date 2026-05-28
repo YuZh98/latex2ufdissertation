@@ -19,7 +19,16 @@ _REQUIRED_TOPLEVEL = (
     (r"\author", r"\author"),
     (r"\degreeType", r"\degreeType"),
     (r"\thesisType", r"\thesisType"),
+    (r"\degreeYear", r"\degreeYear"),
+    (r"\degreeMonth", r"\degreeMonth"),
+    (r"\major", r"\major"),
+    (r"\chair", r"\chair"),
 )
+
+# Catalog § UF-F14: \degreeMonth value must be one of these (per C2:41).
+# Case-sensitive: UF writes the month with title-case capitalization on
+# the abstract page.
+_VALID_DEGREE_MONTHS = ("May", "August", "December")
 _SETFILE_RULES = (
     (r"\setAcknowledgementsFile", (".tex",), "Acknowledgements"),
     (r"\setAbstractFile", (".tex",), "Abstract"),
@@ -33,7 +42,10 @@ def _strip_comments(text: str) -> str:
 
 
 def _has_command(nc: str, cmd: str) -> bool:
-    pat = re.escape(cmd) + r"\s*\{[^}]*\S[^}]*\}"
+    # Allow LaTeX's optional bracketed argument between the command name and
+    # the required braces (e.g. `\chair[Co-chair]{Chair}` per the UF
+    # template), in addition to the bare `\cmd{...}` form.
+    pat = re.escape(cmd) + r"\s*(?:\[[^\]]*\])?\s*\{[^}]*\S[^}]*\}"
     return re.search(pat, nc) is not None
 
 
@@ -59,7 +71,7 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
             required="\\documentclass{ufdissertation}",
         )
 
-    # UF-F14: required metadata macros (\title, \author, \degreeType, \thesisType)
+    # UF-F14: required metadata macros (presence + non-empty argument).
     for cmd, label in _REQUIRED_TOPLEVEL:
         if not _has_command(nc, cmd):
             issues.add(
@@ -67,6 +79,21 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                 location=rel,
                 observed=f"{label} missing or empty",
                 required=f"{label}{{...}} with a non-empty argument",
+            )
+
+    # UF-F14: \degreeMonth value must be in the catalog enum (C2:41).
+    month_match = re.search(
+        r"\\degreeMonth\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}",
+        nc,
+    )
+    if month_match:
+        value = month_match.group(1).strip()
+        if value and value not in _VALID_DEGREE_MONTHS:
+            issues.add(
+                "UF-F14",
+                location=rel,
+                observed=f"\\degreeMonth{{{value}}}",
+                required=f"\\degreeMonth must be one of: {', '.join(_VALID_DEGREE_MONTHS)}",
             )
 
     # UF-F8 / UF-P1: \set*File macros + filesystem companions

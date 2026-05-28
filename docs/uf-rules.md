@@ -241,7 +241,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 ### UF-F14 — Required metadata macros set
 
 - **Severity:** must-fix
-- **Source:** Template requires these for title page + abstract page + copyright page (C1:280-296, C1:756-792, C1:675-681)
+- **Source:** S1 (UF Grad School policy: title, abstract, and copyright pages are required prefatory matter) backed by C1:280-296 (title page), C1:756-792 (abstract page), C1:675-681 (copyright page) — the cls renders these pages from the metadata macros below, so missing any macro means the required page cannot render and the submission cannot be accepted.
 - **Layer:** source
 - **Strategy:** scan for presence + non-empty arguments of:
   - `\title{...}` — required for title + abstract pages

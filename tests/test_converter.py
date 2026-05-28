@@ -7,6 +7,10 @@ _MIN_VALID = r"""\documentclass{ufdissertation}
 \author{Y}
 \degreeType{Doctor of Philosophy}
 \thesisType{Dissertation}
+\degreeYear{2026}
+\degreeMonth{May}
+\major{Computer Science}
+\chair{Advisor}
 \setAcknowledgementsFile{ack}
 \setAbstractFile{abs}
 \setReferenceFile{refs}{agsm}
