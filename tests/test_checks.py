@@ -273,6 +273,58 @@ def test_chapters_in_comments_do_not_count_for_uf_f10(tmp_path):
     assert "1 chapter" in (f10[0].observed or "")
 
 
+@pytest.mark.parametrize(
+    "duplicate_lines,cmd_label",
+    [
+        (r"\setAbstractFile{abs2}", r"\setAbstractFile"),
+        ("\\tableofcontents\n\\tableofcontents", r"\tableofcontents"),
+        (r"\setReferenceFile{refs2}{plain}", r"\setReferenceFile"),
+        (r"\bibliography{x}\bibliography{y}", r"\bibliography"),
+    ],
+)
+def test_duplicate_singleton_fires_uf_f9(tmp_path, duplicate_lines, cmd_label):
+    # Catalog § UF-F9: only one abstract, table of contents, and reference list.
+    # Each duplication form emits exactly one F9 finding citing the duplicated command.
+    src = _VALID.replace(r"\begin{document}", duplicate_lines + "\n" + r"\begin{document}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f9 = [f for f in issues.findings if f.rule_id == "UF-F9"]
+    assert any(cmd_label in (f.observed or "") for f in f9), (
+        f"expected F9 finding citing {cmd_label}; got: {[f.observed for f in f9]}"
+    )
+    assert all(f.severity == MUST_FIX for f in f9)
+
+
+@pytest.mark.parametrize(
+    "manual_chapter",
+    [
+        r"\chapter{ABSTRACT}",
+        r"\chapter{REFERENCES}",
+    ],
+)
+def test_manual_template_chapter_fires_uf_f9(tmp_path, manual_chapter):
+    # Catalog § UF-F9: manual \chapter{ABSTRACT} / \chapter{REFERENCES} outside
+    # template would duplicate sections the template auto-generates.
+    body = "\\chapter{Intro}" + manual_chapter + "\\chapter{Body}\\chapter{Summary}"
+    src = _VALID.replace(_VALID_BODY, body)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f9 = [f for f in issues.findings if f.rule_id == "UF-F9"]
+    assert f9, f"expected F9 finding for {manual_chapter}"
+    assert any(manual_chapter in (f.observed or "") for f in f9)
+    assert all(f.severity == MUST_FIX for f in f9)
+
+
+def test_singleton_baseline_does_not_fire_uf_f9(tmp_path):
+    # _VALID has one of each singleton macro; F9 must not fire.
+    master = _project(tmp_path, _VALID, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F9" not in _rule_ids(issues)
+
+
 def test_parindent_zero_in_comment_does_not_fire_uf_f7(tmp_path):
     src = _VALID.replace(
         r"\begin{document}",
