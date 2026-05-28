@@ -211,6 +211,10 @@ RULES: dict[str, Rule] = {
         SOURCE,
         "Broken internal cross-references",
         _anchor("UF-S3", "broken-internal-cross-references"),
+        fix_hint=(
+            "Declare the missing \\label{...} (for \\ref / \\eqref / \\pageref) "
+            "or add the bib key to the .bib file (for \\cite)."
+        ),
     ),
     "UF-S4": Rule(
         "UF-S4",

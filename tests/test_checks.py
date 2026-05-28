@@ -456,11 +456,7 @@ def test_resolved_label_reference_does_not_fire_uf_s3(tmp_path):
 
 
 def test_broken_cite_fires_uf_s3(tmp_path):
-    body = (
-        "\\chapter{Intro}"
-        "\\cite{missingKey} not in bib."
-        "\\chapter{Body}\\chapter{Summary}"
-    )
+    body = "\\chapter{Intro}\\cite{missingKey} not in bib.\\chapter{Body}\\chapter{Summary}"
     src = _VALID.replace(_VALID_BODY, body)
     files = dict(_VALID_FILES)
     files["refs.bib"] = "@book{realKey, title={Real}}\n"
@@ -472,11 +468,7 @@ def test_broken_cite_fires_uf_s3(tmp_path):
 
 
 def test_resolved_cite_does_not_fire_uf_s3(tmp_path):
-    body = (
-        "\\chapter{Intro}"
-        "\\cite{realKey} in bib."
-        "\\chapter{Body}\\chapter{Summary}"
-    )
+    body = "\\chapter{Intro}\\cite{realKey} in bib.\\chapter{Body}\\chapter{Summary}"
     src = _VALID.replace(_VALID_BODY, body)
     files = dict(_VALID_FILES)
     files["refs.bib"] = "@book{realKey, title={Real}}\n"
@@ -487,11 +479,7 @@ def test_resolved_cite_does_not_fire_uf_s3(tmp_path):
 
 
 def test_multi_cite_keys_in_one_call_resolve_independently_for_uf_s3(tmp_path):
-    body = (
-        "\\chapter{Intro}"
-        "\\cite{realKey,missingKey}"
-        "\\chapter{Body}\\chapter{Summary}"
-    )
+    body = "\\chapter{Intro}\\cite{realKey,missingKey}\\chapter{Body}\\chapter{Summary}"
     src = _VALID.replace(_VALID_BODY, body)
     files = dict(_VALID_FILES)
     files["refs.bib"] = "@book{realKey, title={Real}}\n"
