@@ -191,9 +191,7 @@ def test_valid_degree_month_does_not_fire_uf_f14(tmp_path, month):
 def test_parindent_zero_override_fires_uf_f7(tmp_path, override):
     # Catalog § UF-F7: \parindent set to zero (any unit) overrides the
     # template's \parindent=1cm (cls:1010). All these forms must fire.
-    src = _VALID.replace(
-        r"\begin{document}", override + "\n" + r"\begin{document}"
-    )
+    src = _VALID.replace(r"\begin{document}", override + "\n" + r"\begin{document}")
     master = _project(tmp_path, src, _VALID_FILES)
     issues = Issues()
     run_checks(master, tmp_path, issues)
@@ -215,9 +213,7 @@ def test_parindent_nonzero_does_not_fire_uf_f7(tmp_path, nonzero):
     # Nonzero values are allowed even when reinforcing the template.
     # \setlength{\parindent}{0.5em} starts with "0" but is decimal-nonzero —
     # detector must not naively fire on the leading 0.
-    src = _VALID.replace(
-        r"\begin{document}", nonzero + "\n" + r"\begin{document}"
-    )
+    src = _VALID.replace(r"\begin{document}", nonzero + "\n" + r"\begin{document}")
     master = _project(tmp_path, src, _VALID_FILES)
     issues = Issues()
     run_checks(master, tmp_path, issues)
