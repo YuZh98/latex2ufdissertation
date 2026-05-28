@@ -133,6 +133,10 @@ RULES: dict[str, Rule] = {
         SOURCE,
         "Chapter scaffold",
         _anchor("UF-F10", "chapter-scaffold"),
+        fix_hint=(
+            "Add chapters until the document has at least 3 "
+            "(UF S1 + S3: introductory + main body + closing summary)."
+        ),
     ),
     "UF-F11": Rule(
         "UF-F11",
