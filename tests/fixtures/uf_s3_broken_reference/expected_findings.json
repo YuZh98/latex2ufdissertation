@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Declare the missing \\label{...} (for \\ref / \\eqref / \\pageref) or add the bib key to the .bib file (for \\cite).",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\ref{chap:nonexistent} but no \\label{chap:nonexistent} declared",
+      "required": "declare \\label{chap:nonexistent} somewhere in source",
+      "rule_id": "UF-S3",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-s3--broken-internal-cross-references"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}

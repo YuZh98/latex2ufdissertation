@@ -299,6 +299,60 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                     )
                 break
 
+    # UF-S3: broken internal cross-references. Parse \ref/\eqref/\pageref/\cite
+    # calls in main.tex + one-level recursion into \include/\input AND
+    # \set*File targets (the cls auto-\inputs the latter so labels declared
+    # there must resolve); cross-check against all \label declarations and
+    # .bib entry keys. Unresolved keys emit one S3 finding each.
+    _ref_cmds = (r"\ref", r"\eqref", r"\pageref")
+    all_nc = [nc]
+    bib_keys: set[str] = set()
+    # Collect content from one-level includes / inputs / \set*File targets
+    included_names = set(re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", nc))
+    included_names.update(
+        re.findall(r"\\set[A-Z][a-zA-Z]*File\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}", nc)
+    )
+    for included in included_names:
+        for candidate in (root / included, root / f"{included}.tex"):
+            if candidate.exists() and candidate.is_file():
+                all_nc.append(
+                    _strip_comments(candidate.read_text(encoding="utf-8", errors="replace"))
+                )
+                break
+    bib_name = _setfile_arg(nc, r"\setReferenceFile")
+    if bib_name:
+        for candidate in (root / bib_name, root / f"{bib_name}.bib"):
+            if candidate.exists() and candidate.is_file():
+                bib_text = candidate.read_text(encoding="utf-8", errors="replace")
+                bib_keys.update(re.findall(r"@\w+\s*\{\s*([^,\s]+)", bib_text))
+                break
+    labels: set[str] = set()
+    for src_nc in all_nc:
+        labels.update(re.findall(r"\\label\s*\{([^}]+)\}", src_nc))
+    # Check \ref / \eqref / \pageref
+    for cmd in _ref_cmds:
+        pat = re.escape(cmd) + r"\s*\{([^}]+)\}"
+        for src_nc in all_nc:
+            for key in re.findall(pat, src_nc):
+                if key not in labels:
+                    issues.add(
+                        "UF-S3",
+                        location=rel,
+                        observed=f"{cmd}{{{key}}} but no \\label{{{key}}} declared",
+                        required=f"declare \\label{{{key}}} somewhere in source",
+                    )
+    # Check \cite — multi-key comma-separated form supported
+    for src_nc in all_nc:
+        for keys in re.findall(r"\\cite(?:\[[^\]]*\])?\s*\{([^}]+)\}", src_nc):
+            for key in [k.strip() for k in keys.split(",")]:
+                if key and key not in bib_keys:
+                    issues.add(
+                        "UF-S3",
+                        location=rel,
+                        observed=f"\\cite{{{key}}} but key not in .bib",
+                        required=f"add {key} to .bib or fix the cite key",
+                    )
+
     # UF-F5: text-alignment overrides. Template's \raggedright (cls:171) is the
     # ragged-right behavior UF requires. \justifying and \justify both override
     # it. Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)

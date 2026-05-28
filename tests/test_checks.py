@@ -426,6 +426,72 @@ def test_abstract_missing_file_does_not_fire_uf_f15(tmp_path):
     assert "UF-F15" not in _rule_ids(issues)
 
 
+def test_broken_label_reference_fires_uf_s3(tmp_path):
+    body = (
+        "\\chapter{Intro}\\label{chap:intro}"
+        "See Chapter~\\ref{chap:nonexistent}."
+        "\\chapter{Body}\\chapter{Summary}"
+    )
+    src = _VALID.replace(_VALID_BODY, body)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    s3 = [f for f in issues.findings if f.rule_id == "UF-S3"]
+    assert len(s3) == 1
+    assert "chap:nonexistent" in (s3[0].observed or "")
+    assert s3[0].severity == MUST_FIX
+
+
+def test_resolved_label_reference_does_not_fire_uf_s3(tmp_path):
+    body = (
+        "\\chapter{Intro}\\label{chap:intro}"
+        "See Chapter~\\ref{chap:intro}."
+        "\\chapter{Body}\\chapter{Summary}"
+    )
+    src = _VALID.replace(_VALID_BODY, body)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-S3" not in _rule_ids(issues)
+
+
+def test_broken_cite_fires_uf_s3(tmp_path):
+    body = "\\chapter{Intro}\\cite{missingKey} not in bib.\\chapter{Body}\\chapter{Summary}"
+    src = _VALID.replace(_VALID_BODY, body)
+    files = dict(_VALID_FILES)
+    files["refs.bib"] = "@book{realKey, title={Real}}\n"
+    master = _project(tmp_path, src, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    s3 = [f for f in issues.findings if f.rule_id == "UF-S3"]
+    assert any("missingKey" in (f.observed or "") for f in s3)
+
+
+def test_resolved_cite_does_not_fire_uf_s3(tmp_path):
+    body = "\\chapter{Intro}\\cite{realKey} in bib.\\chapter{Body}\\chapter{Summary}"
+    src = _VALID.replace(_VALID_BODY, body)
+    files = dict(_VALID_FILES)
+    files["refs.bib"] = "@book{realKey, title={Real}}\n"
+    master = _project(tmp_path, src, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-S3" not in _rule_ids(issues)
+
+
+def test_multi_cite_keys_in_one_call_resolve_independently_for_uf_s3(tmp_path):
+    body = "\\chapter{Intro}\\cite{realKey,missingKey}\\chapter{Body}\\chapter{Summary}"
+    src = _VALID.replace(_VALID_BODY, body)
+    files = dict(_VALID_FILES)
+    files["refs.bib"] = "@book{realKey, title={Real}}\n"
+    master = _project(tmp_path, src, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    s3 = [f for f in issues.findings if f.rule_id == "UF-S3"]
+    observed_all = " ".join(f.observed or "" for f in s3)
+    assert "missingKey" in observed_all
+    assert "realKey" not in observed_all
+
+
 def test_parindent_zero_in_comment_does_not_fire_uf_f7(tmp_path):
     src = _VALID.replace(
         r"\begin{document}",

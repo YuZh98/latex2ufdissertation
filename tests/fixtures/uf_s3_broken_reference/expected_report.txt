@@ -1,0 +1,8 @@
+
+[source layer]
+  (S-series)
+    [must-fix] UF-S3 main.tex — \ref{chap:nonexistent} but no \label{chap:nonexistent} declared (required: declare \label{chap:nonexistent} somewhere in source)
+      fix: Declare the missing \label{...} (for \ref / \eqref / \pageref) or add the bib key to the .bib file (for \cite).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-s3--broken-internal-cross-references
+
+Summary: 1 must-fix, 0 review.
