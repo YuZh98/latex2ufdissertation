@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Remove the zero-`\\parindent` override; the UF template's `\\indentfirst` (cls:203) + `\\parindent=1cm` (cls:1010) produce the required first-line indentation.",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\setlength{\\parindent}{0pt} overrides template's 1cm parindent",
+      "required": "no zero-\\parindent override in source (template's \\parindent=1cm applies)",
+      "rule_id": "UF-F7",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f7--paragraph-indentation"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}

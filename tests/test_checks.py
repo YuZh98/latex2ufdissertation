@@ -176,6 +176,66 @@ def test_valid_degree_month_does_not_fire_uf_f14(tmp_path, month):
 
 
 @pytest.mark.parametrize(
+    "override",
+    [
+        r"\setlength{\parindent}{0pt}",
+        r"\setlength{\parindent}{0in}",
+        r"\setlength{\parindent}{0em}",
+        r"\setlength{\parindent}{0}",
+        r"\setlength\parindent{0pt}",
+        r"\parindent=0pt",
+        r"\parindent=0in",
+        r"\parindent = 0pt",
+    ],
+)
+def test_parindent_zero_override_fires_uf_f7(tmp_path, override):
+    # Catalog § UF-F7: \parindent set to zero (any unit) overrides the
+    # template's \parindent=1cm (cls:1010). All these forms must fire.
+    src = _VALID.replace(
+        r"\begin{document}", override + "\n" + r"\begin{document}"
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f7 = [f for f in issues.findings if f.rule_id == "UF-F7"]
+    assert len(f7) == 1
+    assert f7[0].severity == MUST_FIX
+
+
+@pytest.mark.parametrize(
+    "nonzero",
+    [
+        r"\setlength{\parindent}{1cm}",
+        r"\setlength{\parindent}{0.5em}",  # nonzero with leading 0 in decimal
+        r"\parindent=2em",
+        r"\parindent=15pt",
+    ],
+)
+def test_parindent_nonzero_does_not_fire_uf_f7(tmp_path, nonzero):
+    # Nonzero values are allowed even when reinforcing the template.
+    # \setlength{\parindent}{0.5em} starts with "0" but is decimal-nonzero —
+    # detector must not naively fire on the leading 0.
+    src = _VALID.replace(
+        r"\begin{document}", nonzero + "\n" + r"\begin{document}"
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F7" not in _rule_ids(issues)
+
+
+def test_parindent_zero_in_comment_does_not_fire_uf_f7(tmp_path):
+    src = _VALID.replace(
+        r"\begin{document}",
+        r"% \setlength{\parindent}{0pt} commented" + "\n" + r"\begin{document}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F7" not in _rule_ids(issues)
+
+
+@pytest.mark.parametrize(
     "args",
     [
         ("14pt", "16pt"),
