@@ -34,9 +34,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - `tests/fixtures/` snapshot harness with per-rule `input/` + `expected_findings.json` + `expected_report.txt`; covered rules so far: `UF-D1`, `UF-D2`, `UF-D3` (D-series complete for source-layer detection)
 - `UF-D3` source detector for `overrideTitles` / `overrideChapters` `\documentclass` options (one finding per option present); registry gains a default fix_hint
 - `UF-F14` detector extended from 4 to all 8 catalog-listed required metadata macros (`\degreeYear`, `\degreeMonth`, `\major`, `\chair` added). Closes #16. Tracking-bumped to a true 6/21 must-fix gate-1 coverage; previously was 5/21 + 1 partial.
+- `UF-F14` value-constraint check: `\degreeMonth` must be `May` / `August` / `December` (case-sensitive, per catalog § UF-F14 / C2:41); any other value trips a must-fix finding citing the observed value.
 - `tests/fixtures/uf_f14_missing_committee_metadata/`: broken-input fixture covering the 4 newly-checked macros (4 must-fix findings)
 - D-series fixtures (`uf_d1_editmode`, `uf_d2_compiler_directive`, `uf_d3_override_options`) grow committee macros so each fixture is compile-ready end-to-end (no out-of-tree splice required to produce a PDF)
-- 119 tests (was 14); coverage 74.65% (was 0%)
+- `uf_d1_editmode` body grows `\authorRemark` / `\editorRemark` calls so the compiled PDF visibly demonstrates the consequence editMode enables (colored bold inline annotations); validator output unchanged
+- `docs/uf-rules.md` § UF-F14 source citation rewritten to include S1 backing (previously C1-only, which describes class behavior but does not directly justify must-fix severity)
+- 127 tests (was 14); coverage 74.65% (was 0%)
 
 ### Changed
 - JSON output schema (breaking): old keys removed; new payload `{schema_version, input, template_version, findings: [...], summary: {must_fix_count, review_count, exit_code, exit_reason}}`
