@@ -325,6 +325,48 @@ def test_singleton_baseline_does_not_fire_uf_f9(tmp_path):
     assert "UF-F9" not in _rule_ids(issues)
 
 
+@pytest.mark.parametrize(
+    "section_cmd",
+    [r"\chapter", r"\section", r"\subsection", r"\subsubsection", r"\paragraph"],
+)
+def test_titleformat_redefine_fires_uf_f11(tmp_path, section_cmd):
+    # Catalog § UF-F11: \titleformat redefining any of the 5 tiers fires.
+    override = f"\\titleformat{{{section_cmd}}}{{\\Large\\bfseries}}{{}}{{0pt}}{{}}"
+    src = _VALID.replace(r"\begin{document}", override + "\n" + r"\begin{document}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f11 = [f for f in issues.findings if f.rule_id == "UF-F11"]
+    assert len(f11) == 1
+    assert section_cmd in (f11[0].observed or "")
+    assert f11[0].severity == MUST_FIX
+
+
+def test_paragraph_usage_fires_uf_f11(tmp_path):
+    # Catalog § UF-F11: \paragraph usage discouraged per C4.
+    body = "\\chapter{Intro}\\paragraph{Heading}\\chapter{Body}\\chapter{Summary}"
+    src = _VALID.replace(_VALID_BODY, body)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f11 = [f for f in issues.findings if f.rule_id == "UF-F11"]
+    assert f11
+    assert any("paragraph" in (f.observed or "") for f in f11)
+
+
+def test_section_subsection_subsubsection_dont_fire_uf_f11(tmp_path):
+    # Catalog note: \section / \subsection / \subsubsection are the happy path.
+    body = (
+        "\\chapter{Intro}\\section{S}\\subsection{Sub}\\subsubsection{Subsub}"
+        "\\chapter{Body}\\chapter{Summary}"
+    )
+    src = _VALID.replace(_VALID_BODY, body)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F11" not in _rule_ids(issues)
+
+
 def test_parindent_zero_in_comment_does_not_fire_uf_f7(tmp_path):
     src = _VALID.replace(
         r"\begin{document}",

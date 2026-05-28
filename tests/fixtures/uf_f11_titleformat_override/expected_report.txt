@@ -1,0 +1,6 @@
+
+[source layer]
+  (F-series)
+    [must-fix] UF-F11 main.tex — \titleformat{\section} redefines template's heading style (required: no \titleformat redefinition of \chapter / \section / \subsection / \subsubsection / \paragraph (template handles these))
+      fix: Remove the `\titleformat` redefinition; the UF template enforces the 5-tier heading hierarchy by construction (cls:304-362).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f11--heading-styles-5-tier-hierarchy

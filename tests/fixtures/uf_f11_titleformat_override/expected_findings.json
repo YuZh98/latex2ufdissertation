@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Remove the `\\titleformat` redefinition; the UF template enforces the 5-tier heading hierarchy by construction (cls:304-362).",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\titleformat{\\section} redefines template's heading style",
+      "required": "no \\titleformat redefinition of \\chapter / \\section / \\subsection / \\subsubsection / \\paragraph (template handles these)",
+      "rule_id": "UF-F11",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f11--heading-styles-5-tier-hierarchy"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}
