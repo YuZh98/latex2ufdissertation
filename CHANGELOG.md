@@ -12,6 +12,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - `docs/json-schema.md`: authoritative JSON output schema reference (closes v1.0 acceptance gate 5)
 - `latex2ufdissertation/pipeline/template/README.md`: provenance + re-sync procedure for the vendored UF template
 - `examples/demo_dissertation/`: known-good dissertation satisfying every must-fix rule; committed `main.pdf` enables PDF-layer tests without a TeX install
+- `examples/ufdissertation_samples/`: UF Graduate School Thesis & Dissertation Production samples (14 `.docx` files) as reference snapshots for rule-design tiebreakers; not wired into pytest
 - `--demo` flag: prints the GitHub URL of the bundled demo (and local path for source checkouts)
 - `latex2ufdissertation/pipeline/rules.py`: single-source-of-truth `Rule` dataclass + `RULES` dict for all 29 catalog entries
 - `latex2ufdissertation/pipeline/report.py`: `format_human` (grouped + sorted) and `format_json` (JSON schema v1)
