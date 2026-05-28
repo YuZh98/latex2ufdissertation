@@ -220,6 +220,73 @@ def test_parindent_nonzero_does_not_fire_uf_f7(tmp_path, nonzero):
     assert "UF-F7" not in _rule_ids(issues)
 
 
+@pytest.mark.parametrize("count", [0, 1, 2])
+def test_fewer_than_3_chapters_fires_uf_f10(tmp_path, count):
+    # Catalog § UF-F10: minimum 3 chapters required (S1 + S3).
+    chapters = "\n".join(f"\\chapter{{Chapter {i + 1}}}" for i in range(count))
+    src = _VALID.replace(
+        r"\begin{document}\end{document}",
+        r"\begin{document}" + "\n" + chapters + "\n" + r"\end{document}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f10 = [f for f in issues.findings if f.rule_id == "UF-F10"]
+    assert len(f10) == 1
+    assert str(count) in (f10[0].observed or "")
+    assert f10[0].severity == MUST_FIX
+
+
+def test_3_chapters_in_main_does_not_fire_uf_f10(tmp_path):
+    chapters = "\n".join(f"\\chapter{{Chapter {i + 1}}}" for i in range(3))
+    src = _VALID.replace(
+        r"\begin{document}\end{document}",
+        r"\begin{document}" + "\n" + chapters + "\n" + r"\end{document}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F10" not in _rule_ids(issues)
+
+
+def test_chapters_counted_across_includes_for_uf_f10(tmp_path):
+    # Three \include calls each pointing at a chapter file with one \chapter.
+    # Detector must walk one level of \include / \input to count chapters.
+    files = dict(_VALID_FILES)
+    for i in range(1, 4):
+        files[f"ch{i}.tex"] = f"\\chapter{{Chapter {i}}}\n"
+    src = _VALID.replace(
+        r"\begin{document}\end{document}",
+        r"\begin{document}"
+        + "\n"
+        + "\n".join(f"\\include{{ch{i}}}" for i in range(1, 4))
+        + "\n"
+        + r"\end{document}",
+    )
+    master = _project(tmp_path, src, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F10" not in _rule_ids(issues)
+
+
+def test_chapters_in_comments_do_not_count_for_uf_f10(tmp_path):
+    # Commented-out \chapter lines must not count toward the requirement.
+    src = _VALID.replace(
+        r"\begin{document}\end{document}",
+        r"\begin{document}"
+        + "\n"
+        + "\n".join(["% \\chapter{Commented one}", "% \\chapter{Commented two}", r"\chapter{Real one}"])
+        + "\n"
+        + r"\end{document}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f10 = [f for f in issues.findings if f.rule_id == "UF-F10"]
+    assert len(f10) == 1
+    assert "1 chapter" in (f10[0].observed or "")
+
+
 def test_parindent_zero_in_comment_does_not_fire_uf_f7(tmp_path):
     src = _VALID.replace(
         r"\begin{document}",

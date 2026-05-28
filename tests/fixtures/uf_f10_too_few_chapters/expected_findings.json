@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Add chapters until the document has at least 3 (UF S1 + S3: introductory + main body + closing summary).",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "1 chapter (counted across main.tex + \\include / \\input files)",
+      "required": "at least 3 chapters",
+      "rule_id": "UF-F10",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f10--chapter-scaffold"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}
