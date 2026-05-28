@@ -148,6 +148,10 @@ RULES: dict[str, Rule] = {
         SOURCE,
         "Heading styles (5-tier hierarchy)",
         _anchor("UF-F11", "heading-styles-5-tier-hierarchy"),
+        fix_hint=(
+            "Remove the `\\titleformat` redefinition; the UF template enforces "
+            "the 5-tier heading hierarchy by construction (cls:304-362)."
+        ),
     ),
     "UF-F12": Rule(
         "UF-F12",

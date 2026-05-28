@@ -236,6 +236,44 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                 ),
             )
 
+    # UF-F11: heading-style overrides. Template enforces the 5-tier hierarchy
+    # by construction via titlesec (cls:304-362, cls:797-806). Two override
+    # patterns flagged in source:
+    # 1. \titleformat{\chapter/section/subsection/subsubsection/paragraph}
+    #    redefining the template-owned tier styles.
+    # 2. \paragraph usage (discouraged per C4).
+    # Manual heading impersonation (\textbf{\Large ...}) is subjective; v0.1
+    # defers it. \section / \subsection / \subsubsection direct usage is the
+    # template-conformant happy path (catalog explicit) and is NOT scanned.
+    _F11_TIERS = (
+        r"\chapter",
+        r"\section",
+        r"\subsection",
+        r"\subsubsection",
+        r"\paragraph",
+    )
+    for tier in _F11_TIERS:
+        # Accept both \titleformat and the starred one-shot form \titleformat*.
+        pat = r"\\titleformat\*?\s*\{" + re.escape(tier) + r"\}"
+        if re.search(pat, nc):
+            issues.add(
+                "UF-F11",
+                location=rel,
+                observed=f"\\titleformat{{{tier}}} redefines template's heading style",
+                required=(
+                    "no \\titleformat redefinition of \\chapter / \\section / "
+                    "\\subsection / \\subsubsection / \\paragraph "
+                    "(template handles these)"
+                ),
+            )
+    if re.search(r"\\paragraph\s*\{[^}]+\}", nc):
+        issues.add(
+            "UF-F11",
+            location=rel,
+            observed="\\paragraph{...} usage discouraged per C4",
+            required="omit \\paragraph; use \\subsubsection or restructure",
+        )
+
     # UF-F5: text-alignment overrides. Template's \raggedright (cls:171) is the
     # ragged-right behavior UF requires. \justifying and \justify both override
     # it. Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)
