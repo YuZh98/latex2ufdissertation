@@ -162,9 +162,12 @@ def test_chair_with_optional_cochair_bracket_satisfies_uf_f14(tmp_path):
     assert "UF-F14" not in _rule_ids(issues)
 
 
-@pytest.mark.parametrize("month", ["May", "August", "December"])
+@pytest.mark.parametrize("month", ["May", "August", "December", " May ", "August "])
 def test_valid_degree_month_does_not_fire_uf_f14(tmp_path, month):
     # Catalog: \degreeMonth must be May / August / December per C2:41.
+    # Whitespace padding around the value (e.g. `\degreeMonth{ May }`) is
+    # tolerated — LaTeX compiles it identically, and stripping is the
+    # principled comparison given how authors might format the macro.
     src = _VALID.replace(r"\degreeMonth{May}", f"\\degreeMonth{{{month}}}")
     master = _project(tmp_path, src, _VALID_FILES)
     issues = Issues()
