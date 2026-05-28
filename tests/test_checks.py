@@ -384,6 +384,48 @@ def test_section_subsection_subsubsection_dont_fire_uf_f11(tmp_path):
     assert "UF-F11" not in _rule_ids(issues)
 
 
+def test_abstract_under_350_words_does_not_fire_uf_f15(tmp_path):
+    files = dict(_VALID_FILES)
+    files["abs.tex"] = " ".join(["word"] * 350) + "\n"
+    master = _project(tmp_path, _VALID, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F15" not in _rule_ids(issues)
+
+
+def test_abstract_over_350_words_fires_uf_f15(tmp_path):
+    files = dict(_VALID_FILES)
+    files["abs.tex"] = " ".join(["word"] * 351) + "\n"
+    master = _project(tmp_path, _VALID, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f15 = [f for f in issues.findings if f.rule_id == "UF-F15"]
+    assert len(f15) == 1
+    assert "351" in (f15[0].observed or "")
+    assert f15[0].severity == MUST_FIX
+
+
+def test_abstract_word_count_strips_latex_commands_for_uf_f15(tmp_path):
+    # \textbf{word} contributes 1 word ("word"), \\ doesn't. \LaTeX is a command,
+    # also doesn't contribute. Detector must not over-count LaTeX commands.
+    files = dict(_VALID_FILES)
+    files["abs.tex"] = " ".join(["\\textbf{word}"] * 350) + "\n"
+    master = _project(tmp_path, _VALID, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F15" not in _rule_ids(issues)
+
+
+def test_abstract_missing_file_does_not_fire_uf_f15(tmp_path):
+    # If abs.tex doesn't exist, UF-P1 handles that. F15 should silently skip.
+    files = dict(_VALID_FILES)
+    del files["abs.tex"]
+    master = _project(tmp_path, _VALID, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F15" not in _rule_ids(issues)
+
+
 def test_parindent_zero_in_comment_does_not_fire_uf_f7(tmp_path):
     src = _VALID.replace(
         r"\begin{document}",
