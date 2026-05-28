@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Remove `editMode` from the \\documentclass options before submitting.",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "editMode option present in \\documentclass",
+      "required": "editMode removed before submission",
+      "rule_id": "UF-D1",
+      "severity": "review",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-d1--editmode-option-not-left-on-for-submission"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 0,
+    "exit_reason": "clean",
+    "must_fix_count": 0,
+    "review_count": 1
+  },
+  "template_version": null
+}

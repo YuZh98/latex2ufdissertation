@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "If you didn't need to, remove `overrideTitles` / `overrideChapters` from \\documentclass to silence the template's warning.",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "overrideTitles option present in \\documentclass",
+      "required": "overrideTitles removed before submission",
+      "rule_id": "UF-D3",
+      "severity": "review",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-d3--overridetitles--overridechapters-options"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 0,
+    "exit_reason": "clean",
+    "must_fix_count": 0,
+    "review_count": 1
+  },
+  "template_version": null
+}
