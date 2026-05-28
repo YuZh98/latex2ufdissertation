@@ -175,6 +175,54 @@ def test_valid_degree_month_does_not_fire_uf_f14(tmp_path, month):
     assert "UF-F14" not in _rule_ids(issues)
 
 
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("14pt", "16pt"),
+        ("10pt", "12pt"),
+        ("18pt", "22pt"),
+    ],
+)
+def test_fontsize_selectfont_fires_uf_f3(tmp_path, args):
+    body, baseline = args
+    override = f"\\fontsize{{{body}}}{{{baseline}}}\\selectfont"
+    src = _VALID.replace(r"\begin{document}", r"\begin{document}" + "\n" + override)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert len(f3) == 1
+    assert override in (f3[0].observed or "")
+    assert f3[0].severity == MUST_FIX
+
+
+@pytest.mark.parametrize(
+    "relative_size",
+    [r"\small", r"\large", r"\Large", r"\tiny", r"\Huge"],
+)
+def test_relative_size_commands_do_not_fire_uf_f3_v01(tmp_path, relative_size):
+    # Catalog scope: relative-size commands (\small, \large, etc.) ARE listed
+    # as F3 overrides, but body-vs-caption/heading context distinction is
+    # genuinely hard. v0.1 detector deliberately skips them; this test
+    # pins the deferral so a future widening doesn't slip in unnoticed.
+    src = _VALID.replace(r"\begin{document}", r"\begin{document}" + "\n" + relative_size)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F3" not in _rule_ids(issues)
+
+
+def test_fontsize_in_comment_does_not_fire_uf_f3(tmp_path):
+    src = _VALID.replace(
+        r"\begin{document}",
+        r"\begin{document}" + "\n" + r"% \fontsize{14pt}{16pt}\selectfont as comment",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F3" not in _rule_ids(issues)
+
+
 @pytest.mark.parametrize("override", [r"\justifying", r"\justify"])
 def test_text_alignment_override_fires_uf_f5(tmp_path, override):
     # Catalog § UF-F5: \justifying and \justify override the template's
