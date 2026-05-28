@@ -175,6 +175,68 @@ def test_valid_degree_month_does_not_fire_uf_f14(tmp_path, month):
     assert "UF-F14" not in _rule_ids(issues)
 
 
+@pytest.mark.parametrize("override", [r"\justifying", r"\justify"])
+def test_text_alignment_override_fires_uf_f5(tmp_path, override):
+    # Catalog § UF-F5: \justifying and \justify override the template's
+    # \raggedright (cls:171). Detector must catch both forms.
+    src = _VALID.replace(r"\begin{document}", r"\begin{document}" + "\n" + override)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f5 = [f for f in issues.findings if f.rule_id == "UF-F5"]
+    assert len(f5) == 1
+    assert override in (f5[0].observed or "")
+    assert f5[0].severity == MUST_FIX
+
+
+@pytest.mark.parametrize(
+    "allowlist",
+    [
+        r"\sloppy",
+        r"\sloppypar",
+        r"\raggedright",  # reinforcing template's default is fine
+    ],
+)
+def test_text_alignment_allowlist_does_not_fire_uf_f5(tmp_path, allowlist):
+    # Catalog § UF-F5 allowlist: \sloppy / \sloppypar are line-breaking
+    # helpers, not alignment overrides. \raggedright is the template's
+    # own command; reinforcing it is harmless.
+    src = _VALID.replace(r"\begin{document}", r"\begin{document}" + "\n" + allowlist)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F5" not in _rule_ids(issues)
+
+
+def test_sloppy_on_same_line_as_documentclass_does_not_fire_uf_f5(tmp_path):
+    # Catalog § UF-F5 explicitly calls out the
+    # `\documentclass[editMode]{ufdissertation}\sloppy` form (the bundled
+    # UF example uses it). The allowlist must apply regardless of
+    # position — same line as \documentclass included.
+    src = _VALID.replace(
+        r"\documentclass{ufdissertation}",
+        r"\documentclass[editMode]{ufdissertation}\sloppy",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F5" not in _rule_ids(issues)
+
+
+def test_justify_in_comment_does_not_fire_uf_f5(tmp_path):
+    # Comment-stripping should hide \justify-in-comments from the
+    # detector. A user writing "% TODO: should we \justify here?"
+    # must not trip the rule.
+    src = _VALID.replace(
+        r"\begin{document}",
+        r"\begin{document}" + "\n" + r"% TODO: should we \justify here?",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F5" not in _rule_ids(issues)
+
+
 @pytest.mark.parametrize("month", ["February", "June", "Spring", "01", "may"])
 def test_invalid_degree_month_value_fires_uf_f14(tmp_path, month):
     # Anything outside the enum (case-sensitive — "may" is invalid; UF

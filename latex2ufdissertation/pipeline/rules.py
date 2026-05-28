@@ -78,6 +78,10 @@ RULES: dict[str, Rule] = {
         SOURCE,
         "Text alignment (ragged-right)",
         _anchor("UF-F5", "text-alignment-ragged-right"),
+        fix_hint=(
+            "Remove the override; the UF template's `\\raggedright` (cls:171) "
+            "produces the required ragged-right alignment."
+        ),
     ),
     "UF-F6": Rule(
         "UF-F6",

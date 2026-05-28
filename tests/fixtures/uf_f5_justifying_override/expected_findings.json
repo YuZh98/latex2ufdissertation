@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Remove the override; the UF template's `\\raggedright` (cls:171) produces the required ragged-right alignment.",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\justifying overrides template's \\raggedright",
+      "required": "no \\justifying / \\justify override in source (template's \\raggedright produces ragged-right)",
+      "rule_id": "UF-F5",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f5--text-alignment-ragged-right"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}
