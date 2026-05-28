@@ -285,9 +285,7 @@ def test_chapters_in_comments_do_not_count_for_uf_f10(tmp_path):
 def test_duplicate_singleton_fires_uf_f9(tmp_path, duplicate_lines, cmd_label):
     # Catalog § UF-F9: only one abstract, table of contents, and reference list.
     # Each duplication form emits exactly one F9 finding citing the duplicated command.
-    src = _VALID.replace(
-        r"\begin{document}", duplicate_lines + "\n" + r"\begin{document}"
-    )
+    src = _VALID.replace(r"\begin{document}", duplicate_lines + "\n" + r"\begin{document}")
     master = _project(tmp_path, src, _VALID_FILES)
     issues = Issues()
     run_checks(master, tmp_path, issues)

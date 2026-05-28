@@ -126,6 +126,10 @@ RULES: dict[str, Rule] = {
         SOURCE,
         "Singleton structure",
         _anchor("UF-F9", "singleton-structure"),
+        fix_hint=(
+            "UF requires a singleton structure (one abstract, one ToC, "
+            "one reference list). Remove the duplicate."
+        ),
     ),
     "UF-F10": Rule(
         "UF-F10",

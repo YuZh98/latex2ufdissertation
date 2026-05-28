@@ -199,6 +199,43 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
             required="at least 3 chapters",
         )
 
+    # UF-F9: singleton structure. UF requires exactly one each of: abstract,
+    # ToC, reference list. Detector counts duplicate \set*File / \tableofcontents
+    # / \bibliography calls and flags manual \chapter{ABSTRACT|REFERENCES} which
+    # duplicate template-auto sections.
+    _F9_SINGLETONS = (
+        r"\setAbstractFile",
+        r"\setReferenceFile",
+        r"\tableofcontents",
+        r"\bibliography",
+    )
+    for singleton in _F9_SINGLETONS:
+        # Trailing (?![a-zA-Z]) prevents \tableofcontents from matching e.g.
+        # a hypothetical \tableofcontentsFoo command.
+        pat = re.escape(singleton) + r"(?![a-zA-Z])"
+        count = len(re.findall(pat, nc))
+        if count > 1:
+            issues.add(
+                "UF-F9",
+                location=rel,
+                observed=f"{singleton} called {count} times (must be singleton)",
+                required=f"exactly one {singleton} call",
+            )
+    for manual_chapter in ("ABSTRACT", "REFERENCES"):
+        pat = r"\\chapter\s*\{" + manual_chapter + r"\}"
+        if re.search(pat, nc):
+            issues.add(
+                "UF-F9",
+                location=rel,
+                observed=(
+                    f"\\chapter{{{manual_chapter}}} duplicates template's auto-generated section"
+                ),
+                required=(
+                    f"remove \\chapter{{{manual_chapter}}}; "
+                    "template handles this section automatically"
+                ),
+            )
+
     # UF-F5: text-alignment overrides. Template's \raggedright (cls:171) is the
     # ragged-right behavior UF requires. \justifying and \justify both override
     # it. Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)
