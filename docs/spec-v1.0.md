@@ -76,7 +76,7 @@ Grouped by rule category. Each finding includes:
 
 ### Machine-readable JSON (`--json`)
 
-A versioned schema documented in `docs/json-schema.md` (forthcoming, see § 8 acceptance criterion 5). Stdout is JSON only; progress goes to stderr. The schema includes:
+A versioned schema documented in [`json-schema.md`](./json-schema.md). Stdout is JSON only; progress goes to stderr. The schema includes:
 
 - `schema_version`
 - `input`: path and detected mode (`zip` / `dir` / `pdf`)
