@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -60,13 +61,13 @@ def test_fixture_snapshots(fixture: Path):
     expected_json = json.loads(expected_json_path.read_text(encoding="utf-8"))
     expected_report = expected_report_path.read_text(encoding="utf-8")
 
-    # The new doc convention is one fixture → one rule fires; assert that
-    # rule_ids in the snapshot match what the live emitter produces. The
-    # full-dict equality below is the stronger gate; this is the hint a
-    # human reads first when something breaks.
-    assert {f["rule_id"] for f in actual_json["findings"]} == {
+    # Pre-check by rule_id multiset (not set), so a regression where two
+    # findings for the same rule collapse into one fails this gate with a
+    # clear message before the full-dict equality below. The full-dict
+    # assertion is the stronger gate; this is the hint a human reads first.
+    assert Counter(f["rule_id"] for f in actual_json["findings"]) == Counter(
         f["rule_id"] for f in expected_json["findings"]
-    }, f"{fixture.name}: rule_id set diverged from snapshot"
+    ), f"{fixture.name}: rule_id multiset diverged from snapshot"
 
     assert actual_json == expected_json, (
         f"{fixture.name}: JSON snapshot mismatch. "

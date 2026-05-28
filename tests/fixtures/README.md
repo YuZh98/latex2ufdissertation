@@ -17,7 +17,9 @@ tests/fixtures/
     expected_report.txt          # `format_human(issues)` byte-for-byte
 ```
 
-Slug convention: `<rule_id_lowercase>_<short_keyword>`, e.g. `uf_d1_editmode`, `uf_d3_override_options`. Group fixtures (one input naturally violating multiple rules) use the group label, e.g. `uf_f_required_metadata`.
+Slug convention: `<rule_id_lowercase>_<short_keyword>`, e.g. `uf_d1_editmode`, `uf_d3_override_options`. Group fixtures (one input naturally violating multiple rules) use the group label, e.g. `uf_f_required_metadata`. When one rule needs multiple distinct broken inputs (e.g. `UF-F8` with the acknowledgements file missing vs the references file missing), append a discriminator: `uf_f8_missing_ack`, `uf_f8_missing_refs`.
+
+The companion-file layout shown above (`ack.tex`, `abs.tex`, `refs.bib`, `bio.tex` as empty stubs) is **a convention, not a requirement**. The snapshot harness does not enforce it. Fixtures that intentionally omit one — say, a `UF-P1` fixture whose entire point is a missing `refs.bib` — should simply omit the file; the missing companion is part of the broken input under test.
 
 ## How the snapshot harness works
 
