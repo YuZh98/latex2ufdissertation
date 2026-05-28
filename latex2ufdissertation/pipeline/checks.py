@@ -125,6 +125,26 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
             required="editMode removed before submission",
         )
 
+    # UF-F5: text-alignment overrides. Template's \raggedright (cls:171) is the
+    # ragged-right behavior UF requires. \justifying and \justify both override
+    # it. Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)
+    # are line-breaking helpers, not alignment overrides — they aren't in this
+    # scan, so they're silently ignored regardless of position. \raggedright
+    # itself is also silent because we only look for the override commands.
+    # Trailing (?![a-zA-Z]) ensures \justify does not match the \justify prefix
+    # inside \justifying (which has its own match) or any \justifyFoo variant.
+    for cmd in (r"\justifying", r"\justify"):
+        for _ in re.finditer(re.escape(cmd) + r"(?![a-zA-Z])", nc):
+            issues.add(
+                "UF-F5",
+                location=rel,
+                observed=f"{cmd} overrides template's \\raggedright",
+                required=(
+                    "no \\justifying / \\justify override in source "
+                    "(template's \\raggedright produces ragged-right)"
+                ),
+            )
+
     # UF-D2: non-LuaLaTeX compiler hint
     hint = re.search(r"%\s*!TEX\s+program\s*=\s*(pdflatex|xelatex)", raw)
     if hint:
