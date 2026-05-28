@@ -117,7 +117,9 @@ Consumers that need to distinguish failure modes should switch on `exit_reason`,
 
 ## Determinism
 
-Two `--dry-run --json` runs against the same input must produce byte-identical stdout. The contract rests on three guarantees, each pinned by a test in `tests/test_determinism.py`:
+Two `--dry-run --json` runs against the same input must produce byte-identical stdout. This contract is pinned by `tests/test_determinism.py` (byte-identical stdout across two consecutive runs on the demo dissertation).
+
+The byte-identical guarantee rests on three implementation invariants:
 
 1. `findings` sorted by `(layer, rule_id, location)`
 2. Top-level dict serialized with `json.dumps(..., sort_keys=True)`

@@ -9,6 +9,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 ### Added
 - `docs/spec-v1.0.md`: v1.0 product specification (goal, scope, inputs, outputs, acceptance criteria)
 - `docs/uf-rules.md`: canonical UF rule catalog (`UF-F1` … `UF-A2`) with citations and severity tiers
+- `docs/json-schema.md`: authoritative JSON output schema reference (closes v1.0 acceptance gate 5)
+- `latex2ufdissertation/pipeline/template/README.md`: provenance + re-sync procedure for the vendored UF template
 - `examples/demo_dissertation/`: known-good dissertation satisfying every must-fix rule; committed `main.pdf` enables PDF-layer tests without a TeX install
 - `--demo` flag: prints the GitHub URL of the bundled demo (and local path for source checkouts)
 - `latex2ufdissertation/pipeline/rules.py`: single-source-of-truth `Rule` dataclass + `RULES` dict for all 29 catalog entries
