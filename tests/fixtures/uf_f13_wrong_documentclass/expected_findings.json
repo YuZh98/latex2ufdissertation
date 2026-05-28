@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Set \\documentclass{ufdissertation} (Fall 2025+ template required).",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\documentclass{article}",
+      "required": "\\documentclass{ufdissertation}",
+      "rule_id": "UF-F13",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f13--document-class-is-ufdissertation"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}
