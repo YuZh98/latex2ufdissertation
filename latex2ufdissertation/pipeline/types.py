@@ -42,7 +42,8 @@ class MissingToolchain(ConverterError):
 @dataclass(frozen=True)
 class Finding:
     """One rule violation, as emitted by a check and consumed by the
-    report formatter. Shape is frozen at v1.0 per docs/spec-v1.0.md §5.
+    report formatter. Shape documented in docs/json-schema.md and frozen
+    at v1.0 per docs/spec-v1.0.md §5.
     """
 
     severity: str
