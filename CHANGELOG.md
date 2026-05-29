@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+### Added
+- `release.yml`: pushing a `vX.Y.Z` tag publishes a GitHub Release with notes from the matching CHANGELOG section and the bundled demo PDF attached
+
 ### Changed
 - JSON output: added `detected_mode` (`dir`/`zip`/`git`/`pdf`/`unknown`); `template_version` now emits `"unknown"` instead of `null` when undetectable — reconciles `format_json` with the locked `spec-v1.0.md §5` contract (#12)
 
