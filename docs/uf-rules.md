@@ -349,7 +349,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Severity:** must-fix
 - **Source:** C1:542-596 — each `\set*File` macro saves a filename; template `\input{...}` calls it
 - **Layer:** source
-- **Strategy:** for each `\set*File{name}` (or `\set*File[ext]{name}`) found, verify `name.tex` (or `name.<ext>`) exists in project. For `\setReferenceFile{bibname}{style}`, verify `bibname.bib` exists.
+- **Strategy:** for each of the 8 `\set*File` macros defined by the class (C1:540-596) — `\setCopyrightFile`, `\setDedicationFile`, `\setAcknowledgementsFile`, `\setAbbreviationsFile`, `\setAbstractFile`, `\setAppendixFile`, `\setReferenceFile`, `\setBiographicalFile` — when present in source, verify the companion `name.tex` (or `name.<ext>`) exists in project. For `\setReferenceFile{bibname}{style}`, verify `bibname.bib` exists. P1 applies to any of the 8 present; the required/optional distinction is UF-F8's concern (only the four required macros fire F8 "not set" when absent — see § UF-F8).
 - **v0.1 status:** this was E3–E9. Fix `_setfile_arg` regex to handle two-arg `\setReferenceFile{bibname}{style}` correctly without producing `bibname.bib.bib` lookup.
 
 ---

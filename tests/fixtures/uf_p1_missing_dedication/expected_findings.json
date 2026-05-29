@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "fix_hint": "Create the named file in the project root (or fix the macro argument).",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\setDedicationFile{'dedication'} but no file found in project root",
+      "required": "dedication (or dedication.tex) exists in project root",
+      "rule_id": "UF-P1",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 1,
+    "exit_reason": "must_fix_present",
+    "must_fix_count": 1,
+    "review_count": 0
+  },
+  "template_version": null
+}
