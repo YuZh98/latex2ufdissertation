@@ -64,10 +64,12 @@ def test_json_schema_doc_documents_every_emitted_key():
     doc = (REPO_ROOT / "docs" / "json-schema.md").read_text(encoding="utf-8")
     for key in keys:
         assert f"`{key}`" in doc, f"format_json key {key!r} undocumented in json-schema.md"
-    # The reconciled semantics must be documented specifically, not just the
-    # word "unknown" (which also appears in unrelated exit_reason prose).
-    assert "detected_mode" in doc
+    # The reconciled semantics must be documented per-field, not just the
+    # bare word "unknown" (which also appears in unrelated exit_reason prose).
+    # template_version row:
     assert '`"unknown"` when undetectable' in doc
+    # detected_mode row (its own enum incl. "unknown"):
+    assert '`"pdf"`, or `"unknown"`' in doc
 
 
 def test_format_json_summary_shape():

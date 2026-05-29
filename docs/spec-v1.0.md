@@ -22,7 +22,7 @@ The tool is **advisory**. The student remains responsible for the dissertation. 
 
 - Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+ UF template)
 - Two-layer validation: LaTeX source + compiled PDF
-- Three input modes: project zip, project directory, compiled PDF
+- Four input modes: project zip, project directory, git URL, compiled PDF (PDF-only input is the v1.0 addition)
 - Compilation as a means to obtain the PDF when source input is given (utility, not headline feature)
 - CLI as the engine
 - Machine-readable JSON output for downstream tooling
@@ -178,7 +178,7 @@ A release is v1.0.0 when **all** of the following hold:
 1. Every `must-fix` rule in [`uf-rules.md`](./uf-rules.md) has at least one passing check in the codebase.
 2. The known-good demo dissertation at `examples/demo_dissertation/` produces a report with zero must-fix and zero review findings.
 3. Each `must-fix` rule has at least one synthetic broken-input fixture in `tests/fixtures/` that triggers the rule and only that rule (or a documented set if the input naturally violates multiple).
-4. All three input modes (`zip`, `dir`, `pdf`) are exercised in the test suite.
+4. All four input modes (`zip`, `dir`, `git`, `pdf`) are exercised in the test suite.
 5. The JSON output schema is documented in `docs/json-schema.md` and version field is mandatory.
 6. The public API is documented as a stable, enumerated export list.
 7. The README states clearly that the tool is advisory and the student remains responsible.
