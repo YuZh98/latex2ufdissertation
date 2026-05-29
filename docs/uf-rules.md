@@ -175,9 +175,9 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Severity:** must-fix
 - **Source:** S1 (14-section list) + C1:666-1004 (auto-insertion order)
 - **Layer:** source primary
-- **Strategy:** template enforces order. Source: presence check on `\set*File` macros required for each conditional + unconditional section.
+- **Strategy:** template enforces order. Source: presence check on `\set*File` macros required for each conditional + unconditional section. Title-page metadata macros are owned by UF-F14, not F8 — F8 covers section files and `\have*true` flags only.
 - **Required (unconditional):**
-  - Title page → `\title`, `\author`, `\degreeType`, `\thesisType`, `\degreeYear`, `\degreeMonth`, `\major`, `\chair` (all source-level)
+  - Title page → see UF-F14 (title-page metadata macros: `\title`, `\author`, `\degreeType`, `\thesisType`, `\degreeYear`, `\degreeMonth`, `\major`, `\chair`)
   - Copyright page → auto-generated (no student input)
   - Acknowledgements → `\setAcknowledgementsFile{name}` + file exists
   - Table of Contents → auto (no student input)

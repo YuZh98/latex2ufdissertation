@@ -140,3 +140,27 @@ def test_exit_reason_enum_is_non_empty_and_finite():
     assert "missing_toolchain" in EXIT_REASONS
     # Sanity bound: we don't want the enum sprawling.
     assert 5 <= len(EXIT_REASONS) <= 12
+
+
+def _catalog_section_body(rule_id: str) -> str:
+    """Return the catalog body text for a single `### UF-XYZ` heading."""
+    text = CATALOG.read_text(encoding="utf-8")
+    parts = re.split(r"^###\s+(UF-[A-Z]\d+)\b[^\n]*\n", text, flags=re.MULTILINE)
+    for i in range(1, len(parts), 2):
+        if parts[i] == rule_id:
+            return parts[i + 1] if i + 1 < len(parts) else ""
+    raise AssertionError(f"{rule_id} section not found in catalog")
+
+
+def test_f8_delegates_title_page_metadata_to_f14():
+    # Drift gate (#24): the title-page metadata macros are owned by UF-F14,
+    # not UF-F8. F8 must delegate, not independently re-own them; otherwise
+    # the catalog disagrees with itself about which rule fires when title-
+    # page metadata is missing (the detector picks F14).
+    f8 = _catalog_section_body("UF-F8")
+    f14 = _catalog_section_body("UF-F14")
+    assert "UF-F14" in f8, "UF-F8 must cross-reference UF-F14 for title-page metadata"
+    assert "owned by UF-F14" in f8, "UF-F8 strategy must state F14 owns title-page metadata"
+    # F14 remains the authoritative owner: it still enumerates the macros.
+    for macro in (r"\title", r"\degreeYear", r"\chair"):
+        assert macro in f14, f"UF-F14 must still enumerate {macro}"
