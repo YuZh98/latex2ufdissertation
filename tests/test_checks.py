@@ -791,3 +791,215 @@ def test_no_override_options_does_not_fire_uf_d3(tmp_path):
     issues = Issues()
     run_checks(master, tmp_path, issues)
     assert "UF-D3" not in _rule_ids(issues)
+
+
+# ---------------------------------------------------------------------------
+# Bug-fix regression tests
+# ---------------------------------------------------------------------------
+
+
+def test_f3_fontsize_in_verbatim_no_finding(tmp_path):
+    # \fontsize inside \begin{verbatim} must not fire UF-F3.
+    src = _VALID.replace(
+        r"\begin{document}",
+        "\\begin{document}\n\\begin{verbatim}\n\\fontsize{10}{12}\\selectfont\n\\end{verbatim}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F3" not in _rule_ids(issues)
+
+
+def test_s3_label_in_transitive_input_no_finding(tmp_path):
+    # main → chapter1.tex → ch1body.tex where \label lives; \ref in main must resolve.
+    master_src = (
+        "\\documentclass{ufdissertation}\n"
+        "\\title{X}\n\\author{Y}\n\\degreeType{Doctor of Philosophy}\n"
+        "\\thesisType{Dissertation}\n\\degreeYear{2026}\n\\degreeMonth{May}\n"
+        "\\major{Computer Science}\n\\chair{Advisor}\n"
+        "\\setAcknowledgementsFile{ack}\n\\setAbstractFile{abs}\n"
+        "\\setReferenceFile{refs}{agsm}\n\\setBiographicalFile{bio}\n"
+        "\\begin{document}\n"
+        "\\input{chapter1}\n"
+        "\\ref{sec:deep}\n"
+        "\\chapter{Main Body}\n\\chapter{Closing Summary}\n"
+        "\\end{document}\n"
+    )
+    extra = dict(_VALID_FILES)
+    extra["chapter1.tex"] = "\\chapter{Introduction}\n\\input{ch1body}\n"
+    extra["ch1body.tex"] = "\\label{sec:deep}\nSome text.\n"
+    master = _project(tmp_path, master_src, extra)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-S3" not in _rule_ids(issues)
+
+
+def test_s3_citep_broken_key_fires(tmp_path):
+    src = _VALID.replace(
+        "\\chapter{Introduction}",
+        "\\chapter{Introduction}\n\\citep{missing-key}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    s3 = [f for f in issues.findings if f.rule_id == "UF-S3"]
+    assert s3, "expected UF-S3 for \\citep{missing-key}"
+    assert any("missing-key" in (f.observed or "") for f in s3)
+
+
+def test_s3_string_entry_not_valid_cite_key_fires(tmp_path):
+    # @string defines an abbreviation name, not a citable entry; \cite{JMLR} should fire.
+    extra = dict(_VALID_FILES)
+    extra["refs.bib"] = '@string{JMLR = "Journal of Machine Learning Research"}\n'
+    src = _VALID.replace(
+        "\\chapter{Introduction}",
+        "\\chapter{Introduction}\n\\cite{JMLR}",
+    )
+    master = _project(tmp_path, src, extra)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    s3 = [f for f in issues.findings if f.rule_id == "UF-S3"]
+    assert s3, "expected UF-S3 for \\cite{JMLR} with JMLR defined only as @string"
+    assert any("JMLR" in (f.observed or "") for f in s3)
+
+
+def test_f10_starred_chapter_counts(tmp_path):
+    # \chapter*{...} must count toward the 3-chapter minimum.
+    src = (
+        "\\documentclass{ufdissertation}\n"
+        "\\title{X}\n\\author{Y}\n\\degreeType{Doctor of Philosophy}\n"
+        "\\thesisType{Dissertation}\n\\degreeYear{2026}\n\\degreeMonth{May}\n"
+        "\\major{Computer Science}\n\\chair{Advisor}\n"
+        "\\setAcknowledgementsFile{ack}\n\\setAbstractFile{abs}\n"
+        "\\setReferenceFile{refs}{agsm}\n\\setBiographicalFile{bio}\n"
+        "\\begin{document}\n"
+        "\\chapter*{Introduction}\n\\chapter*{Main Body}\n\\chapter*{Closing Summary}\n"
+        "\\end{document}\n"
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F10" not in _rule_ids(issues)
+
+
+def test_f2_multi_package_fires(tmp_path):
+    # \usepackage{amsmath,mathpazo} must detect mathpazo even though it is not the sole argument.
+    src = _VALID.replace(
+        "\\begin{document}",
+        "\\usepackage{amsmath,mathpazo}\n\\begin{document}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert f2, "expected UF-F2 for \\usepackage{amsmath,mathpazo}"
+    assert any("mathpazo" in (f.observed or "") for f in f2)
+
+
+def test_f7_observed_uses_actual_match_setlength(tmp_path):
+    # observed must reflect the unit in source, not a hardcoded '0pt'.
+    src = _VALID.replace(
+        "\\begin{document}",
+        "\\setlength{\\parindent}{0em}\n\\begin{document}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f7 = [f for f in issues.findings if f.rule_id == "UF-F7"]
+    assert f7, "expected UF-F7 for zero parindent"
+    assert any("0em" in (f.observed or "") for f in f7)
+
+
+def test_f7_observed_uses_actual_match_parindent_eq(tmp_path):
+    # The assignment form \parindent=0em must also report the actual unit.
+    src = _VALID.replace(
+        "\\begin{document}",
+        "\\parindent=0em\n\\begin{document}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f7 = [f for f in issues.findings if f.rule_id == "UF-F7"]
+    assert f7, "expected UF-F7 for zero parindent"
+    assert any("0em" in (f.observed or "") for f in f7)
+
+
+def test_f10_verbatim_chapter_in_included_file_not_counted(tmp_path):
+    # \chapter inside verbatim in an included file must not count toward the chapter minimum.
+    master_src = (
+        "\\documentclass{ufdissertation}\n"
+        "\\title{X}\n\\author{Y}\n\\degreeType{Doctor of Philosophy}\n"
+        "\\thesisType{Dissertation}\n\\degreeYear{2026}\n\\degreeMonth{May}\n"
+        "\\major{Computer Science}\n\\chair{Advisor}\n"
+        "\\setAcknowledgementsFile{ack}\n\\setAbstractFile{abs}\n"
+        "\\setReferenceFile{refs}{agsm}\n\\setBiographicalFile{bio}\n"
+        "\\begin{document}\n"
+        "\\chapter{Introduction}\n"
+        "\\input{body}\n"
+        "\\end{document}\n"
+    )
+    extra = dict(_VALID_FILES)
+    # body.tex has one real chapter + one verbatim-wrapped chapter; only 1 should count.
+    extra["body.tex"] = (
+        "\\chapter{Closing Summary}\n\\begin{verbatim}\n\\chapter{Fake Chapter}\n\\end{verbatim}\n"
+    )
+    master = _project(tmp_path, master_src, extra)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    # 2 real chapters (Introduction + Closing Summary) → UF-F10 must fire (< 3).
+    assert "UF-F10" in _rule_ids(issues)
+
+
+def test_s3_bib_key_with_space_after_brace_resolves(tmp_path):
+    # @article{ key, (space after brace) is valid BibTeX; cite must not fire UF-S3.
+    extra = dict(_VALID_FILES)
+    extra["refs.bib"] = "@article{ smith2023,\n  title = {Test},\n}\n"
+    src = _VALID.replace(
+        "\\chapter{Introduction}",
+        "\\chapter{Introduction}\n\\cite{smith2023}",
+    )
+    master = _project(tmp_path, src, extra)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    s3 = [f for f in issues.findings if f.rule_id == "UF-S3"]
+    assert not s3, f"unexpected UF-S3 for valid bib key with space after brace: {s3}"
+
+
+def test_f3_fontsize_in_lstlisting_no_finding(tmp_path):
+    # \fontsize inside \begin{lstlisting} must not fire UF-F3.
+    src = _VALID.replace(
+        r"\begin{document}",
+        "\\begin{document}\n\\begin{lstlisting}\n\\fontsize{10}{12}\\selectfont\n\\end{lstlisting}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F3" not in _rule_ids(issues)
+
+
+def test_f15_verbatim_in_abstract_not_counted(tmp_path):
+    # Words inside \begin{verbatim} in the abstract file must not count toward the 350-word limit.
+    extra = dict(_VALID_FILES)
+    # Abstract with 5 real words + a verbatim block of 350 words; total should stay <= 350.
+    verbatim_words = " ".join(["word"] * 350)
+    extra["abs.tex"] = (
+        f"Real abstract content here.\n\\begin{{verbatim}}\n{verbatim_words}\n\\end{{verbatim}}\n"
+    )
+    master = _project(tmp_path, _VALID, extra)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F15" not in _rule_ids(issues)
+
+
+def test_f2_same_package_both_forms_emits_once(tmp_path):
+    # Same forbidden package in both \usepackage{pkg} and \usepackage{pkg,other} must
+    # emit exactly one UF-F2 finding.
+    src = _VALID.replace(
+        "\\begin{document}",
+        "\\usepackage{mathpazo}\n\\usepackage{mathpazo,amsmath}\n\\begin{document}",
+    )
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2" and "mathpazo" in (f.observed or "")]
+    assert len(f2) == 1, f"expected exactly 1 UF-F2 for mathpazo, got {len(f2)}"

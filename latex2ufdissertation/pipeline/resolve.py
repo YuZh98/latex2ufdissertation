@@ -27,7 +27,7 @@ def _zip_extract_unwrapping(zip_path: Path, dest: Path) -> Path:
         for member in zf.namelist():
             target = (dest / member).resolve()
             if not str(target).startswith(dest_resolved):
-                raise ConverterError(f"zip-slip: {member}")
+                raise UnreadableInput(f"zip-slip: {member}")
         for member in zf.namelist():
             if member.startswith("__MACOSX/") or member.endswith("/.DS_Store"):
                 continue
@@ -48,9 +48,9 @@ def _clone_git(url: str, dest: Path) -> Path:
             capture_output=True,
         )
     except subprocess.TimeoutExpired as e:
-        raise ConverterError(f"git clone timed out after {RESOLVE_GIT_TIMEOUT}s: {url}") from e
+        raise UnreadableInput(f"git clone timed out after {RESOLVE_GIT_TIMEOUT}s: {url}") from e
     except subprocess.CalledProcessError as e:
-        raise ConverterError(f"git clone failed: {e.stderr.decode(errors='replace')}") from e
+        raise UnreadableInput(f"git clone failed: {e.stderr.decode(errors='replace')}") from e
     except FileNotFoundError as e:
         raise ConverterError("git is not installed") from e
     return dest
