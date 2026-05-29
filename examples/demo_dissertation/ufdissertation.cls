@@ -521,7 +521,11 @@
 \patchcmd{\listofObjects}{\listtablename}{\listalgorithmname}{}{}% to all be converted to the
 \patchcmd{\listofObjects}{\listtablename}{\listalgorithmname}{}{}% \listalgorithmname.
 \patchcmd{\listofObjects}{lot}{loa}{}{}%            Get the list of objects from the .loa file.
-\renewcommand*{\thealgorithm}{Object \thechapter-\arabic{object}. }
+% [demo fix] Redundant \thealgorithm redefinition removed: \floatname (below)
+% already prints "Object", and the clean \thealgorithm above
+% (\thechapter-\arabic{algorithm}) numbers objects correctly. Keeping this line
+% printed "Object Object 2-1." (doubled label). A newer UF template release
+% drops it; the validator's vendored template cls still carries it.
 
 %%% Now we do the reskin process; converting the default "algorithm" content to be "object" content.
 
@@ -537,7 +541,8 @@
     }%
         
 \floatname{algorithm}{Object}% Change the word "Algorithm" in the in-line text to be "Object".
-\renewcommand*{\thealgorithm}{Object \thechapter-\arabic{algorithm}. }
+% [demo fix] Redundant \thealgorithm redefinition removed (see note above) to
+% avoid the "Object Object 2-1." doubled label.
 %% NOTE ABOUT THE FOLLOWING \addObject COMMAND::
 %   I am still unclear about what exactly objects are, or how they are to be treated in the text. 
 %   This command is a temporary formating command, which can be adjusted to format the "object" input by an author, without the author actually needing to do much of anything, or knowing much of anything in the background.

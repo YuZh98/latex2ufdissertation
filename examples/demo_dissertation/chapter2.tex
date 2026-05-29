@@ -228,12 +228,14 @@ UF-F16 Subsection pairing       & review   & source \\
     report/.style={box, fill=gray!12, draw=gray!60},
     arrow/.style={-{Stealth[length=2mm]}, thick}
 ]
+    % Left column: source layer (blue, top) above PDF layer (green, bottom).
     \node[source] (s1) {\textbf{Source layer}\\override scans};
-    \node[source, below=of s1] (s2) {Source layer\\presence checks};
-    \node[pdf, right=18mm of s1] (p1) {\textbf{PDF layer}\\geometric};
-    \node[pdf, below=of p1] (p2) {PDF layer\\accessibility};
-    \node[agg, right=18mm of $(s1)!0.5!(s2)$, xshift=22mm] (a) {Findings\\aggregator};
-    \node[report, right=of a] (r) {Report\\(human / JSON)};
+    \node[source, below=4mm of s1] (s2) {Source layer\\presence checks};
+    \node[pdf, below=8mm of s2] (p1) {\textbf{PDF layer}\\geometric};
+    \node[pdf, below=4mm of p1] (p2) {PDF layer\\accessibility};
+    % Aggregator sits to the right of the whole stack; report to its right.
+    \node[agg, right=26mm of $(s2)!0.5!(p1)$] (a) {Findings\\aggregator};
+    \node[report, right=16mm of a] (r) {Report\\(human / JSON)};
     \draw[arrow, blue!60] (s1.east) -- (a.west);
     \draw[arrow, blue!60] (s2.east) -- (a.west);
     \draw[arrow, green!50!black] (p1.east) -- (a.west);
