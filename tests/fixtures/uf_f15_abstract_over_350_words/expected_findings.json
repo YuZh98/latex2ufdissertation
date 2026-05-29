@@ -1,4 +1,5 @@
 {
+  "detected_mode": "unknown",
   "findings": [
     {
       "fix_hint": "Trim the abstract to <= 350 words (catalog \u00a7 UF-F15, template's own abstractFile.tex specifies this cap).",
@@ -19,5 +20,5 @@
     "must_fix_count": 1,
     "review_count": 0
   },
-  "template_version": null
+  "template_version": "unknown"
 }

@@ -137,7 +137,8 @@ def format_json(issues: Issues) -> dict:
     return {
         "schema_version": SCHEMA_VERSION,
         "input": issues.input_path,
-        "template_version": issues.template_version,
+        "detected_mode": issues.detected_mode or "unknown",
+        "template_version": issues.template_version or "unknown",
         "findings": [asdict(f) for f in _sorted_for_json(issues)],
         "summary": {
             "must_fix_count": issues.must_fix_count(),

@@ -1,4 +1,5 @@
 {
+  "detected_mode": "unknown",
   "findings": [
     {
       "fix_hint": "Remove the `\\fontsize{...}{...}\\selectfont` override; the UF template's `\\LoadClass[12pt]` (cls:1) sets 12-point throughout.",
@@ -19,5 +20,5 @@
     "must_fix_count": 1,
     "review_count": 0
   },
-  "template_version": null
+  "template_version": "unknown"
 }

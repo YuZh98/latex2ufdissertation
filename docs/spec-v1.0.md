@@ -22,7 +22,7 @@ The tool is **advisory**. The student remains responsible for the dissertation. 
 
 - Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+ UF template)
 - Two-layer validation: LaTeX source + compiled PDF
-- Three input modes: project zip, project directory, compiled PDF
+- Four input modes: project zip, project directory, git URL, compiled PDF (PDF-only input is the v1.0 addition)
 - Compilation as a means to obtain the PDF when source input is given (utility, not headline feature)
 - CLI as the engine
 - Machine-readable JSON output for downstream tooling
@@ -79,7 +79,8 @@ Grouped by rule category. Each finding includes:
 A versioned schema documented in [`json-schema.md`](./json-schema.md). Stdout is JSON only; progress goes to stderr. The schema includes:
 
 - `schema_version`
-- `input`: path and detected mode (`zip` / `dir` / `pdf`)
+- `input`: the input string passed to the CLI
+- `detected_mode`: how the input was classified (`dir` / `zip` / `git` / `pdf` / `unknown`; `pdf` reserved for v1.0 PDF input)
 - `template_version`: detected UF template version, or `unknown`
 - `findings`: array of `{severity, rule_id, layer, location, observed, required, fix_hint, source_url}`
 - `summary`: `{must_fix_count, review_count, exit_code, exit_reason}`
@@ -177,7 +178,7 @@ A release is v1.0.0 when **all** of the following hold:
 1. Every `must-fix` rule in [`uf-rules.md`](./uf-rules.md) has at least one passing check in the codebase.
 2. The known-good demo dissertation at `examples/demo_dissertation/` produces a report with zero must-fix and zero review findings.
 3. Each `must-fix` rule has at least one synthetic broken-input fixture in `tests/fixtures/` that triggers the rule and only that rule (or a documented set if the input naturally violates multiple).
-4. All three input modes (`zip`, `dir`, `pdf`) are exercised in the test suite.
+4. All four input modes (`zip`, `dir`, `git`, `pdf`) are exercised in the test suite.
 5. The JSON output schema is documented in `docs/json-schema.md` and version field is mandatory.
 6. The public API is documented as a stable, enumerated export list.
 7. The README states clearly that the tool is advisory and the student remains responsible.

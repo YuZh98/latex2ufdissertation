@@ -1,4 +1,5 @@
 {
+  "detected_mode": "unknown",
   "findings": [
     {
       "fix_hint": "Declare the missing \\label{...} (for \\ref / \\eqref / \\pageref) or add the bib key to the .bib file (for \\cite).",
@@ -19,5 +20,5 @@
     "must_fix_count": 1,
     "review_count": 0
   },
-  "template_version": null
+  "template_version": "unknown"
 }

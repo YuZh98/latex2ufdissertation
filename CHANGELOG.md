@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+### Changed
+- JSON output: added `detected_mode` (`dir`/`zip`/`git`/`pdf`/`unknown`); `template_version` now emits `"unknown"` instead of `null` when undetectable — reconciles `format_json` with the locked `spec-v1.0.md §5` contract (#12)
+
 ### Fixed
 - `UF-P1` / `UF-F8`: `_SETFILE_RULES` now covers all 8 `\set*File` macros (cls:540-596); optional macros (copyright, dedication, abbreviations, appendix) get the P1 companion-file check when present without firing a spurious F8 "not set" when absent (#20)
 

@@ -1,4 +1,5 @@
 {
+  "detected_mode": "unknown",
   "findings": [
     {
       "fix_hint": "Remove the margin override; the UF template's `geometry` package (cls:153-157) sets the required 1 inch all around.",
@@ -19,5 +20,5 @@
     "must_fix_count": 1,
     "review_count": 0
   },
-  "template_version": null
+  "template_version": "unknown"
 }
