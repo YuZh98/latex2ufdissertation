@@ -1,0 +1,52 @@
+name: Release
+
+# Publish a GitHub Release whenever a vX.Y.Z tag is pushed. Release notes
+# are the matching CHANGELOG section; the bundled demo PDF is attached as
+# an asset. The release sequence (rotate CHANGELOG -> commit -> annotated
+# tag -> push) stays manual; this only automates the Release object so a
+# pushed tag is never left without one.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Extract release notes from CHANGELOG
+        id: changelog
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Body = lines between `## [VERSION]` and the next `## [` heading,
+          # with trailing blank lines and `---` separators stripped.
+          NOTES=$(awk "/^## \[$VERSION\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md \
+            | awk '
+              { lines[NR] = $0 }
+              END {
+                last = NR
+                while (last > 0 && (lines[last] ~ /^[[:space:]]*$/ || lines[last] ~ /^---[[:space:]]*$/)) last--
+                for (i = 1; i <= last; i++) print lines[i]
+              }')
+          if [[ -z "$(echo "$NOTES" | tr -d '[:space:]')" ]]; then
+            echo "ERROR: CHANGELOG.md has no (or an empty) [$VERSION] section" >&2
+            exit 1
+          fi
+          {
+            echo "notes<<EOF"
+            echo "$NOTES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          body: ${{ steps.changelog.outputs.notes }}
+          files: examples/demo_dissertation/main.pdf
