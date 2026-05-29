@@ -87,18 +87,23 @@ def input_mode(input_str: str) -> str:
     """Classify the input source as one of the JSON schema's detected modes.
 
     Returns "git", "zip", "pdf", "dir", or "unknown". Pure string/path
-    classification (no extraction); mirrors the dispatch in `resolve()`.
+    classification (no extraction).
+
+    Branch order MUST mirror `resolve()`'s dispatch: git URL, then
+    directory, then `.zip`. A directory whose name ends in `.zip` is a
+    directory to `resolve()`, so it must read as "dir" here too. ("pdf" is
+    reserved for v1.0 PDF input; `resolve()` does not accept it yet.)
     """
     if _looks_like_git_url(input_str):
         return "git"
     p = Path(input_str)
+    if p.is_dir():
+        return "dir"
     suffix = p.suffix.lower()
     if suffix == ".zip":
         return "zip"
     if suffix == ".pdf":
         return "pdf"
-    if p.is_dir():
-        return "dir"
     return "unknown"
 
 

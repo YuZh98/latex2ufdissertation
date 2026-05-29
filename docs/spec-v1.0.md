@@ -79,7 +79,8 @@ Grouped by rule category. Each finding includes:
 A versioned schema documented in [`json-schema.md`](./json-schema.md). Stdout is JSON only; progress goes to stderr. The schema includes:
 
 - `schema_version`
-- `input`: path and detected mode (`zip` / `dir` / `pdf`)
+- `input`: the input string passed to the CLI
+- `detected_mode`: how the input was classified (`dir` / `zip` / `git` / `pdf` / `unknown`; `pdf` reserved for v1.0 PDF input)
 - `template_version`: detected UF template version, or `unknown`
 - `findings`: array of `{severity, rule_id, layer, location, observed, required, fix_hint, source_url}`
 - `summary`: `{must_fix_count, review_count, exit_code, exit_reason}`

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from latex2ufdissertation.cli import (
@@ -42,6 +45,37 @@ def test_version_flag_exits_zero() -> None:
     with pytest.raises(SystemExit) as exc_info:
         main(["--version"])
     assert exc_info.value.code == 0
+
+
+def test_main_json_directory_input_reports_detected_mode_dir(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # End-to-end wiring: cli.main must classify a directory input and thread
+    # detected_mode into the JSON payload.
+    (tmp_path / "main.tex").write_text(
+        r"\documentclass{ufdissertation}" + "\n\\begin{document}\n\\end{document}\n",
+        encoding="utf-8",
+    )
+    rc = main(["--json", "--dry-run", str(tmp_path)])
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["detected_mode"] == "dir"
+    assert payload["input"] == str(tmp_path)
+    assert rc in (0, 1)  # findings may or may not fire; mode is the assertion
+
+
+def test_main_json_pdf_input_reports_pdf_mode_and_unreadable(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # PDF input is reserved for v1.0: detected_mode is "pdf" but resolve()
+    # rejects it, so the JSON pairs detected_mode "pdf" with the fatal
+    # unreadable_input exit_reason. Documents the live behavior gap.
+    pdf = tmp_path / "paper.pdf"
+    pdf.write_bytes(b"%PDF-1.7\n")
+    rc = main(["--json", str(pdf)])
+    payload = json.loads(capsys.readouterr().out)
+    assert rc == 2
+    assert payload["detected_mode"] == "pdf"
+    assert payload["summary"]["exit_reason"] == "unreadable_input"
 
 
 def test_issues_add_goes_to_stderr_not_stdout(
