@@ -1,7 +1,7 @@
 
 [both layer]
   (F-series)
-    [must-fix] UF-F2 main.tex — font-replacement package `mathpazo` loaded (required: remove \usepackage{mathpazo} (template provides Times / Arial))
+    [must-fix] UF-F2 main.tex — \fontfamily{...}\selectfont override present in source (required: no manual \fontfamily override (template handles font selection))
       fix: Remove the font override; UF requires Times New Roman or Arial (cls:167-169 loads them); the override produces a non-conforming font.
       see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f2--font-family
 
