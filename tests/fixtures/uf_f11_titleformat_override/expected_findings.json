@@ -1,4 +1,5 @@
 {
+  "detected_mode": "unknown",
   "findings": [
     {
       "fix_hint": "Remove the `\\titleformat` redefinition; the UF template enforces the 5-tier heading hierarchy by construction (cls:304-362).",
@@ -19,5 +20,5 @@
     "must_fix_count": 1,
     "review_count": 0
   },
-  "template_version": null
+  "template_version": "unknown"
 }

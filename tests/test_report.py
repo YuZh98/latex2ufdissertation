@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from latex2ufdissertation.pipeline.report import (
     SCHEMA_VERSION,
@@ -11,6 +12,8 @@ from latex2ufdissertation.pipeline.report import (
     format_json,
 )
 from latex2ufdissertation.pipeline.types import Issues
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _populated_issues() -> Issues:
@@ -27,11 +30,42 @@ def test_format_json_top_level_keys_are_frozen_v1_shape():
     assert set(payload.keys()) == {
         "schema_version",
         "input",
+        "detected_mode",
         "template_version",
         "findings",
         "summary",
     }
     assert payload["schema_version"] == SCHEMA_VERSION == "1.0"
+
+
+def test_format_json_unknown_fields_emit_unknown_string():
+    # Spec § 5: template_version is "the detected version, or `unknown`".
+    # detected_mode follows the same rule when the input mode is unset.
+    payload = format_json(Issues())
+    assert payload["template_version"] == "unknown"
+    assert payload["detected_mode"] == "unknown"
+
+
+def test_format_json_detected_mode_reflects_value():
+    issues = Issues()
+    issues.detected_mode = "zip"
+    issues.template_version = "Fall 2025"
+    payload = format_json(issues)
+    assert payload["detected_mode"] == "zip"
+    assert payload["template_version"] == "Fall 2025"
+
+
+def test_json_schema_doc_documents_every_emitted_key():
+    # Drift gate (#12): every top-level key format_json emits must be
+    # documented in docs/json-schema.md, so the code and the schema doc
+    # cannot diverge silently. The reconciled fields (detected_mode and the
+    # template_version "unknown" semantics) must be present.
+    keys = set(format_json(Issues()).keys())
+    doc = (REPO_ROOT / "docs" / "json-schema.md").read_text(encoding="utf-8")
+    for key in keys:
+        assert f"`{key}`" in doc, f"format_json key {key!r} undocumented in json-schema.md"
+    assert "detected_mode" in doc
+    assert "unknown" in doc
 
 
 def test_format_json_summary_shape():

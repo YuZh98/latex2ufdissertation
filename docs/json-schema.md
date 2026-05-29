@@ -21,6 +21,7 @@ Pipe-friendly:
 {
   "schema_version": "1.0",
   "input": "my-thesis/",
+  "detected_mode": "dir",
   "template_version": "Fall 2025",
   "findings": [ /* zero or more Finding objects */ ],
   "summary": {
@@ -38,7 +39,8 @@ Pipe-friendly:
 |---|---|---|---|
 | `schema_version` | string | no | Always `"1.0"` within the v1.x series. Bump on breaking shape change only. |
 | `input` | string | yes | The exact input string passed to the CLI (path, zip filename, or git URL). `null` only on fatal paths where the input was never resolved. |
-| `template_version` | string | yes | Detected UF template version (e.g. `"Fall 2025"`). `null` when undetectable. |
+| `detected_mode` | string | no | How the input was classified: `"dir"`, `"zip"`, `"git"`, `"pdf"`, or `"unknown"`. (`"pdf"` is reserved for v1.0 PDF-only input.) |
+| `template_version` | string | no | Detected UF template version (e.g. `"Fall 2025"`), or `"unknown"` when undetectable (per spec § 5). |
 | `findings` | array | no | Zero or more Finding objects. Empty array on clean runs and on fatal-input runs. |
 | `summary` | object | no | See `summary` below. |
 

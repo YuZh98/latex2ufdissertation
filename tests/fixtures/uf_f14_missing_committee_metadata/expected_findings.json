@@ -1,4 +1,5 @@
 {
+  "detected_mode": "unknown",
   "findings": [
     {
       "fix_hint": "Set the missing metadata macro with a non-empty value in main.tex.",
@@ -49,5 +50,5 @@
     "must_fix_count": 4,
     "review_count": 0
   },
-  "template_version": null
+  "template_version": "unknown"
 }

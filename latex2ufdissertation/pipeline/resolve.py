@@ -83,6 +83,25 @@ def resolve(input_str: str) -> tuple[Path, Callable[[], None]]:
     raise UnreadableInput(f"unsupported input type: {input_str}")
 
 
+def input_mode(input_str: str) -> str:
+    """Classify the input source as one of the JSON schema's detected modes.
+
+    Returns "git", "zip", "pdf", "dir", or "unknown". Pure string/path
+    classification (no extraction); mirrors the dispatch in `resolve()`.
+    """
+    if _looks_like_git_url(input_str):
+        return "git"
+    p = Path(input_str)
+    suffix = p.suffix.lower()
+    if suffix == ".zip":
+        return "zip"
+    if suffix == ".pdf":
+        return "pdf"
+    if p.is_dir():
+        return "dir"
+    return "unknown"
+
+
 def stem_for_output(input_str: str, root: Path) -> str:
     """Derive the output PDF stem from the input."""
     if _looks_like_git_url(input_str):

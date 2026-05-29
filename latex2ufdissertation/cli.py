@@ -13,7 +13,7 @@ from latex2ufdissertation.pipeline.checks import run_checks
 from latex2ufdissertation.pipeline.init import init_project
 from latex2ufdissertation.pipeline.main_tex import detect_main_tex
 from latex2ufdissertation.pipeline.report import exit_code, format_human, format_json
-from latex2ufdissertation.pipeline.resolve import resolve, stem_for_output
+from latex2ufdissertation.pipeline.resolve import input_mode, resolve, stem_for_output
 from latex2ufdissertation.pipeline.rules import (
     EXIT_REASON_MISSING_TOOLCHAIN,
     EXIT_REASON_UNREADABLE_INPUT,
@@ -132,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     issues.input_path = args.input
+    issues.detected_mode = input_mode(args.input)
 
     try:
         root, cleanup = resolve(args.input)
