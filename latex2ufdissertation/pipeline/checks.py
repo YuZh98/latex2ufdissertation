@@ -59,7 +59,10 @@ def _has_command(nc: str, cmd: str) -> bool:
 
 
 def _setfile_arg(nc: str, cmd: str) -> str | None:
-    pat = re.escape(cmd) + r"\s*\{([^}]+)\}"
+    # \set*File macros accept an optional [ext] bracket (cls:540-596),
+    # e.g. \setAbstractFile[txt]{abs}; allow it before the {name} group
+    # so the bracket form is not misread as "macro not set".
+    pat = re.escape(cmd) + r"\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}"
     m = re.search(pat, nc)
     return m.group(1) if m else None
 
