@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from latex2ufdissertation.pipeline.checks import run_checks
+from latex2ufdissertation.pipeline.checks import _setfile_arg, run_checks
 from latex2ufdissertation.pipeline.rules import MUST_FIX, REVIEW
 from latex2ufdissertation.pipeline.types import Issues
 
@@ -126,6 +126,23 @@ def test_missing_setfile_target_fires_uf_p1(tmp_path, file_name, cmd_label):
     assert p1_findings, "expected at least one UF-P1 finding"
     assert any(cmd_label in (f.observed or "") for f in p1_findings)
     assert all(f.severity == MUST_FIX for f in p1_findings)
+
+
+@pytest.mark.parametrize(
+    "src,expected",
+    [
+        (r"\setAbstractFile{abs}", "abs"),
+        (r"\setAbstractFile[tex]{abs}", "abs"),
+        (r"\setAbstractFile[txt]{abs}", "abs"),
+        (r"\setAbstractFile [txt] {abs}", "abs"),
+    ],
+)
+def test_setfile_arg_handles_optional_ext_bracket(src, expected):
+    # \set*File macros accept an optional [ext] argument (cls:540-596),
+    # e.g. \setAbstractFile[txt]{abs}. The name argument must parse the
+    # same with or without the bracket; otherwise UF-F8 fires a false
+    # "not set" finding on the legal bracket form.
+    assert _setfile_arg(src, r"\setAbstractFile") == expected
 
 
 def test_editmode_fires_uf_d1_review(tmp_path):
