@@ -145,6 +145,22 @@ def test_setfile_arg_handles_optional_ext_bracket(src, expected):
     assert _setfile_arg(src, r"\setAbstractFile") == expected
 
 
+def test_setfile_bracket_form_no_uf_f8_false_positive(tmp_path):
+    # End-to-end guard: the optional [ext] bracket form flows through
+    # run_checks without a spurious UF-F8 "not set" finding (and the
+    # companion abs.tex exists, so no UF-P1 either).
+    src = _VALID.replace(r"\setAbstractFile{abs}", r"\setAbstractFile[tex]{abs}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    abstract_findings = [
+        f
+        for f in issues.findings
+        if f.rule_id in {"UF-F8", "UF-P1"} and "setAbstractFile" in (f.observed or "")
+    ]
+    assert not abstract_findings, [f.observed for f in abstract_findings]
+
+
 def test_editmode_fires_uf_d1_review(tmp_path):
     src = _VALID.replace(
         r"\documentclass{ufdissertation}",
