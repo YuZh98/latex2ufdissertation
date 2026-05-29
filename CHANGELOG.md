@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-29
+
 ### Added
 - Source-layer detectors: 18 of 19 must-fix rules (`UF-D1`–`D3`, `F1`–`F11`, `F13`–`F15`, `P1`, `S3`); `S1` (PDF-only) and `S2` (no-code-path) intentionally absent
 - `UF-F14`: extended from 4 to all 8 required metadata macros; `\degreeMonth` enum constraint (May / August / December, case-sensitive) (#17)
@@ -72,5 +74,6 @@ Initial release. One command validates and compiles UF dissertation / thesis pro
 - `--init` flag: scaffolds project from UF IT site; falls back to bundled template on network failure
 - Input modes: `.zip` archive, project directory, git URL
 
-[Unreleased]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/YuZh98/latex2ufdissertation/releases/tag/v0.1.0
