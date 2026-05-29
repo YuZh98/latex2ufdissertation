@@ -11,15 +11,14 @@
 \setAbstractFile{abs}
 \setReferenceFile{refs}{agsm}
 \setBiographicalFile{bio}
-\usepackage{mathpazo}
 \begin{document}
 \chapter{Introduction}
+\fontfamily{cmtt}\selectfont
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-eiusmod tempor incididunt ut labore et dolore magna aliqua. Notice
-how the letterforms differ from Times New Roman: Palatino has
-distinctive wider letters with more rounded curves, especially
-visible in lowercase ``a'', ``g'', and ``e''. Compare against the
-demo dissertation body text which uses the UF-required Times.
+eiusmod tempor incididunt ut labore et dolore magna aliqua. This
+body paragraph renders in Computer Modern Typewriter (monospace)
+because of the user-level \texttt{\textbackslash{}fontfamily\{cmtt\}}
+override. UF rejects this on visual review (Times or Arial only).
 \chapter{Main Body}
 \chapter{Closing Summary}
 \end{document}
