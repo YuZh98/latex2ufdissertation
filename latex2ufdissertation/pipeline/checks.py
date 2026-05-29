@@ -41,6 +41,15 @@ def _strip_comments(text: str) -> str:
     return re.sub(r"(?m)(?<!\\)%[^\n]*", "", text)
 
 
+def _strip_verbatim(text: str) -> str:
+    return re.sub(
+        r"\\begin\{(verbatim\*?|Verbatim\*?|lstlisting|alltt|minted)\}.*?\\end\{\1\}",
+        "",
+        text,
+        flags=re.DOTALL,
+    )
+
+
 def _has_command(nc: str, cmd: str) -> bool:
     # Allow LaTeX's optional bracketed argument between the command name and
     # the required braces (e.g. `\chair[Co-chair]{Chair}` per the UF
@@ -57,7 +66,7 @@ def _setfile_arg(nc: str, cmd: str) -> str | None:
 
 def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     raw = main_tex.read_text(encoding="utf-8", errors="replace")
-    nc = _strip_comments(raw)
+    nc = _strip_verbatim(_strip_comments(raw))
     rel = str(main_tex.relative_to(root)) if main_tex.is_relative_to(root) else main_tex.name
 
     # UF-F13: documentclass must be ufdissertation
@@ -152,24 +161,24 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     # false-positives on `0.5em` (which starts with a `0` but is nonzero).
     _ZERO_UNIT = r"0(?:pt|in|em|ex|mm|cm|pc|sp)?\s*"
     _F7_REQUIRED = "no zero-\\parindent override in source (template's \\parindent=1cm applies)"
-    for _ in re.finditer(
+    for f7m in re.finditer(
         r"\\setlength\s*\{?\s*\\parindent\s*\}?\s*\{\s*" + _ZERO_UNIT + r"\}",
         nc,
     ):
         issues.add(
             "UF-F7",
             location=rel,
-            observed="\\setlength{\\parindent}{0pt} overrides template's 1cm parindent",
+            observed=f"{f7m.group(0)} overrides template's 1cm parindent",
             required=_F7_REQUIRED,
         )
-    for _ in re.finditer(
+    for f7m in re.finditer(
         r"\\parindent\s*=\s*" + _ZERO_UNIT + r"(?![.\d])",
         nc,
     ):
         issues.add(
             "UF-F7",
             location=rel,
-            observed="\\parindent=0pt overrides template's 1cm parindent",
+            observed=f"{f7m.group(0)} overrides template's 1cm parindent",
             required=_F7_REQUIRED,
         )
 
@@ -177,13 +186,13 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     # S1 + S3 (introductory + main body + closing summary). Count \chapter{...}
     # calls in main.tex AND in any \include / \input target one level deep.
     # Deeper nesting deferred.
-    _chapter_pat = re.compile(r"\\chapter\s*\{[^}]+\}")
+    _chapter_pat = re.compile(r"\\chapter\*?\s*\{[^}]+\}")
     chapter_count = len(_chapter_pat.findall(nc))
     for included in re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", nc):
         for candidate in (root / included, root / f"{included}.tex"):
             if candidate.exists() and candidate.is_file():
-                included_nc = _strip_comments(
-                    candidate.read_text(encoding="utf-8", errors="replace")
+                included_nc = _strip_verbatim(
+                    _strip_comments(candidate.read_text(encoding="utf-8", errors="replace"))
                 )
                 chapter_count += len(_chapter_pat.findall(included_nc))
                 break
@@ -282,7 +291,7 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
         for candidate in (root / abs_arg, root / f"{abs_arg}.tex"):
             if candidate.exists() and candidate.is_file():
                 text = candidate.read_text(encoding="utf-8", errors="replace")
-                text = _strip_comments(text)
+                text = _strip_verbatim(_strip_comments(text))
                 # Strip backslash-commands with optional bracket + brace args;
                 # the brace-arg content stays (so \textbf{word} → word).
                 text = re.sub(r"\\[a-zA-Z]+\*?(?:\[[^\]]*\])?", " ", text)
@@ -307,16 +316,29 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     _ref_cmds = (r"\ref", r"\eqref", r"\pageref")
     all_nc = [nc]
     bib_keys: set[str] = set()
-    # Collect content from one-level includes / inputs / \set*File targets
+    # Collect content from one-level includes / inputs / \set*File targets,
+    # then one additional level of \input/\include from those files.
     included_names = set(re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", nc))
     included_names.update(
         re.findall(r"\\set[A-Z][a-zA-Z]*File\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}", nc)
     )
+    second_level: set[str] = set()
     for included in included_names:
         for candidate in (root / included, root / f"{included}.tex"):
             if candidate.exists() and candidate.is_file():
-                all_nc.append(
+                lvl1_nc = _strip_verbatim(
                     _strip_comments(candidate.read_text(encoding="utf-8", errors="replace"))
+                )
+                all_nc.append(lvl1_nc)
+                second_level.update(re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", lvl1_nc))
+                break
+    for included in second_level - included_names:
+        for candidate in (root / included, root / f"{included}.tex"):
+            if candidate.exists() and candidate.is_file():
+                all_nc.append(
+                    _strip_verbatim(
+                        _strip_comments(candidate.read_text(encoding="utf-8", errors="replace"))
+                    )
                 )
                 break
     bib_name = _setfile_arg(nc, r"\setReferenceFile")
@@ -324,7 +346,11 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
         for candidate in (root / bib_name, root / f"{bib_name}.bib"):
             if candidate.exists() and candidate.is_file():
                 bib_text = candidate.read_text(encoding="utf-8", errors="replace")
-                bib_keys.update(re.findall(r"@\w+\s*\{\s*([^,\s]+)", bib_text))
+                bib_keys.update(
+                    m.group(2)
+                    for m in re.finditer(r"@(\w+)\s*\{\s*([^,\s]+)", bib_text)
+                    if m.group(1).lower() not in {"string", "preamble", "comment"}
+                )
                 break
     labels: set[str] = set()
     for src_nc in all_nc:
@@ -341,9 +367,9 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                         observed=f"{cmd}{{{key}}} but no \\label{{{key}}} declared",
                         required=f"declare \\label{{{key}}} somewhere in source",
                     )
-    # Check \cite — multi-key comma-separated form supported
+    # Check \cite / \citep / \citet / etc. — multi-key comma-separated form supported
     for src_nc in all_nc:
-        for keys in re.findall(r"\\cite(?:\[[^\]]*\])?\s*\{([^}]+)\}", src_nc):
+        for keys in re.findall(r"\\cite[a-z*]*(?:\[[^\]]*\]){0,2}\s*\{([^}]+)\}", src_nc):
             for key in [k.strip() for k in keys.split(",")]:
                 if key and key not in bib_keys:
                     issues.add(
@@ -404,14 +430,17 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
         "bookman",
         "charter",
     )
-    for pkg in _F2_PACKAGES:
-        if re.search(r"\\usepackage\s*(?:\[[^\]]*\])?\s*\{" + pkg + r"\}", nc):
-            issues.add(
-                "UF-F2",
-                location=rel,
-                observed=f"font-replacement package `{pkg}` loaded",
-                required=f"remove \\usepackage{{{pkg}}} (template provides Times / Arial)",
-            )
+    _f2_seen: set[str] = set()
+    for m_pkg in re.finditer(r"\\usepackage\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}", nc):
+        for token in (t.strip() for t in m_pkg.group(1).split(",")):
+            if token in _F2_PACKAGES and token not in _f2_seen:
+                _f2_seen.add(token)
+                issues.add(
+                    "UF-F2",
+                    location=rel,
+                    observed=f"font-replacement package `{token}` loaded",
+                    required=f"remove \\usepackage{{{token}}} (template provides Times / Arial)",
+                )
     if re.search(r"\\fontfamily\s*\{[^}]+\}\s*\\selectfont", nc):
         issues.add(
             "UF-F2",
