@@ -9,21 +9,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 ### Added
 - `docs/spec-v1.0.md`: v1.0 product specification (goal, scope, inputs, outputs, acceptance criteria)
 - `docs/uf-rules.md`: canonical UF rule catalog (`UF-F1` … `UF-A2`) with citations and severity tiers
-- `docs/json-schema.md`: authoritative JSON output schema reference (closes v1.0 acceptance gate 5)
+- `docs/json-schema.md`: JSON output schema reference (closes v1.0 acceptance gate 5)
 - `latex2ufdissertation/pipeline/template/README.md`: provenance + re-sync procedure for the vendored UF template
 - `examples/demo_dissertation/`: known-good dissertation satisfying every must-fix rule; committed `main.pdf` enables PDF-layer tests without a TeX install
-- `examples/ufdissertation_samples/`: UF Graduate School Thesis & Dissertation Production samples (14 `.docx` files) as reference snapshots for rule-design tiebreakers; not wired into pytest
+- `examples/ufdissertation_samples/`: 14 UF Graduate School docx samples as reference snapshots for rule-design tiebreakers; not wired into pytest
 - `--demo` flag: prints the GitHub URL of the bundled demo (and local path for source checkouts)
 - `latex2ufdissertation/pipeline/rules.py`: single-source-of-truth `Rule` dataclass + `RULES` dict for all 29 catalog entries
 - `latex2ufdissertation/pipeline/report.py`: `format_human` (grouped + sorted) and `format_json` (JSON schema v1)
 - `Finding` dataclass with eight v1 fields (`severity`, `rule_id`, `layer`, `location`, `observed`, `required`, `fix_hint`, `source_url`)
 - `Issues.add(rule_id, ...)` resolves metadata from `RULES` so call sites stay terse
-- `ConverterError` subclasses (`UnreadableInput`, `UnsupportedTemplate`, `ThesisInput`, `MissingToolchain`) with per-exception `exit_reason`
+- `ConverterError` subclasses (`UnreadableInput`, `UnsupportedTemplate`, `ThesisInput`, `MissingToolchain`) carry per-exception `exit_reason`
 - Public API frozen via `__all__` in `latex2ufdissertation/__init__.py`
-- Exit code `3` for missing toolchain; distinguishes environment failure from input failure
-- `CONTRIBUTING.md`: engineering gates and committed-artifact policy
-- `SECURITY.md`: vulnerability-reporting flow (GitHub Security Advisory)
-- `CODE_OF_CONDUCT.md`: adapted from Contributor Covenant 2.1
+- Exit code `3` for missing toolchain (distinguishes environment failure from input failure)
+- `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`
 - `.github/workflows/ci.yml`: pre-commit + Python 3.10–3.13 matrix on ubuntu + macOS spot-check + coverage gate
 - `.pre-commit-config.yaml`: trailing-whitespace, EOF newline, merge-conflict, YAML/TOML syntax, 500 KB large-file blocker, `ruff` format + lint
 - `.github/dependabot.yml`: weekly grouped minor/patch updates for pip and github-actions
@@ -31,24 +29,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - README CI / license / Python-version badges
 - Determinism pinning test: two `--dry-run --json` runs must produce byte-identical stdout
 - Drift tests: catalog ↔ registry parity (ID, severity, layer)
-- `tests/fixtures/` snapshot harness with per-rule `input/` + `expected_findings.json` + `expected_report.txt`; covered rules so far: `UF-D1`, `UF-D2`, `UF-D3` (D-series complete for source-layer detection), `UF-F1`, `UF-F2`, `UF-F3`, `UF-F4`, `UF-F5`, `UF-F6`, `UF-F7`, `UF-F8`, `UF-F9`, `UF-F10`, `UF-F11`, `UF-F13`, `UF-F14`, `UF-F15`, `UF-P1`, `UF-S3`
-- `UF-D3` source detector for `overrideTitles` / `overrideChapters` `\documentclass` options (one finding per option present); registry gains a default fix_hint
-- `UF-F14` detector extended from 4 to all 8 catalog-listed required metadata macros (`\degreeYear`, `\degreeMonth`, `\major`, `\chair` added). Closes #16. Tracking-bumped to a true 6/21 must-fix gate-1 coverage; previously was 5/21 + 1 partial.
-- `UF-F14` value-constraint check: `\degreeMonth` must be `May` / `August` / `December` (case-sensitive, per catalog § UF-F14 / C2:41); any other value trips a must-fix finding citing the observed value.
-- `UF-F5` source detector for `\justifying` / `\justify` text-alignment overrides per catalog § UF-F5. Negative-lookahead prevents false positives on `\justifyFoo` and avoids double-counting `\justifying`. Allowlist: `\sloppy` / `\sloppypar` (line-breaking helpers, catalog-explicit), `\raggedright` (template's own command). `\flushleft` mass-usage check deferred (catalog gives no numeric threshold). Registry gains default fix_hint citing template's `\raggedright` at cls:171.
-- `UF-F3` source detector for `\fontsize{<body>}{<baseline>}\selectfont` overrides per catalog § UF-F3. Each match emits a must-fix finding citing the observed args. Registry gains default fix_hint citing template's `\LoadClass[12pt]` at cls:1. Relative-size commands (`\small`, `\large`, ...) deferred — catalog lists them but body-vs-caption/heading context analysis is beyond v0.1 regex-on-comment-stripped-source scope.
-- `UF-F7` source detector for zero-`\parindent` overrides per catalog § UF-F7. Covers both `\setlength{\parindent}{0...}` (with optional inner braces) and `\parindent=0...` assignment forms across all standard LaTeX length units. Decimal-nonzero guard `(?![.\d])` prevents false-positives on `\parindent=0.5em`. Registry gains default fix_hint citing template's `\indentfirst` (cls:203) + `\parindent=1cm` (cls:1010).
-- `UF-F10` source detector for the chapter scaffold per catalog § UF-F10. Counts `\chapter{...}` calls in main.tex and walks one level into `\include{}` / `\input{}` targets. If total < 3, emits a must-fix finding citing UF S1 + S3 (introductory + main body + closing summary). Existing fixtures grew matching 3-chapter bodies to preserve rule isolation.
-- `UF-F9` source detector for singleton-structure duplicates per catalog § UF-F9. Two categories: (a) duplicate `\setAbstractFile` / `\setReferenceFile` / `\tableofcontents` / `\bibliography` calls (more than one in source); (b) manual `\chapter{ABSTRACT}` or `\chapter{REFERENCES}` which duplicate template-auto sections. Registry gains default fix_hint.
-- `UF-F11` source detector for heading-style overrides per catalog § UF-F11. Flags `\titleformat` redefinitions of any of the 5 template-owned tiers (`\chapter` / `\section` / `\subsection` / `\subsubsection` / `\paragraph`) and any `\paragraph{...}` usage (discouraged per C4). `\titleformat*` starred one-shot form covered alongside the standard form. Manual heading impersonation deferred (subjective, no catalog threshold). Registry gains default fix_hint citing cls:304-362.
-- `UF-F15` source detector for abstract word count per catalog § UF-F15. Reads file referenced by `\setAbstractFile{name}`, strips LaTeX commands (preserves brace-arg content so `\textbf{word}` → word), counts whitespace-separated tokens. If > 350, emits a must-fix finding citing the observed count. PDF-layer backup deferred to v1.0 PDF layer. Registry gains default fix_hint.
-- `UF-S3` source detector for broken cross-references per catalog § UF-S3. Parses `\ref` / `\eqref` / `\pageref` / `\cite` calls across main.tex + one-level recursion into `\include` / `\input` AND `\set*File` targets; cross-references against all `\label{...}` declarations and `.bib` entry keys. Multi-key `\cite{a,b,c}` form validates each key independently. Unresolved keys emit one S3 must-fix finding each. Registry gains default fix_hint.
-- `UF-F1` / `UF-F2` / `UF-F4` / `UF-F6` source-half detectors (both-layer rules; PDF backups deferred to v1.0 PDF layer). F1 flags margin overrides (`\geometry`, `\newgeometry`, `\usepackage[opts]{geometry}`, `\setlength{\textwidth|textheight}`, `\hoffset`, `\voffset`). F2 flags font overrides (`\setmainfont`, 9 known font-replacement packages, `\fontfamily\selectfont`). F4 flags line-spacing overrides (`\singlespacing`, `\onehalfspacing`, `\setstretch`, `\renewcommand{\baselinestretch}`). F6 flags non-arabic `\pagenumbering` + `\renewcommand{\thepage}`; `\pagenumbering{arabic}` matches template default and is silent. Registry gains default fix_hints for all four.
-- `tests/fixtures/uf_f14_missing_committee_metadata/`: broken-input fixture covering the 4 newly-checked macros (4 must-fix findings)
-- D-series fixtures (`uf_d1_editmode`, `uf_d2_compiler_directive`, `uf_d3_override_options`) grow committee macros so each fixture is compile-ready end-to-end (no out-of-tree splice required to produce a PDF)
-- `uf_d1_editmode` body grows `\authorRemark` / `\editorRemark` calls so the compiled PDF visibly demonstrates the consequence editMode enables (colored bold inline annotations); validator output unchanged
-- `docs/uf-rules.md` § UF-F14 source citation rewritten to include S1 backing (previously C1-only, which describes class behavior but does not directly justify must-fix severity)
-- 127 tests (was 14); coverage 74.65% (was 0%)
+- `tests/fixtures/` snapshot harness: per-rule `input/` + `expected_findings.json` + `expected_report.txt` with `LATEX2UFD_REGEN_FIXTURES=1` regen workflow and a dir-non-empty gate. 17 must-fix fixtures covering `UF-D1`, `D2`, `D3`, `F1`, `F2`, `F3`, `F4`, `F5`, `F6`, `F7`, `F8`, `F9`, `F10`, `F11`, `F13`, `F14`, `F15`, `P1`, `S3`.
+- Source-layer detectors for 18 of 19 must-fix catalog rules (only S1 PDF-only and S2 catalog-marked-no-code-path remain): `UF-D3`, `F1`, `F2`, `F3`, `F4`, `F5`, `F6`, `F7`, `F8`, `F9`, `F10`, `F11`, `F13`, `F14`, `F15`, `P1`, `S3`. Each ships a default `fix_hint` in the registry; per-rule scope decisions (relative-size commands for F3, `\flushleft` mass usage for F5, F4 scoped exceptions, manual heading impersonation for F11) pinned by negative tests
+- `UF-F14` extended from 4 to all 8 catalog metadata macros (added `\degreeYear`, `\degreeMonth`, `\major`, `\chair`); `\degreeMonth` value-constraint enum (May / August / December, case-sensitive); closes #16
+- `docs/uf-rules.md` § UF-F14 source citation gains S1 backing (previously C1-only)
+- 231 tests; coverage 74.65%
 
 ### Changed
 - JSON output schema (breaking): old keys removed; new payload `{schema_version, input, template_version, findings: [...], summary: {must_fix_count, review_count, exit_code, exit_reason}}`
@@ -64,12 +49,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - Version bumped 0.1.0 → 0.2.0
 
 ### Fixed
-- `summary.exit_code` on fatal-path JSON payloads: previously derived from findings only, so exit 2/3 reported `exit_code: 0` in JSON
-- JSON sort order: category-rank tiebreaker leaked into JSON; sort functions now split (`_spec_sort_key` for JSON, `_human_sort_key` for report)
+- `summary.exit_code` on fatal-path JSON payloads: exit 2/3 used to report `exit_code: 0`
+- JSON sort order: category-rank tiebreaker leaked from human report into JSON; sort functions now split (`_spec_sort_key` for JSON, `_human_sort_key` for report)
 - README no longer claims PDF input acceptance (PDF input is a v1.0 plan)
 - `MissingToolchain` fatal paths no longer emit a misleading "clean" summary line while exiting 3
-- `_has_command` regex now accepts the LaTeX optional-bracketed argument form (`\chair[Co-chair]{Chair}` per the UF template). Pre-existing bug, masked until `\chair` joined `_REQUIRED_TOPLEVEL`; without this fix the demo dissertation would trip a false-positive UF-F14
-- `UF-F3` detector loop variable renamed `m` → `f3m` to avoid shadowing the outer `\documentclass` match used by UF-D3 downstream. Latent bug (UF-D3 would silently fail to fire on projects where both `\fontsize{...}{...}\selectfont` and `overrideTitles` / `overrideChapters` options coexist) found while developing UF-F7; regression test pinned in `tests/test_checks.py`
+- `_has_command` regex now accepts the optional-bracket argument form (`\chair[Co-chair]{Chair}`); pre-existing bug, masked until `\chair` joined `_REQUIRED_TOPLEVEL`
+- `UF-F3` detector loop variable shadowed the outer `\documentclass` match, breaking UF-D3 when both fired on the same project; renamed `m` → `f3m`, regression test pinned
 
 ### Removed
 - `docs/plans/` and `docs/design/`: internal planning artifacts stripped from history with `git-filter-repo`; both directories now gitignored
