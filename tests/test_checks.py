@@ -161,6 +161,38 @@ def test_setfile_bracket_form_no_uf_f8_false_positive(tmp_path):
     assert not abstract_findings, [f.observed for f in abstract_findings]
 
 
+@pytest.mark.parametrize(
+    "macro,stem",
+    [
+        (r"\setCopyrightFile", "copyr"),
+        (r"\setDedicationFile", "ded"),
+        (r"\setAbbreviationsFile", "abbr"),
+        (r"\setAppendixFile", "app"),
+    ],
+)
+def test_optional_setfile_present_missing_companion_fires_uf_p1(tmp_path, macro, stem):
+    # Optional \set*File macros (cls:540-596) are not required, but if the
+    # user opts in by setting one, its companion file must exist (UF-P1).
+    decl = f"{macro}{{{stem}}}"
+    src = _VALID.replace(r"\begin{document}", decl + "\n" + r"\begin{document}")
+    master = _project(tmp_path, src, _VALID_FILES)  # companion intentionally absent
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    p1 = [f for f in issues.findings if f.rule_id == "UF-P1" and macro in (f.observed or "")]
+    assert p1, f"expected UF-P1 for {decl} with missing companion"
+    assert all(f.severity == MUST_FIX for f in p1)
+
+
+def test_absent_optional_setfile_does_not_fire_uf_f8(tmp_path):
+    # Optional \set*File macros absent from source must NOT fire UF-F8
+    # "not set"; only the four required macros do.
+    master = _project(tmp_path, _VALID, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f8 = [f for f in issues.findings if f.rule_id == "UF-F8"]
+    assert f8 == [], [f.observed for f in f8]
+
+
 def test_editmode_fires_uf_d1_review(tmp_path):
     src = _VALID.replace(
         r"\documentclass{ufdissertation}",

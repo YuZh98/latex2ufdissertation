@@ -29,11 +29,19 @@ _REQUIRED_TOPLEVEL = (
 # Case-sensitive: UF writes the month with title-case capitalization on
 # the abstract page.
 _VALID_DEGREE_MONTHS = ("May", "August", "December")
+# All 8 \set*File macros defined in the UF class (cls:540-596), as
+# (macro, companion-suffixes, label, required). `required` macros fire
+# UF-F8 "not set" when absent; optional macros do not. UF-P1 (companion
+# file must exist) applies to any macro present in source, required or not.
 _SETFILE_RULES = (
-    (r"\setAcknowledgementsFile", (".tex",), "Acknowledgements"),
-    (r"\setAbstractFile", (".tex",), "Abstract"),
-    (r"\setReferenceFile", (".bib",), "Reference"),
-    (r"\setBiographicalFile", (".tex",), "Biographical"),
+    (r"\setAcknowledgementsFile", (".tex",), "Acknowledgements", True),
+    (r"\setAbstractFile", (".tex",), "Abstract", True),
+    (r"\setReferenceFile", (".bib",), "Reference", True),
+    (r"\setBiographicalFile", (".tex",), "Biographical", True),
+    (r"\setCopyrightFile", (".tex",), "Copyright", False),
+    (r"\setDedicationFile", (".tex",), "Dedication", False),
+    (r"\setAbbreviationsFile", (".tex",), "Abbreviations", False),
+    (r"\setAppendixFile", (".tex",), "Appendix", False),
 )
 
 
@@ -109,15 +117,16 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
             )
 
     # UF-F8 / UF-P1: \set*File macros + filesystem companions
-    for cmd, suffixes, label in _SETFILE_RULES:
+    for cmd, suffixes, label, required in _SETFILE_RULES:
         arg = _setfile_arg(nc, cmd)
         if arg is None:
-            issues.add(
-                "UF-F8",
-                location=rel,
-                observed=f"{cmd} not set",
-                required=f"{cmd}{{<{label.lower()}-file-stem>}}",
-            )
+            if required:
+                issues.add(
+                    "UF-F8",
+                    location=rel,
+                    observed=f"{cmd} not set",
+                    required=f"{cmd}{{<{label.lower()}-file-stem>}}",
+                )
             continue
         candidates = [root / arg] + [root / f"{arg}{s}" for s in suffixes]
         if not any(c.exists() for c in candidates):

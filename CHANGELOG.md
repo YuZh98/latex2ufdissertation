@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+### Fixed
+- `UF-P1` / `UF-F8`: `_SETFILE_RULES` now covers all 8 `\set*File` macros (cls:540-596); optional macros (copyright, dedication, abbreviations, appendix) get the P1 companion-file check when present without firing a spurious F8 "not set" when absent (#20)
+
 ## [0.2.0] - 2026-05-29
 
 ### Added
