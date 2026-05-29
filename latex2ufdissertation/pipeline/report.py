@@ -4,7 +4,8 @@ Two consumers, one source of truth (Issues.findings):
 - format_human(issues) → multi-line string, grouped by layer + rule
   category, sorted for determinism.
 - format_json(issues) → dict matching the JSON schema v1 in
-  docs/spec-v1.0.md §5, ready for `json.dumps(..., sort_keys=True)`.
+  docs/json-schema.md (contract: docs/spec-v1.0.md §5), ready for
+  `json.dumps(..., sort_keys=True)`.
 
 Buffer-then-emit. Checks never print directly; everything funnels here.
 """
