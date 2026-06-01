@@ -95,7 +95,7 @@ RULES: dict[str, Rule] = {
     "UF-F3": Rule(
         "UF-F3",
         MUST_FIX,
-        SOURCE,
+        BOTH,
         "Font size 12pt",
         _anchor("UF-F3", "font-size-12pt"),
         fix_hint=(

@@ -19,6 +19,12 @@ from latex2ufdissertation.pipeline.types import Issues, MissingToolchain, Unread
 # strip before recording font names so findings are deterministic.
 _SUBSET_RE = re.compile(r"^[A-Z]{6}\+")
 
+# UF-F3 constants: required body-mode size and rounding tolerance (pt).
+# A deviation of more than _F3_SIZE_TOLERANCE_PT from _F3_REQUIRED_BODY_PT
+# indicates the student overrode the template's 12-point default globally.
+_F3_REQUIRED_BODY_PT: float = 12.0
+_F3_SIZE_TOLERANCE_PT: float = 0.5
+
 # UF-F2 allowlist: family name prefixes that are legitimate for UF dissertations.
 #
 # Derived from the canonical demo PDF (examples/demo_dissertation/main.pdf) plus
@@ -156,6 +162,33 @@ def _check_f2(pages: list[PageData], issues: Issues) -> None:
             )
 
 
+def _check_f3(pages: list[PageData], issues: Issues) -> None:
+    r"""UF-F3: body-mode size must be 12pt throughout (PDF layer).
+
+    For each page whose body_size is not None: if the size deviates from
+    _F3_REQUIRED_BODY_PT by more than _F3_SIZE_TOLERANCE_PT, emit a must-fix
+    finding with layer=PDF. The registry severity for UF-F3 is must-fix so
+    no per-call severity override is needed; pass layer=PDF to mark this as
+    the PDF-authoritative half.
+
+    The source-layer half (checks.py UF-F3 emit sites) emits at severity
+    REVIEW so that localized legal sizing (a one-off ``\fontsize`` on a
+    title/caption) does not produce a false must-fix in the absence of a
+    compiled PDF.
+    """
+    for page in pages:
+        if page.body_size is None:
+            continue
+        if abs(page.body_size - _F3_REQUIRED_BODY_PT) > _F3_SIZE_TOLERANCE_PT:
+            issues.add(
+                "UF-F3",
+                layer=PDF,
+                location=f"p.{page.page_num}",
+                observed=f"{page.body_size}pt body text",
+                required="12-point body text",
+            )
+
+
 def _check_s1(pages: list[PageData], issues: Issues) -> None:
     """UF-S1: PDF must have at least one page with extractable text.
 
@@ -185,4 +218,5 @@ def run_pdf_checks(pdf_path: Path, issues: Issues) -> None:
 
     _check_s1(pages, issues)
     _check_f2(pages, issues)
-    # Future checks (F3, S5, …) are added here as _check_*(pages, issues).
+    _check_f3(pages, issues)
+    # Future checks (S5, …) are added here as _check_*(pages, issues).

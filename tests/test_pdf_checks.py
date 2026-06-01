@@ -16,9 +16,15 @@ _DEMO_PDF = _REPO_ROOT / "examples" / "demo_dissertation" / "main.pdf"
 _VIOLATION_PDF = (
     _REPO_ROOT / "tests" / "fixtures" / "uf_f2_pdf_font_violation" / "input" / "violation.pdf"
 )
+_F3_VIOLATION_PDF = (
+    _REPO_ROOT / "tests" / "fixtures" / "uf_f3_pdf_size_violation" / "input" / "violation.pdf"
+)
 
 _VIOLATION_AVAILABLE = pytest.mark.skipif(
     not _VIOLATION_PDF.exists(), reason="F2 violation PDF fixture not present"
+)
+_F3_VIOLATION_AVAILABLE = pytest.mark.skipif(
+    not _F3_VIOLATION_PDF.exists(), reason="F3 violation PDF fixture not present"
 )
 
 _DEMO_AVAILABLE = pytest.mark.skipif(
@@ -463,3 +469,180 @@ def test_check_f2_violation_fixture_fires_must_fix() -> None:
         assert re.match(r"^p\.\d+$", finding.location), (
             f"Expected p.N location, got {finding.location!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# F3 PDF-layer check (UF-F3, body-mode size must be 12pt)
+# ---------------------------------------------------------------------------
+
+
+def test_check_f3_fires_on_wrong_body_size(tmp_path: Path) -> None:
+    """_check_f3: a page whose body-mode size deviates from 12pt by >0.5
+    emits UF-F3 with severity=must-fix, layer=pdf, and a p.N location.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    # One page whose body-mode size is ~20pt (well beyond 0.5pt tolerance).
+    mock_pages = [PageData(page_num=3, body_font="TeXGyreTermesX-Regular", body_size=20.0)]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert len(f3) == 1, f"expected 1 UF-F3 finding, got {len(f3)}"
+    finding = f3[0]
+    assert finding.severity == MUST_FIX
+    assert finding.layer == PDF
+    assert finding.location == "p.3"
+    assert "20.0pt" in (finding.observed or "")
+    assert "12-point" in (finding.required or "")
+
+
+def test_check_f3_silent_on_correct_size(tmp_path: Path) -> None:
+    """_check_f3: a page with body_size == 12.0 must not emit UF-F3."""
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    mock_pages = [PageData(page_num=1, body_font="TeXGyreTermesX-Regular", body_size=12.0)]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert f3 == [], f"unexpected UF-F3 findings on 12pt page: {f3}"
+
+
+def test_check_f3_silent_within_tolerance(tmp_path: Path) -> None:
+    """_check_f3: a page with body_size exactly 12.5 (boundary) must not emit
+    UF-F3 — the tolerance is strictly > 0.5.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    mock_pages = [PageData(page_num=1, body_font="TeXGyreTermesX-Regular", body_size=12.5)]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert f3 == [], f"unexpected UF-F3 at boundary 12.5pt: {f3}"
+
+
+def test_check_f3_fires_just_outside_tolerance(tmp_path: Path) -> None:
+    """_check_f3: body_size 12.6 (just outside tolerance) must emit UF-F3."""
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    mock_pages = [PageData(page_num=1, body_font="TeXGyreTermesX-Regular", body_size=12.6)]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert len(f3) == 1, f"expected UF-F3 at 12.6pt, got {len(f3)}"
+    assert f3[0].severity == MUST_FIX
+    assert f3[0].layer == PDF
+
+
+def test_check_f3_skips_none_body_size(tmp_path: Path) -> None:
+    """_check_f3: a page with body_size=None (image-only) must not emit UF-F3."""
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    mock_pages = [PageData(page_num=2, body_font=None, body_size=None)]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert f3 == [], f"unexpected UF-F3 on image-only page: {f3}"
+
+
+@_DEMO_AVAILABLE
+def test_check_f3_demo_zero_findings() -> None:
+    """Acceptance gate §8.2: run_pdf_checks on the committed demo must produce
+    zero UF-F3 findings across all 26 pages (all at 12.0pt).
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    issues = Issues()
+    run_pdf_checks(_DEMO_PDF, issues)
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert f3 == [], f"Demo produced unexpected UF-F3 findings: {f3}"
+
+
+@_F3_VIOLATION_AVAILABLE
+def test_check_f3_violation_fixture_fires_must_fix() -> None:
+    """The committed F3 violation PDF (rendered with \\fontsize{20}{24}\\selectfont
+    body override) must produce >=1 UF-F3 finding with severity=must-fix,
+    layer=pdf, p.N location, and observed size ~20pt.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    issues = Issues()
+    run_pdf_checks(_F3_VIOLATION_PDF, issues)
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert len(f3) >= 1, f"Expected >=1 UF-F3 findings from violation PDF, got {len(f3)}"
+    for finding in f3:
+        assert finding.severity == MUST_FIX, f"Expected must-fix, got {finding.severity}"
+        assert finding.layer == PDF, f"Expected pdf layer, got {finding.layer}"
+        assert re.match(r"^p\.\d+$", finding.location), (
+            f"Expected p.N location, got {finding.location!r}"
+        )
+        # Observed size should be considerably above 12pt (body override ~20pt)
+        observed = finding.observed or ""
+        size_match = re.search(r"([\d.]+)pt body text", observed)
+        assert size_match, f"Expected 'Npt body text' in observed, got {observed!r}"
+        body_size = float(size_match.group(1))
+        assert body_size > 14.0, f"Expected body_size >14pt, got {body_size}pt"

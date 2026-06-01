@@ -52,6 +52,12 @@ _F2_SOURCE_FIX_HINT = (
     "whether the rendered body is actually non-Times."
 )
 
+_F3_SOURCE_FIX_HINT = (
+    "A \\fontsize{...}{...}\\selectfont may be legal localized sizing "
+    "(e.g. on a title page or caption). The PDF layer confirms the "
+    "rendered body-mode size."
+)
+
 
 def _strip_comments(text: str) -> str:
     return re.sub(r"(?m)(?<!\\)%[^\n]*", "", text)
@@ -165,11 +171,14 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
         observed = f"\\fontsize{{{f3m.group(1)}}}{{{f3m.group(2)}}}\\selectfont"
         issues.add(
             "UF-F3",
+            severity=REVIEW,
+            layer=SOURCE,
             location=rel,
             observed=f"{observed} overrides template's 12pt default",
             required=(
                 "no \\fontsize{...}{...}\\selectfont override in source (template's 12pt applies)"
             ),
+            fix_hint=_F3_SOURCE_FIX_HINT,
         )
 
     # UF-F7: paragraph-indentation overrides. Template's \indentfirst (cls:203)

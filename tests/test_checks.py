@@ -705,7 +705,7 @@ def test_fontsize_selectfont_fires_uf_f3(tmp_path, args):
     f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
     assert len(f3) == 1
     assert override in (f3[0].observed or "")
-    assert f3[0].severity == MUST_FIX
+    assert f3[0].severity == REVIEW
 
 
 @pytest.mark.parametrize(

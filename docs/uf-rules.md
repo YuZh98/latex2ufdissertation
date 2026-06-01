@@ -121,12 +121,12 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 
 - **Severity:** must-fix
 - **Source:** S1 (*"12-point ... throughout"*) + C1:1 `\LoadClass[12pt]{report}`
-- **Layer:** source primary
+- **Layer:** source primary, pdf backup
 - **Strategy:** template-enforced via `\LoadClass[12pt]`. Source: scan for size override patterns inappropriate to context:
   - `\fontsize{...}{...}\selectfont` in body
   - `\tiny`, `\scriptsize`, `\footnotesize`, `\small`, `\large`, `\Large`, `\LARGE`, `\huge`, `\Huge` in body text
   - Allowed contexts: captions, headings (template-handled — flag only direct user override)
-- **PDF backup (planned — registry layer becomes `source primary, pdf backup` in the F3 increment):** per-page **body-mode** size; flag a page whose body-mode size ≠ 12 pt. This is the authoritative check: the source scan over-fires on *localized-legal* sizing (a one-off `\fontsize` on a title/caption — issue #47), whereas body-mode ignores non-body runs. Verified: `\fontsize{20}{24}\selectfont` moves the body-mode to ~20 pt; legitimate captions/headings do not. Source therefore fires as `review`; PDF holds the `must-fix` verdict (per [`spec-v1.0.md`](./spec-v1.0.md) §7.1.2).
+- **PDF backup:** per-page **body-mode** size; flag a page whose body-mode size ≠ 12 pt (tolerance ±0.5 pt). This is the authoritative check: the source scan over-fires on *localized-legal* sizing (a one-off `\fontsize` on a title/caption — issue #47), whereas body-mode ignores non-body runs. Verified: `\fontsize{20}{24}\selectfont` moves the body-mode to ~20 pt; legitimate captions/headings do not. Source therefore fires as `review`; PDF holds the `must-fix` verdict.
 
 ### UF-F4 — Line spacing
 
