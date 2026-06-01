@@ -1,0 +1,352 @@
+"""Tests for the PDF-layer validation module (pdf_checks.py).
+
+TDD pass: these tests are written first and drive the implementation.
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+
+# Locate the committed demo PDF once; tests that need it skip when absent.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_DEMO_PDF = _REPO_ROOT / "examples" / "demo_dissertation" / "main.pdf"
+
+_DEMO_AVAILABLE = pytest.mark.skipif(
+    not _DEMO_PDF.exists(), reason="demo PDF not present"
+)
+
+
+# ---------------------------------------------------------------------------
+# Subset-prefix strip (unit-level, no PDF needed)
+# ---------------------------------------------------------------------------
+
+
+def test_subset_prefix_strip() -> None:
+    """Random 6-uppercase-letter prefix followed by '+' must be stripped."""
+    _SUBSET_RE = re.compile(r"^[A-Z]{6}\+")
+    raw = "MBKJME+TeXGyreTermesX-Regular"
+    stripped = _SUBSET_RE.sub("", raw)
+    assert stripped == "TeXGyreTermesX-Regular"
+
+
+def test_subset_prefix_strip_no_prefix() -> None:
+    """Font names without a prefix must be left unchanged."""
+    _SUBSET_RE = re.compile(r"^[A-Z]{6}\+")
+    raw = "TeXGyreTermesX-Regular"
+    assert _SUBSET_RE.sub("", raw) == "TeXGyreTermesX-Regular"
+
+
+# ---------------------------------------------------------------------------
+# _extract_pages on the demo PDF
+# ---------------------------------------------------------------------------
+
+
+@_DEMO_AVAILABLE
+def test_extract_pages_demo_page_count() -> None:
+    """The committed demo PDF must have exactly 26 pages."""
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+
+    pages = _extract_pages(_DEMO_PDF)
+    assert len(pages) == 26
+
+
+@_DEMO_AVAILABLE
+def test_extract_pages_demo_body_font() -> None:
+    """At least one page in the demo must have a body_font starting with
+    'TeXGyreTermes' and body_size == 12.0.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+
+    pages = _extract_pages(_DEMO_PDF)
+    assert any(
+        p.body_font is not None
+        and p.body_font.startswith("TeXGyreTermes")
+        and p.body_size == 12.0
+        for p in pages
+    ), "No page found with TeXGyreTermes body font at 12.0pt"
+
+
+@_DEMO_AVAILABLE
+def test_extract_pages_page_nums_are_1based() -> None:
+    """page_num on every PageData must be 1-based and contiguous."""
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+
+    pages = _extract_pages(_DEMO_PDF)
+    nums = [p.page_num for p in pages]
+    assert nums == list(range(1, len(pages) + 1))
+
+
+# ---------------------------------------------------------------------------
+# run_pdf_checks on the demo PDF — S1 must NOT fire
+# ---------------------------------------------------------------------------
+
+
+@_DEMO_AVAILABLE
+def test_run_pdf_checks_demo_zero_findings() -> None:
+    """run_pdf_checks on the known-good demo must produce zero findings.
+    S1 (PDF has no extractable text) must not fire on a real dissertation.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    issues = Issues()
+    run_pdf_checks(_DEMO_PDF, issues)
+    assert issues.findings == [], f"Unexpected findings: {issues.findings}"
+
+
+# ---------------------------------------------------------------------------
+# S1 check fires on a zero-page / text-free PDF
+# ---------------------------------------------------------------------------
+
+
+def test_run_pdf_checks_s1_fires_on_empty_pdf(tmp_path: Path) -> None:
+    """An empty / zero-page PDF (PDFSyntaxError path already raises
+    UnreadableInput; S1 covers the 'parses but empty' niche).
+    We mock _extract_pages to return zero pages to test S1 logic directly
+    without needing a real edge-case PDF file.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "empty.pdf"
+    dummy_pdf.write_bytes(b"")  # file must exist for the path check
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=[],
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    assert len(issues.findings) == 1
+    f = issues.findings[0]
+    assert f.rule_id == "UF-S1"
+    assert f.severity == MUST_FIX
+    assert f.layer == PDF
+
+
+def test_run_pdf_checks_s1_fires_on_all_none_pages(tmp_path: Path) -> None:
+    """S1 fires when all pages have body_font=None (no glyph data)."""
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "image_only.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    # 3 pages, all with no extractable text
+    mock_pages = [
+        PageData(page_num=1, body_font=None, body_size=None),
+        PageData(page_num=2, body_font=None, body_size=None),
+        PageData(page_num=3, body_font=None, body_size=None),
+    ]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    assert len(issues.findings) == 1
+    assert issues.findings[0].rule_id == "UF-S1"
+
+
+# ---------------------------------------------------------------------------
+# MissingToolchain / UnreadableInput exception behaviour
+# ---------------------------------------------------------------------------
+
+
+def test_run_pdf_checks_missing_toolchain_if_pdfminer_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If pdfminer.six is not importable, MissingToolchain must be raised."""
+    import builtins
+    import sys
+    from unittest.mock import patch
+
+    real_import = builtins.__import__
+
+    def _block_pdfminer(name: str, *args, **kwargs):  # type: ignore[override]
+        if name.startswith("pdfminer"):
+            raise ImportError("pdfminer blocked for test")
+        return real_import(name, *args, **kwargs)
+
+    dummy_pdf = tmp_path / "x.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    from latex2ufdissertation.pipeline.types import MissingToolchain
+
+    # Remove cached pdfminer modules so the lazy import triggers fresh.
+    saved = {k: v for k, v in sys.modules.items() if k.startswith("pdfminer")}
+    for k in saved:
+        monkeypatch.delitem(sys.modules, k)
+
+    with patch("builtins.__import__", side_effect=_block_pdfminer):
+        from latex2ufdissertation.pipeline import pdf_checks as _mod
+
+        with pytest.raises(MissingToolchain, match="pdfminer"):
+            _mod.run_pdf_checks(dummy_pdf, __import__(
+                "latex2ufdissertation.pipeline.types", fromlist=["Issues"]
+            ).Issues())
+
+
+def test_run_pdf_checks_unreadable_on_syntax_error(
+    tmp_path: Path,
+) -> None:
+    """A pdfminer PDFSyntaxError inside _extract_pages is converted to
+    UnreadableInput before it reaches run_pdf_checks. This test verifies
+    that the real, minimal-stub PDF raises UnreadableInput end-to-end
+    (PDFSyntaxError → UnreadableInput inside _extract_pages).
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues, UnreadableInput
+
+    dummy_pdf = tmp_path / "bad.pdf"
+    dummy_pdf.write_bytes(b"%PDF-1.7\n")
+
+    issues = Issues()
+    with pytest.raises(UnreadableInput):
+        run_pdf_checks(dummy_pdf, issues)
+
+
+# ---------------------------------------------------------------------------
+# Fix 1: encrypted PDFs raise UnreadableInput, not a raw PDFEncryptionError
+# ---------------------------------------------------------------------------
+
+
+def test_extract_pages_raises_unreadable_on_encryption_error(
+    tmp_path: Path,
+) -> None:
+    """PDFEncryptionError from pdfminer must be caught and re-raised as
+    UnreadableInput, not escape as a raw exception to the CLI.
+    """
+    from unittest.mock import patch
+
+    from pdfminer.pdfdocument import PDFEncryptionError
+
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+    from latex2ufdissertation.pipeline.types import UnreadableInput
+
+    dummy_pdf = tmp_path / "encrypted.pdf"
+    dummy_pdf.write_bytes(b"%PDF-1.7\n")
+
+    with patch(
+        "pdfminer.high_level.extract_pages",
+        side_effect=PDFEncryptionError("password required"),
+    ):
+        with pytest.raises(UnreadableInput):
+            _extract_pages(dummy_pdf)
+
+
+# ---------------------------------------------------------------------------
+# Fix 2: body-mode dominant-font unit test (multi-font page, Counter/max logic)
+# ---------------------------------------------------------------------------
+
+
+def test_extract_pages_dominant_font_wins_by_glyph_count(
+    tmp_path: Path,
+) -> None:
+    """On a page with 10 glyphs of FontA@12.0 and 3 glyphs of ABCDEF+FontB@10.0,
+    body_font must be 'FontA' and body_size must be 12.0 (subset prefix stripped).
+    Exercises the Counter/max tie-break logic in _extract_pages directly.
+    """
+    from unittest.mock import MagicMock, patch
+
+    from pdfminer.layout import LTChar
+
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+
+    dummy_pdf = tmp_path / "multi_font.pdf"
+    dummy_pdf.write_bytes(b"%PDF-1.7\n")
+
+    # Build fake LTChar-like objects that pass the real isinstance(item, LTChar)
+    # check by using MagicMock(spec=LTChar) — spec sets __class__ correctly.
+    def make_char(fontname: str, size: float) -> MagicMock:
+        c = MagicMock(spec=LTChar)
+        c.fontname = fontname
+        c.size = size
+        return c
+
+    # 10 glyphs FontA@12.0, 3 glyphs ABCDEF+FontB@10.0 (subset prefix present)
+    fake_page = (
+        [make_char("FontA", 12.0)] * 10
+        + [make_char("ABCDEF+FontB", 10.0)] * 3
+    )
+
+    with patch("pdfminer.high_level.extract_pages", return_value=[fake_page]):
+        pages = _extract_pages(dummy_pdf)
+
+    assert len(pages) == 1
+    assert pages[0].body_font == "FontA"
+    assert pages[0].body_size == 12.0
+
+
+# ---------------------------------------------------------------------------
+# PDF-input mode end-to-end (acceptance gate §8.4)
+# ---------------------------------------------------------------------------
+
+
+@_DEMO_AVAILABLE
+def test_cli_pdf_input_mode_skips_source_layer_and_exits_zero(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Acceptance gate §8.4 — pdf input mode tested.
+
+    Invoking the CLI with the committed demo PDF must:
+    - skip the source layer (note emitted to stderr)
+    - produce exit code 0 (no must-fix findings)
+    - not attempt compilation
+    """
+    from latex2ufdissertation.cli import main
+
+    rc = main([str(_DEMO_PDF)])
+    captured = capsys.readouterr()
+    assert "source layer skipped" in captured.err
+    assert rc == 0
+
+
+@_DEMO_AVAILABLE
+def test_cli_pdf_input_mode_detected_mode_in_json(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """When --json is used with a PDF input, detected_mode must be 'pdf'."""
+    import json
+
+    from latex2ufdissertation.cli import main
+
+    rc = main(["--json", str(_DEMO_PDF)])
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["detected_mode"] == "pdf"
+    assert rc == 0
+
+
+# ---------------------------------------------------------------------------
+# Bundled-PDF path (spec §4: prefer bundled PDF over compiling)
+# ---------------------------------------------------------------------------
+
+
+@_DEMO_AVAILABLE
+def test_cli_dir_input_uses_bundled_pdf_not_compile(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The demo directory contains a bundled main.pdf. Running the CLI
+    against the directory must pick up that PDF (not attempt compilation)
+    and produce exit 0 (zero must-fix findings on the clean demo).
+
+    Verifies spec §4: 'prefer bundled PDF if present; otherwise compile'.
+    """
+    from latex2ufdissertation.cli import main
+
+    demo_dir = _DEMO_PDF.parent
+    rc = main([str(demo_dir)])
+    captured = capsys.readouterr()
+    assert "using bundled PDF" in captured.err, "Expected bundled-PDF branch to be taken"
+    assert rc == 0
