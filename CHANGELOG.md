@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-01
+
 ### Added
 - PDF validation layer (`pipeline/pdf_checks.py`): runs on a bundled or freshly-compiled PDF, and on `*.pdf` input (new `pdf` input mode, which skips the source layer). A per-page body-mode primitive (most-common glyph font/size, subset-prefix stripped) backs the rendered-output checks (#53)
 - PDF-layer rules: `UF-S1` (PDF parses and has content), PDF-authoritative `UF-F2` (body-mode font outside the Times/Arial family) and `UF-F3` (body-mode size ≠ 12 pt), and `UF-S5` (review — fires when link annotations *and* the document outline are both absent, e.g. `\hypersetup{draft}` left on) (#53)
@@ -20,6 +22,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ### Fixed
 - `UF-P1` / `UF-F8`: `_SETFILE_RULES` now covers all 8 `\set*File` macros (cls:540-596); optional macros (copyright, dedication, abbreviations, appendix) get the P1 companion-file check when present without firing a spurious F8 "not set" when absent (#20)
+- `--init`: corrected the UF IT template download URL — the old `wp-content/uploads` path 404s; now fetches from the current helpdesk media path (#61)
 
 ## [0.2.0] - 2026-05-29
 
