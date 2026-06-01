@@ -19,12 +19,18 @@ _VIOLATION_PDF = (
 _F3_VIOLATION_PDF = (
     _REPO_ROOT / "tests" / "fixtures" / "uf_f3_pdf_size_violation" / "input" / "violation.pdf"
 )
+_S5_DRAFT_PDF = (
+    _REPO_ROOT / "tests" / "fixtures" / "uf_s5_draft_mode" / "input" / "draft.pdf"
+)
 
 _VIOLATION_AVAILABLE = pytest.mark.skipif(
     not _VIOLATION_PDF.exists(), reason="F2 violation PDF fixture not present"
 )
 _F3_VIOLATION_AVAILABLE = pytest.mark.skipif(
     not _F3_VIOLATION_PDF.exists(), reason="F3 violation PDF fixture not present"
+)
+_S5_DRAFT_AVAILABLE = pytest.mark.skipif(
+    not _S5_DRAFT_PDF.exists(), reason="S5 draft-mode PDF fixture not present"
 )
 
 _DEMO_AVAILABLE = pytest.mark.skipif(
@@ -646,3 +652,230 @@ def test_check_f3_violation_fixture_fires_must_fix() -> None:
         assert size_match, f"Expected 'Npt body text' in observed, got {observed!r}"
         body_size = float(size_match.group(1))
         assert body_size > 14.0, f"Expected body_size >14pt, got {body_size}pt"
+
+
+# ---------------------------------------------------------------------------
+# S5 PDF-layer check (UF-S5, hyperlink annotations / outline present)
+# ---------------------------------------------------------------------------
+
+
+def test_check_s5_fires_when_both_absent(tmp_path: Path) -> None:
+    """_check_s5 fires UF-S5 (review, pdf) when BOTH link_count==0 AND
+    no Outlines in the catalog — the hyperref-disabled / draft-mode signal.
+    Uses a patched helper; no real PDF needed.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import PDF, REVIEW
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    mock_pages = []  # _extract_pages patched to []  → S1 fires, but S5 also runs
+
+    issues = Issues()
+    with (
+        patch(
+            "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+            return_value=mock_pages,
+        ),
+        patch(
+            "latex2ufdissertation.pipeline.pdf_checks._inspect_hyperlinks",
+            return_value=(0, False),
+        ),
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    s5 = [f for f in issues.findings if f.rule_id == "UF-S5"]
+    assert len(s5) == 1, f"expected 1 UF-S5 finding, got {len(s5)}"
+    finding = s5[0]
+    assert finding.severity == REVIEW
+    assert finding.layer == PDF
+    observed_lower = (finding.observed or "").lower()
+    assert "hyperref" in observed_lower or "draft" in observed_lower
+    assert finding.required is not None
+
+
+def test_check_s5_silent_when_links_present(tmp_path: Path) -> None:
+    """_check_s5 must NOT fire when link_count > 0 (even if no Outlines)."""
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    issues = Issues()
+    with (
+        patch(
+            "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+            return_value=[],
+        ),
+        patch(
+            "latex2ufdissertation.pipeline.pdf_checks._inspect_hyperlinks",
+            return_value=(5, False),
+        ),
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    s5 = [f for f in issues.findings if f.rule_id == "UF-S5"]
+    assert s5 == [], f"unexpected UF-S5 when links present: {s5}"
+
+
+def test_check_s5_silent_when_outline_present(tmp_path: Path) -> None:
+    """_check_s5 must NOT fire when Outlines exist (even if link_count==0)."""
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    issues = Issues()
+    with (
+        patch(
+            "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+            return_value=[],
+        ),
+        patch(
+            "latex2ufdissertation.pipeline.pdf_checks._inspect_hyperlinks",
+            return_value=(0, True),
+        ),
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    s5 = [f for f in issues.findings if f.rule_id == "UF-S5"]
+    assert s5 == [], f"unexpected UF-S5 when outline present: {s5}"
+
+
+def test_check_s5_silent_when_both_present(tmp_path: Path) -> None:
+    """_check_s5 must NOT fire when both links and Outlines are present."""
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    issues = Issues()
+    with (
+        patch(
+            "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+            return_value=[],
+        ),
+        patch(
+            "latex2ufdissertation.pipeline.pdf_checks._inspect_hyperlinks",
+            return_value=(159, True),
+        ),
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    s5 = [f for f in issues.findings if f.rule_id == "UF-S5"]
+    assert s5 == [], f"unexpected UF-S5 when links+outline present: {s5}"
+
+
+def test_check_s5_silent_when_inspect_raises(tmp_path: Path) -> None:
+    """If _inspect_hyperlinks raises an unexpected exception, _check_s5 must
+    NOT fire (degrade gracefully) and must NOT propagate the exception.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    issues = Issues()
+    with (
+        patch(
+            "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+            return_value=[],
+        ),
+        patch(
+            "latex2ufdissertation.pipeline.pdf_checks._inspect_hyperlinks",
+            side_effect=RuntimeError("malformed annots"),
+        ),
+    ):
+        # Must not raise, and must not emit UF-S5
+        run_pdf_checks(dummy_pdf, issues)
+
+    s5 = [f for f in issues.findings if f.rule_id == "UF-S5"]
+    assert s5 == [], f"UF-S5 must not fire when inspection fails: {s5}"
+
+
+@_DEMO_AVAILABLE
+def test_inspect_hyperlinks_demo_link_count() -> None:
+    """_inspect_hyperlinks on the committed demo must return a positive Link
+    annotation count (hyperref is enabled; ToC/LoF/LoT/cross-refs → Links).
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import _inspect_hyperlinks
+
+    link_count, has_outline = _inspect_hyperlinks(_DEMO_PDF)
+    assert link_count > 0, (
+        f"Expected >0 Link annots in demo PDF, got {link_count}. "
+        "Likely a PSLiteral vs str comparison bug in _inspect_hyperlinks."
+    )
+    assert has_outline is True, f"Expected Outlines in demo catalog, got has_outline={has_outline}"
+
+
+@_DEMO_AVAILABLE
+def test_check_s5_demo_zero_findings() -> None:
+    """Acceptance gate §8.2: run_pdf_checks on the committed demo must produce
+    zero UF-S5 findings (demo PDF has link annotations + document outline).
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    issues = Issues()
+    run_pdf_checks(_DEMO_PDF, issues)
+    s5 = [f for f in issues.findings if f.rule_id == "UF-S5"]
+    assert s5 == [], f"Demo produced unexpected UF-S5 findings: {s5}"
+
+
+@_DEMO_AVAILABLE
+def test_check_s5_demo_overall_zero_findings() -> None:
+    """Acceptance gate §8.2: the full demo must have zero must-fix + zero review
+    findings after S5 is added (S5 must not break the clean-demo gate).
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    issues = Issues()
+    run_pdf_checks(_DEMO_PDF, issues)
+    assert issues.findings == [], f"Demo produced unexpected findings: {issues.findings}"
+
+
+@_S5_DRAFT_AVAILABLE
+def test_check_s5_draft_fixture_fires_review() -> None:
+    """The committed draft-mode fixture PDF must produce exactly 1 UF-S5 finding
+    with severity=review and layer=pdf.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import PDF, REVIEW
+    from latex2ufdissertation.pipeline.types import Issues
+
+    issues = Issues()
+    run_pdf_checks(_S5_DRAFT_PDF, issues)
+    s5 = [f for f in issues.findings if f.rule_id == "UF-S5"]
+    assert len(s5) == 1, f"Expected exactly 1 UF-S5 finding from draft fixture, got {len(s5)}"
+    finding = s5[0]
+    assert finding.severity == REVIEW, f"Expected review severity, got {finding.severity}"
+    assert finding.layer == PDF, f"Expected pdf layer, got {finding.layer}"
+
+
+@_S5_DRAFT_AVAILABLE
+def test_check_s5_draft_fixture_inspect_hyperlinks_returns_zero() -> None:
+    """The draft fixture must yield 0 Link annots and no Outlines from
+    _inspect_hyperlinks — verifies the compiled PDF is actually draft-mode.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import _inspect_hyperlinks
+
+    link_count, has_outline = _inspect_hyperlinks(_S5_DRAFT_PDF)
+    assert link_count == 0, f"Expected 0 Link annots in draft PDF, got {link_count}"
+    assert has_outline is False, f"Expected no Outlines in draft PDF, got has_outline={has_outline}"
