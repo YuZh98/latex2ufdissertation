@@ -51,8 +51,10 @@ _SETFILE_RULES = (
 # {0pt} and {0pt plus 0pt} match; {0pt plus 1fil} does not (ragged reinforcement).
 _F5_RIGHTSKIP_SETLENGTH = re.compile(r"\\setlength\s*\{\s*\\rightskip\s*\}\s*\{\s*0(?![^\\}]*fil)")
 # Direct TeX assignment: \rightskip=0pt, \rightskip=\z@
-# The (?!.*fil) guard excludes ragged-right glue (\rightskip=0pt plus 1fil).
-_F5_RIGHTSKIP_DIRECT = re.compile(r"\\rightskip\s*=\s*(?:0(?![^\\}]*fil)|\\z@)")
+# The (?![^\\}]*fil) guard excludes ragged-right glue (\rightskip=0pt plus 1fil
+# and \rightskip=\z@ plus 1fil). Both the 0-value and \z@ branches carry the
+# guard so that ragged-right reinforcement forms do not false-fire.
+_F5_RIGHTSKIP_DIRECT = re.compile(r"\\rightskip\s*=\s*(?:0(?![^\\}]*fil)|\\z@(?![^\\}]*fil))")
 # Space-separated assignment: \rightskip 0pt  (no equals sign)
 # The (?!.*fil) guard excludes ragged-right glue (\rightskip 0pt plus 1fil).
 _F5_RIGHTSKIP_SPACE = re.compile(r"\\rightskip\s+0(?![^\\}]*fil)")

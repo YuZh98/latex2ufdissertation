@@ -169,9 +169,9 @@ def main(argv: list[str] | None = None) -> int:
     # PDF — its contract is "project tree + cleanup" and does not apply here.
     if issues.detected_mode == "pdf":
         pdf_path = Path(args.input)
-        if not pdf_path.exists():
+        if not pdf_path.exists() or not pdf_path.is_file():
             issues.set_exit_reason(EXIT_REASON_UNREADABLE_INPUT)
-            _err(f"Error: input not found: {args.input}")
+            _err(f"Error: input not found or not a file: {args.input}")
             if args.json_out:
                 _emit_json(issues)
             return 2

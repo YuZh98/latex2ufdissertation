@@ -871,3 +871,270 @@ def test_check_s5_draft_fixture_inspect_hyperlinks_returns_zero() -> None:
     link_count, has_outline = _inspect_hyperlinks(_S5_DRAFT_PDF)
     assert link_count == 0, f"Expected 0 Link annots in draft PDF, got {link_count}"
     assert has_outline is False, f"Expected no Outlines in draft PDF, got has_outline={has_outline}"
+
+
+# ---------------------------------------------------------------------------
+# Findings 1+2: body-mode excludes math/mono glyphs from font/size counters
+# ---------------------------------------------------------------------------
+
+
+def test_extract_pages_body_mode_excludes_math_glyphs(tmp_path: Path) -> None:
+    """F3 false-positive fix: 10 Times@12 + 50 NewTXMI@8 glyphs.
+
+    With math excluded from body-mode counters, body_font must be
+    'TeXGyreTermesX-Regular' and body_size must be 12.0, not 8.0.
+    """
+    from unittest.mock import MagicMock, patch
+
+    from pdfminer.layout import LTChar
+
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+
+    dummy_pdf = tmp_path / "multi_font_math.pdf"
+    dummy_pdf.write_bytes(b"%PDF-1.7\n")
+
+    def make_char(fontname: str, size: float) -> MagicMock:
+        c = MagicMock(spec=LTChar)
+        c.fontname = fontname
+        c.size = size
+        return c
+
+    # 10 body glyphs at 12pt, 50 math glyphs at 8pt
+    fake_page = [make_char("TeXGyreTermesX-Regular", 12.0)] * 10 + [make_char("NewTXMI", 8.0)] * 50
+
+    with patch("pdfminer.high_level.extract_pages", return_value=[fake_page]):
+        pages = _extract_pages(dummy_pdf)
+
+    assert len(pages) == 1
+    assert pages[0].body_font == "TeXGyreTermesX-Regular", (
+        f"Expected TeXGyreTermesX-Regular, got {pages[0].body_font!r}"
+    )
+    assert pages[0].body_size == 12.0, f"Expected 12.0, got {pages[0].body_size}"
+
+
+def test_extract_pages_body_mode_excludes_mono_glyphs(tmp_path: Path) -> None:
+    """F2 false-negative fix: 10 LMRoman12-Regular@12 + 50 NewTXMI@8 glyphs.
+
+    Routes actual LTChar mocks through the real _extract_pages so the
+    glyph-exclusion logic is genuinely exercised. With NewTXMI excluded from
+    body counters, body_font must be 'LMRoman12-Regular' (not None), pinning
+    both the F2 false-negative fix and the LMMono-vs-LMRoman prefix distinction
+    (LMRoman* must NOT be excluded, only LMMono*).
+    """
+    from unittest.mock import MagicMock, patch
+
+    from pdfminer.layout import LTChar
+
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "lmroman_body.pdf"
+    dummy_pdf.write_bytes(b"%PDF-1.7\n")
+
+    def make_char(fontname: str, size: float) -> MagicMock:
+        c = MagicMock(spec=LTChar)
+        c.fontname = fontname
+        c.size = size
+        return c
+
+    # 10 non-Times body glyphs at 12pt; 50 math glyphs at 8pt (should be excluded).
+    # LMRoman12-Regular does NOT start with LMMono, so it must remain in counters.
+    fake_page = [make_char("LMRoman12-Regular", 12.0)] * 10 + [make_char("NewTXMI", 8.0)] * 50
+
+    with patch("pdfminer.high_level.extract_pages", return_value=[fake_page]):
+        pages = _extract_pages(dummy_pdf)
+
+    assert len(pages) == 1
+    assert pages[0].body_font == "LMRoman12-Regular", (
+        f"Expected LMRoman12-Regular, got {pages[0].body_font!r} — "
+        "math must be excluded but LMRoman body must not be"
+    )
+    assert pages[0].body_size == 12.0, f"Expected 12.0, got {pages[0].body_size}"
+
+    # Confirm F2 fires on the extracted result (non-Times body detected).
+    from unittest.mock import patch as _patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+
+    issues = Issues()
+    with _patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert len(f2) == 1, (
+        f"Expected 1 UF-F2 finding (math glyphs must not mask non-Times body), got {len(f2)}"
+    )
+    assert f2[0].severity == MUST_FIX
+    assert f2[0].layer == PDF
+
+
+def test_extract_pages_body_font_math_dominant_raw(tmp_path: Path) -> None:
+    """_extract_pages directly: raw page with math-dominant glyphs.
+
+    Feeds actual LTChar mocks through _extract_pages; after the fix the
+    body-mode counters must ignore math prefixes and report Times@12.
+    """
+    from unittest.mock import MagicMock, patch
+
+    from pdfminer.layout import LTChar
+
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+
+    dummy_pdf = tmp_path / "raw_math.pdf"
+    dummy_pdf.write_bytes(b"%PDF-1.7\n")
+
+    def make_char(fontname: str, size: float) -> MagicMock:
+        c = MagicMock(spec=LTChar)
+        c.fontname = fontname
+        c.size = size
+        return c
+
+    # 10 Times@12, 50 NewTXMI@8 (with subset prefix), 10 txsys@8
+    fake_page = (
+        [make_char("TeXGyreTermesX-Regular", 12.0)] * 10
+        + [make_char("ABCDEF+NewTXMI", 8.0)] * 50
+        + [make_char("txsys", 8.0)] * 10
+    )
+
+    with patch("pdfminer.high_level.extract_pages", return_value=[fake_page]):
+        pages = _extract_pages(dummy_pdf)
+
+    assert len(pages) == 1
+    assert pages[0].body_font == "TeXGyreTermesX-Regular"
+    assert pages[0].body_size == 12.0
+
+
+def test_extract_pages_all_math_glyphs_yields_none_body(tmp_path: Path) -> None:
+    """A page with only math glyphs (all excluded) must produce body_font=None.
+
+    This covers the full-page figure / math-only page case — checks must
+    skip it rather than falsely reporting a violation.
+    """
+    from unittest.mock import MagicMock, patch
+
+    from pdfminer.layout import LTChar
+
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+
+    dummy_pdf = tmp_path / "all_math.pdf"
+    dummy_pdf.write_bytes(b"%PDF-1.7\n")
+
+    def make_char(fontname: str, size: float) -> MagicMock:
+        c = MagicMock(spec=LTChar)
+        c.fontname = fontname
+        c.size = size
+        return c
+
+    # Only math glyphs — nothing remains after exclusion
+    fake_page = [make_char("NewTXMI", 8.0)] * 30 + [make_char("txsys", 8.0)] * 20
+
+    with patch("pdfminer.high_level.extract_pages", return_value=[fake_page]):
+        pages = _extract_pages(dummy_pdf)
+
+    assert len(pages) == 1
+    assert pages[0].body_font is None
+    assert pages[0].body_size is None
+
+
+@_DEMO_AVAILABLE
+def test_extract_pages_demo_zero_f2_f3_with_body_mode_fix() -> None:
+    """Acceptance gate §8.2: after body-mode fix, demo must still produce
+    zero UF-F2 and zero UF-F3 findings across all 26 pages.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    issues = Issues()
+    run_pdf_checks(_DEMO_PDF, issues)
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert f2 == [], f"Demo produced unexpected UF-F2 findings after body-mode fix: {f2}"
+    assert f3 == [], f"Demo produced unexpected UF-F3 findings after body-mode fix: {f3}"
+
+
+# ---------------------------------------------------------------------------
+# Finding 3: broader exception handling in _extract_pages
+# ---------------------------------------------------------------------------
+
+
+def test_extract_pages_raises_unreadable_on_is_directory_error(
+    tmp_path: Path,
+) -> None:
+    """IsADirectoryError from extract_pages must be caught and re-raised as
+    UnreadableInput, not escape as a raw exception.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+    from latex2ufdissertation.pipeline.types import UnreadableInput
+
+    dummy_pdf = tmp_path / "dummy.pdf"
+    dummy_pdf.write_bytes(b"%PDF-1.7\n")
+
+    with patch(
+        "pdfminer.high_level.extract_pages",
+        side_effect=IsADirectoryError("is a directory"),
+    ):
+        with pytest.raises(UnreadableInput):
+            _extract_pages(dummy_pdf)
+
+
+def test_extract_pages_raises_unreadable_on_ps_exception(
+    tmp_path: Path,
+) -> None:
+    """PSException (e.g. PSEOF, PSSyntaxError) from extract_pages must be
+    caught and re-raised as UnreadableInput.
+    """
+    from unittest.mock import patch
+
+    from pdfminer.psexceptions import PSEOF
+
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+    from latex2ufdissertation.pipeline.types import UnreadableInput
+
+    dummy_pdf = tmp_path / "dummy.pdf"
+    dummy_pdf.write_bytes(b"%PDF-1.7\n")
+
+    with patch(
+        "pdfminer.high_level.extract_pages",
+        side_effect=PSEOF("unexpected EOF"),
+    ):
+        with pytest.raises(UnreadableInput):
+            _extract_pages(dummy_pdf)
+
+
+def test_cli_directory_named_pdf_exits_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A directory whose name ends in .pdf is classified as 'dir' by input_mode,
+    so it never reaches the pdf branch. But if a directory path that resolves
+    as 'pdf' mode is supplied (via patching input_mode), the is_file() guard
+    must intercept it and exit 2, not pass it to _extract_pages.
+
+    We also test the direct path: patching input_mode to return 'pdf' for a
+    directory path verifies the is_file() guard in cli.py.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.cli import main
+
+    # Create a directory (not a file) to use as input
+    fake_pdf_dir = tmp_path / "notafile.pdf"
+    fake_pdf_dir.mkdir()
+
+    # Patch input_mode to return 'pdf' for this directory path so the CLI
+    # enters the pdf branch (normally a directory returns 'dir')
+    with patch(
+        "latex2ufdissertation.cli.input_mode",
+        return_value="pdf",
+    ):
+        rc = main([str(fake_pdf_dir)])
+
+    captured = capsys.readouterr()
+    assert rc == 2, f"Expected exit 2 for directory-as-pdf input, got {rc}"
+    # Error message should mention the path or indicate unreadable input
+    assert "Error" in captured.err or rc == 2

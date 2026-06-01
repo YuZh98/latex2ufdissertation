@@ -20,6 +20,21 @@ from latex2ufdissertation.pipeline.types import Issues, MissingToolchain, Unread
 # strip before recording font names so findings are deterministic.
 _SUBSET_RE = re.compile(r"^[A-Z]{6}\+")
 
+# Font-name prefixes that represent math or monospace glyphs.
+# These are excluded from the body-mode font/size counters in _extract_pages so
+# that pages with heavy math or code listings don't skew body_font / body_size:
+#   NewTX*  — newtx math glyphs (NewTXMI, NewTXSY, …)
+#   txsys   — newtx symbol font
+#   txexs   — newtx extra-symbol font
+#   LMMono  — Computer Modern Monospace (code/verbatim; NOT LMRoman which is body)
+# Applied to the subset-stripped font name, so ABCDEF+NewTXMI is also excluded.
+_NON_BODY_FONT_PREFIXES: tuple[str, ...] = (
+    "NewTX",
+    "txsys",
+    "txexs",
+    "LMMono",
+)
+
 # UF-F3 constants: required body-mode size and rounding tolerance (pt).
 # A deviation of more than _F3_SIZE_TOLERANCE_PT from _F3_REQUIRED_BODY_PT
 # indicates the student overrode the template's 12-point default globally.
@@ -104,6 +119,7 @@ def _extract_pages(pdf_path: Path) -> list[PageData]:
     try:
         from pdfminer.high_level import extract_pages
         from pdfminer.pdfexceptions import PDFException
+        from pdfminer.psexceptions import PSException
     except ImportError as exc:
         raise MissingToolchain(
             "pdfminer.six not installed — run `pip install pdfminer.six`"
@@ -118,6 +134,10 @@ def _extract_pages(pdf_path: Path) -> list[PageData]:
             size_counter: Counter[float] = Counter()
             for char in _iter_chars(page_layout):
                 fname = _SUBSET_RE.sub("", char.fontname)
+                # Exclude math and monospace glyphs so body_font/body_size
+                # reflect actual body text, not incidental math/code content.
+                if any(fname.startswith(pfx) for pfx in _NON_BODY_FONT_PREFIXES):
+                    continue
                 font_counter[fname] += 1
                 size_counter[round(char.size, 1)] += 1
             if font_counter:
@@ -128,7 +148,7 @@ def _extract_pages(pdf_path: Path) -> list[PageData]:
                 body_font = None
                 body_size = None
             results.append(PageData(page_num=page_num, body_font=body_font, body_size=body_size))
-    except PDFException as exc:
+    except (PDFException, PSException, OSError) as exc:
         raise UnreadableInput(f"Cannot parse PDF: {pdf_path.name} — {exc}") from exc
 
     return results

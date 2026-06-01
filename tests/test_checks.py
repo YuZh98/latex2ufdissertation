@@ -831,12 +831,14 @@ def test_rightskip_zero_override_fires_uf_f5(tmp_path, snippet):
         r"\setlength{\rightskip}{0pt plus 1fil}",
         r"\rightskip=0pt plus 1fil",
         r"\rightskip 0pt plus 1fil",
+        r"\rightskip=\z@ plus 1fil",
     ],
 )
 def test_rightskip_non_zero_or_safe_does_not_fire_uf_f5(tmp_path, snippet):
     # Guard: non-zero rightskip assignments and allowlisted commands must
     # NOT trigger UF-F5. \sloppy and \raggedright are already in the
     # existing allowlist; the non-zero rightskip forms are new guards.
+    # \rightskip=\z@ plus 1fil is ragged-right reinforcement — must not fire.
     src = _VALID.replace(r"\begin{document}", r"\begin{document}" + "\n" + snippet)
     master = _project(tmp_path, src, _VALID_FILES)
     issues = Issues()
