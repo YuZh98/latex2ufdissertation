@@ -805,6 +805,7 @@ def test_justify_in_comment_does_not_fire_uf_f5(tmp_path):
         r"\rightskip=0pt",
         r"\rightskip 0pt",
         r"\rightskip=\z@",
+        r"\rightskip=0pt\hfill",
     ],
 )
 def test_rightskip_zero_override_fires_uf_f5(tmp_path, snippet):
