@@ -21,7 +21,7 @@ The tool is **advisory**. The student remains responsible for the dissertation. 
 ### In scope
 
 - Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+ UF template)
-- Two-layer validation: LaTeX source + compiled PDF
+- Two-layer validation: LaTeX source + compiled PDF. The PDF layer introduces the project's first runtime dependency (`pdfminer.six`), **lazy-imported** so the source-only and `--dry-run` paths remain stdlib-only. This is a deliberate, documented departure from the prior stdlib-only constraint.
 - Four input modes: project zip, project directory, git URL, compiled PDF (PDF-only input is the v1.0 addition)
 - Compilation as a means to obtain the PDF when source input is given (utility, not headline feature)
 - CLI as the engine
@@ -44,6 +44,8 @@ The tool is **advisory**. The student remains responsible for the dissertation. 
 The primary user is a UF doctoral student near a submission deadline who has already done their own manual formatting check and wants confidence that they have not missed something. Secondary users are advisors, departmental administrators, and CI configurations on thesis repositories.
 
 The validator is **not** a substitute for the UF Graduate Editorial Office's review. It does not promise that a clean report means UF will accept the dissertation; it promises that a clean report means none of the documented mechanical formatting rules in [`uf-rules.md`](./uf-rules.md) were violated.
+
+Some compliance dimensions are **unverifiable by either layer**, and a clean report does not speak to them: **content correctness** (a required section file that exists but is empty or a placeholder passes its presence check — presence is not content); **accessibility tagging** (the template emits untagged PDFs by construction, so tagged-structure, alt-text, and reading-order cannot be confirmed); **co-authorship and prior-publication facts** (journal-article rules depend on knowledge external to the project); and **source–PDF consistency** (the PDF layer validates whatever PDF it is given; a bundled PDF stale relative to the source is not detected — see §4).
 
 ---
 
@@ -115,6 +117,8 @@ Input normalization produces a workspace containing project files and (where app
 
 Two tiers only. No INFO / TIP / SUGGESTION / NIT. Adding more tiers dilutes the signal.
 
+Standing, template-wide caveats (UF-A2 — e.g. the template's known accessibility limitations) are **not per-run findings**. They are static advisory text surfaced in the report preamble and documentation, outside the two-tier findings model. They therefore do not count toward acceptance gate §8.2 (zero findings on the demo) and do not affect exit codes.
+
 ### Offline by default
 
 No check requires network access in the default code path. Future network-dependent checks must live behind opt-in flags.
@@ -130,12 +134,12 @@ Same input → same output. No timestamps, randomized check ordering, or system-
 ### 7.1 Hard rules (locked design decisions)
 
 1. **Two layers only.** Source-layer and PDF-layer. No third layer (no static analysis of the cls itself, no AST-based LaTeX understanding beyond what regex + lightweight parsing can do).
-2. **Source layer is primary; PDF layer is defense-in-depth.** When a rule can be checked precisely at the source layer, that's where it lives. PDF layer exists for properties source cannot predict and as a check on the source layer's assumption that the template did its job.
+2. **Source layer is primary where it checks precisely; the PDF layer is authoritative where the template can override the student.** When a rule can be checked precisely at the source layer (geometry, page order, document-class options), that's where it lives, and the PDF layer is at most defense-in-depth. But for properties the template can **neutralize or re-assert** — font family above all (the class reloads `newtx` at `\begin{document}`, defeating a student font override so the body still renders Times), and the localized-vs-body case of font size — the source layer sees only *intent*, not the rendered result, and can flag a violation the template silently corrected. For these, the **PDF layer is authoritative for the must-fix verdict** and the source-layer finding is advisory (`review`). The two layers remain independent: the PDF layer does not suppress the source finding, and source–PDF consistency is not verified (§4).
 3. **Template-enforced rules are checked by override-scan, not by re-implementation.** The `ufdissertation` class already enforces margins, fonts, spacing, alignment, page numbering, paragraph indent, page order, and heading styles. The validator looks for student-introduced overrides of those defaults, not for the rules themselves.
 4. **Two severity tiers: must-fix and review.** No additional tiers.
 5. **Exit codes: 0 / 1 / 2 / 3.** Clean / must-fix present / fatal for this input / fatal for this environment (missing toolchain). No other codes.
 6. **Offline by default.** Any check that requires network sits behind an explicit opt-in flag, defaulting off.
-7. **Determinism.** Same input → byte-identical JSON output. Same input → human-readable output identical except for any ANSI color codes when stdout is a TTY.
+7. **Determinism.** Same input → byte-identical JSON output. Same input → human-readable output identical except for any ANSI color codes when stdout is a TTY. The PDF layer must **ignore volatile PDF metadata** (`/CreationDate`, `/ModDate`, `/ID`, and timestamp fields of `/Producer`) and **normalize per-compile font subset prefixes** (the random `ABCDEF+` glyph-name prefix) before emission; otherwise findings would vary per compile. The `/Producer` *engine name* is stable and may be read (e.g. for UF-D2). For source input, the determinism guarantee is over the *findings*, not the compiled PDF bytes — recompiling the same source legitimately produces a different PDF (restamped timestamps, fresh subset prefixes), but the findings extracted from it are identical.
 8. **Dissertation only.** Encountering `\thesisType{Thesis}` triggers exit 2 with a "master's theses are out of scope for v1.0" message.
 9. **Fall 2025+ template only.** Encountering an older template version triggers exit 2 with a "old template not supported, see migration guide" message and a link to the UF resource.
 10. **JSON schema is versioned and stable.** Once v1.0 ships, the JSON schema does not change without a major-version bump. Schema version field is mandatory.
@@ -169,14 +173,26 @@ These are decisions that are committed *for now* but may change before the v1.0 
 8. **The validator runs all applicable checks every time; there is no `--only=<rule_id>` filter in v1.0.**
    *Revisit if:* run time becomes long enough that selective re-checking is needed.
 
+9. **UF-F2 (font family) and UF-F3 (font size) fire as `review` at the source layer and `must-fix` at the PDF layer.** The source override-scan flags intent; the PDF layer adjudicates the rendered result (per §7.1.2). On `--dry-run` / PDF-absent paths, only the source-layer `review` is available.
+   *Revisit if:* a source-only signal proves sound enough to carry the must-fix verdict without the PDF, or the PDF check proves too noisy to be must-fix.
+
+10. **UF-F5 (alignment) is adjudicated at the PDF layer.** The source-layer command scan is unreliable here (`\justifying` does not compile in this template; the realistic re-justification vector `\rightskip=0pt` is not a single scannable command), so the rendered right-edge distribution is the authority.
+    *Revisit if:* a reliable source-level vector for re-justification is identified.
+
+11. **UF-S5 (hyperlink annotations) is implemented as `review` via PDF annotation/outline presence.** A conforming project (hyperref active) always emits link annotations and an outline; their absence (e.g. `\hypersetup{draft}` left on) is the signal.
+    *Revisit if:* the Editorial Office confirms non-functional hyperlinks as a formal rejection driver (would argue for `must-fix`).
+
+12. **UF-D2 (compiler) gains a PDF backup via the `/Producer` engine name.** The source layer reads the `% !TEX program` hint; the PDF layer can confirm the *actual* engine (`LuaTeX` vs `pdfTeX`; `xdvipdfmx` is ambiguous between XeLaTeX and LuaLaTeX-via-dvi).
+    *Revisit if:* `/Producer` proves unreliable across TeX distributions.
+
 ---
 
 ## 8. Acceptance criteria for v1.0.0 (locked)
 
 A release is v1.0.0 when **all** of the following hold:
 
-1. Every `must-fix` rule in [`uf-rules.md`](./uf-rules.md) has at least one passing check in the codebase.
-2. The known-good demo dissertation at `examples/demo_dissertation/` produces a report with zero must-fix and zero review findings.
+1. Every `must-fix` rule in [`uf-rules.md`](./uf-rules.md) has at least one **sound** check in the codebase — one with no known false positive that flags conforming template output, and one that does not target a pattern which cannot occur in a compilable document. A check that can reject a compliant dissertation (e.g. a source-only font-override scan defeated by the template's `newtx` re-assertion) or that scans a non-compiling vector (e.g. `\justifying`, undefined in this template) does **not** satisfy this gate; the must-fix verdict for such a rule must come from the authoritative layer (per §7.1.2).
+2. The known-good demo dissertation at `examples/demo_dissertation/` produces a report with zero must-fix and zero review findings. (Standing advisory notes such as UF-A2 are not findings — see §6 — and do not count.)
 3. Each `must-fix` rule has at least one synthetic broken-input fixture in `tests/fixtures/` that triggers the rule and only that rule (or a documented set if the input naturally violates multiple).
 4. All four input modes (`zip`, `dir`, `git`, `pdf`) are exercised in the test suite.
 5. The JSON output schema is documented in `docs/json-schema.md` and version field is mandatory.
