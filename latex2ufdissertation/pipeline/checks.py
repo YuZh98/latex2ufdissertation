@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from latex2ufdissertation.pipeline.rules import REVIEW, SOURCE
 from latex2ufdissertation.pipeline.types import Issues
 
 _DOCCLASS_RE = re.compile(r"\\documentclass(\[([^\]]*)\])?\{([^}]+)\}")
@@ -42,6 +43,13 @@ _SETFILE_RULES = (
     (r"\setDedicationFile", (".tex",), "Dedication", False),
     (r"\setAbbreviationsFile", (".tex",), "Abbreviations", False),
     (r"\setAppendixFile", (".tex",), "Appendix", False),
+)
+
+
+_F2_SOURCE_FIX_HINT = (
+    "Font override present; the UF template's newtx reload at "
+    "\\begin{document} may neutralize it. The PDF layer confirms "
+    "whether the rendered body is actually non-Times."
 )
 
 
@@ -427,9 +435,12 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     if re.search(r"\\setmainfont\s*(?:\[[^\]]*\])?\s*\{", nc):
         issues.add(
             "UF-F2",
+            severity=REVIEW,
+            layer=SOURCE,
             location=rel,
             observed="\\setmainfont override present in source",
             required="no \\setmainfont override (template loads Times / Arial)",
+            fix_hint=_F2_SOURCE_FIX_HINT,
         )
     _F2_PACKAGES = (
         "mathpazo",
@@ -449,16 +460,22 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                 _f2_seen.add(token)
                 issues.add(
                     "UF-F2",
+                    severity=REVIEW,
+                    layer=SOURCE,
                     location=rel,
                     observed=f"font-replacement package `{token}` loaded",
                     required=f"remove \\usepackage{{{token}}} (template provides Times / Arial)",
+                    fix_hint=_F2_SOURCE_FIX_HINT,
                 )
     if re.search(r"\\fontfamily\s*\{[^}]+\}\s*\\selectfont", nc):
         issues.add(
             "UF-F2",
+            severity=REVIEW,
+            layer=SOURCE,
             location=rel,
             observed="\\fontfamily{...}\\selectfont override present in source",
             required="no manual \\fontfamily override (template handles font selection)",
+            fix_hint=_F2_SOURCE_FIX_HINT,
         )
 
     # UF-F4: line spacing (source-half). Template enforces \doublespacing

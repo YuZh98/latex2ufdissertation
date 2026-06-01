@@ -597,7 +597,8 @@ def test_font_override_fires_uf_f2(tmp_path, override):
     run_checks(master, tmp_path, issues)
     f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
     assert f2
-    assert f2[0].severity == MUST_FIX
+    # Source-layer F2 is advisory (review); PDF layer is the authoritative must-fix.
+    assert f2[0].severity == REVIEW
 
 
 @pytest.mark.parametrize(

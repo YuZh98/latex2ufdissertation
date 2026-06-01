@@ -12,11 +12,42 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from latex2ufdissertation.pipeline.rules import PDF
 from latex2ufdissertation.pipeline.types import Issues, MissingToolchain, UnreadableInput
 
 # Random 6-uppercase-letter subset prefix added by the PDF engine per compile;
 # strip before recording font names so findings are deterministic.
 _SUBSET_RE = re.compile(r"^[A-Z]{6}\+")
+
+# UF-F2 allowlist: family name prefixes that are legitimate for UF dissertations.
+#
+# Derived from the canonical demo PDF (examples/demo_dissertation/main.pdf) plus
+# UF's explicit Arial allowance. The demo's body-mode font across all 26 pages is
+# exclusively TeXGyreTermesX-* (Times New Roman equivalent loaded by the newtx
+# family). The remaining prefixes cover math-dominant and monospace-dominant pages
+# that appear in real dissertations with heavy math or code listings:
+#
+#   TeXGyreTermes  — Times body (newtx/TeXGyreTermes, UF default)
+#   NewTX          — newtx math glyphs (NewTXMI, etc.)
+#   txsys          — newtx symbol font
+#   txexs          — newtx extra-symbol font
+#   LMMono         — Computer Modern monospace (code/verbatim pages)
+#   Arial          — UF's explicit Arial allowance (Windows CID font)
+#   Helvetica      — metric-compatible Arial substitute
+#   NimbusSans     — GhostScript/TeXLive Helvetica substitute
+#
+# Any font whose prefix-stripped base name does NOT start with one of these
+# prefixes is a non-conforming body font (e.g. LMRoman*, cmr10, Palatino-Roman).
+_F2_ALLOWED_PREFIXES: tuple[str, ...] = (
+    "TeXGyreTermes",
+    "NewTX",
+    "txsys",
+    "txexs",
+    "LMMono",
+    "Arial",
+    "Helvetica",
+    "NimbusSans",
+)
 
 
 @dataclass(frozen=True)
@@ -100,6 +131,31 @@ def _extract_pages(pdf_path: Path) -> list[PageData]:
     return results
 
 
+def _check_f2(pages: list[PageData], issues: Issues) -> None:
+    """UF-F2: body-mode font must belong to a UF-approved family (PDF layer).
+
+    For each page whose body-mode font is not None: if the font's base name
+    does not start with any of the prefixes in _F2_ALLOWED_PREFIXES, emit a
+    must-fix finding with layer=PDF (the registry layer for UF-F2 is BOTH;
+    the PDF layer is the authoritative must-fix half).
+
+    The source-layer half (checks.py UF-F2 emit sites) emits at severity
+    REVIEW so that font overrides neutralized by the template's newtx reload
+    do not produce a false must-fix in the absence of a compiled PDF.
+    """
+    for page in pages:
+        if page.body_font is None:
+            continue
+        if not any(page.body_font.startswith(prefix) for prefix in _F2_ALLOWED_PREFIXES):
+            issues.add(
+                "UF-F2",
+                layer=PDF,
+                location=f"p.{page.page_num}",
+                observed=page.body_font,
+                required="Times New Roman or Arial body font",
+            )
+
+
 def _check_s1(pages: list[PageData], issues: Issues) -> None:
     """UF-S1: PDF must have at least one page with extractable text.
 
@@ -128,4 +184,5 @@ def run_pdf_checks(pdf_path: Path, issues: Issues) -> None:
     pages = _extract_pages(pdf_path)
 
     _check_s1(pages, issues)
-    # Future checks (F2, F3, S5, …) are added here as _check_*(pages, issues).
+    _check_f2(pages, issues)
+    # Future checks (F3, S5, …) are added here as _check_*(pages, issues).

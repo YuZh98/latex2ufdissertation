@@ -34,7 +34,14 @@ REGEN = os.environ.get("LATEX2UFD_REGEN_FIXTURES") == "1"
 def _fixture_dirs() -> list[Path]:
     if not FIXTURES_DIR.is_dir():
         return []
-    return sorted(d for d in FIXTURES_DIR.iterdir() if d.is_dir() and (d / "input").is_dir())
+    # Only include fixtures that have a main.tex entry point for the source-layer
+    # checks. PDF-only fixtures (e.g. uf_f2_pdf_font_violation) have no main.tex
+    # and are tested directly in test_pdf_checks.py.
+    return sorted(
+        d
+        for d in FIXTURES_DIR.iterdir()
+        if d.is_dir() and (d / "input" / "main.tex").is_file()
+    )
 
 
 def _run_fixture(fixture: Path) -> tuple[dict, str]:

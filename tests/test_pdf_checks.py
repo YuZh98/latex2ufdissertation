@@ -13,6 +13,13 @@ import pytest
 # Locate the committed demo PDF once; tests that need it skip when absent.
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _DEMO_PDF = _REPO_ROOT / "examples" / "demo_dissertation" / "main.pdf"
+_VIOLATION_PDF = (
+    _REPO_ROOT / "tests" / "fixtures" / "uf_f2_pdf_font_violation" / "input" / "violation.pdf"
+)
+
+_VIOLATION_AVAILABLE = pytest.mark.skipif(
+    not _VIOLATION_PDF.exists(), reason="F2 violation PDF fixture not present"
+)
 
 _DEMO_AVAILABLE = pytest.mark.skipif(
     not _DEMO_PDF.exists(), reason="demo PDF not present"
@@ -350,3 +357,109 @@ def test_cli_dir_input_uses_bundled_pdf_not_compile(
     captured = capsys.readouterr()
     assert "using bundled PDF" in captured.err, "Expected bundled-PDF branch to be taken"
     assert rc == 0
+
+
+# ---------------------------------------------------------------------------
+# F2 PDF-layer check (UF-F2, body-font allowlist)
+# ---------------------------------------------------------------------------
+
+
+def test_check_f2_fires_on_non_allowed_font(tmp_path: Path) -> None:
+    """_check_f2: a page whose body font is outside the allowlist emits UF-F2
+    with severity=must-fix and layer=pdf. Uses mocked PageData; no real PDF.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    # One page whose body-mode font is LMRoman (not in any allowed prefix).
+    mock_pages = [PageData(page_num=7, body_font="LMRoman12-Regular", body_size=12.0)]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert len(f2) == 1, f"expected 1 UF-F2 finding, got {len(f2)}"
+    finding = f2[0]
+    assert finding.severity == MUST_FIX
+    assert finding.layer == PDF
+    assert finding.location == "p.7"
+    assert finding.observed == "LMRoman12-Regular"
+    assert "Times New Roman or Arial" in (finding.required or "")
+
+
+def test_check_f2_silent_on_allowed_fonts(tmp_path: Path) -> None:
+    """_check_f2: pages with TeXGyreTermes / NewTX / LMMono body fonts must
+    not emit any UF-F2 finding.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    mock_pages = [
+        PageData(page_num=1, body_font="TeXGyreTermesX-Regular", body_size=12.0),
+        PageData(page_num=2, body_font="NewTXMI", body_size=10.0),
+        PageData(page_num=3, body_font="LMMono10-Regular", body_size=10.0),
+        PageData(page_num=4, body_font=None, body_size=None),  # image-only page
+        PageData(page_num=5, body_font="TeXGyreTermesX-Bold", body_size=12.0),
+        PageData(page_num=6, body_font="TeXGyreTermesX-Italic", body_size=12.0),
+    ]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert f2 == [], f"unexpected UF-F2 findings on allowed fonts: {f2}"
+
+
+@_DEMO_AVAILABLE
+def test_check_f2_demo_zero_findings() -> None:
+    """Acceptance gate §8.2: run_pdf_checks on the committed demo must produce
+    zero UF-F2 findings across all 26 pages.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    issues = Issues()
+    run_pdf_checks(_DEMO_PDF, issues)
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert f2 == [], f"Demo produced unexpected UF-F2 findings: {f2}"
+
+
+@_VIOLATION_AVAILABLE
+def test_check_f2_violation_fixture_fires_must_fix() -> None:
+    """The committed violation PDF (rendered with LMRoman body from
+    \\fontfamily{ppl}\\selectfont override) must produce >=1 UF-F2 finding
+    with severity=must-fix, layer=pdf, and a p.N location.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    issues = Issues()
+    run_pdf_checks(_VIOLATION_PDF, issues)
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert len(f2) == 13, f"Expected 13 UF-F2 findings from violation PDF, got {len(f2)}"
+    for finding in f2:
+        assert finding.severity == MUST_FIX, f"Expected must-fix, got {finding.severity}"
+        assert finding.layer == PDF, f"Expected pdf layer, got {finding.layer}"
+        assert re.match(r"^p\.\d+$", finding.location), (
+            f"Expected p.N location, got {finding.location!r}"
+        )

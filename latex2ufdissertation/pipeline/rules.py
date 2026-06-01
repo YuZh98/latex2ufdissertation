@@ -87,7 +87,9 @@ RULES: dict[str, Rule] = {
         _anchor("UF-F2", "font-family"),
         fix_hint=(
             "Remove the font override; UF requires Times New Roman or Arial "
-            "(cls:167-169 loads them); the override produces a non-conforming font."
+            "(cls:167-169 loads them). Note: the template's newtx reload at "
+            "\\begin{document} may neutralize some overrides — the PDF layer "
+            "adjudicates whether the rendered body is actually non-conforming."
         ),
     ),
     "UF-F3": Rule(

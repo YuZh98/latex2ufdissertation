@@ -2,23 +2,23 @@
   "detected_mode": "unknown",
   "findings": [
     {
-      "fix_hint": "Remove the font override; UF requires Times New Roman or Arial (cls:167-169 loads them); the override produces a non-conforming font.",
-      "layer": "both",
+      "fix_hint": "Font override present; the UF template's newtx reload at \\begin{document} may neutralize it. The PDF layer confirms whether the rendered body is actually non-Times.",
+      "layer": "source",
       "location": "main.tex",
       "observed": "\\fontfamily{...}\\selectfont override present in source",
       "required": "no manual \\fontfamily override (template handles font selection)",
       "rule_id": "UF-F2",
-      "severity": "must-fix",
+      "severity": "review",
       "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f2--font-family"
     }
   ],
   "input": "<INPUT>",
   "schema_version": "1.0",
   "summary": {
-    "exit_code": 1,
-    "exit_reason": "must_fix_present",
-    "must_fix_count": 1,
-    "review_count": 0
+    "exit_code": 0,
+    "exit_reason": "clean",
+    "must_fix_count": 0,
+    "review_count": 1
   },
   "template_version": "unknown"
 }
