@@ -144,10 +144,12 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Source:** S1 (*"Left-aligned text with ragged right-hand margin — do not justify text"*) + C1:171 `\raggedright`
 - **Layer:** source primary
 - **Strategy:** template-enforced globally. Source: scan for override patterns:
-  - `\justifying`, `\justify`
+  - `\justifying`, `\justify` (via `\usepackage{ragged2e}`)
+  - `\setlength{\rightskip}{0pt}` / `\rightskip=0pt` / `\rightskip 0pt` / `\rightskip=\z@` (zero right-skip glue — the compilable, realistic re-justification vector)
   - `ragged2e` package w/ overrides
   - `\begin{flushleft}`/`\end{flushleft}` mass usage (acceptable in local contexts)
-- **Caveat (verified):** `\justifying` is **undefined** in this template (it loads raw `\raggedright`, not `ragged2e`) — a doc using bare `\justifying` fails to compile (exit 2), so it never reaches an F5 finding. The realistic re-justification vector is `\setlength{\rightskip}{0pt}`, which the command scan above does **not** catch. The sound check is therefore at the PDF layer: measure the **right-edge distribution** (ragged = high variance; justified = a dominant identical right edge plus a few short last lines). The source scan is best-effort for the `\usepackage{ragged2e}\justifying` path only.
+- **Source layer is the sound must-fix authority.** The scan covers both override vectors: the `\usepackage{ragged2e}\justifying` path and the `\rightskip`-zero assignment path. A PDF-layer right-edge-distribution check is **deferred to v1.1** as defense-in-depth only.
+- **Note (verified):** Bare `\justifying` (without `ragged2e`) is **undefined** in this template and fails to compile, so it would never reach a finding in practice. The scan covers `\justifying` because `\usepackage{ragged2e}\justifying` is a valid, compilable override path.
 - **Note:** Default `report` class justifies. Template's `\raggedright` is what makes ragged-right the actual behavior. Without it, output would justify. So this rule is real.
 - **Not-an-override allowlist:** `\sloppy` (and the equivalent `sloppypar` environment) loosens LaTeX's line-breaking criteria to reduce overfull-hbox warnings but does **not** justify text. The bundled UF example file uses `\sloppy` on the same line as `\documentclass`, in the form `\documentclass[editMode]{ufdissertation}\sloppy`. The validator's F5 override scan must allowlist `\sloppy` regardless of position — on its own line, on the same line as `\documentclass`, or anywhere else in the preamble or body.
 

@@ -1,7 +1,7 @@
 
 [source layer]
   (F-series)
-    [must-fix] UF-F5 main.tex — \justifying overrides template's \raggedright (required: no \justifying / \justify override in source (template's \raggedright produces ragged-right))
+    [must-fix] UF-F5 main.tex — \justifying overrides template's \raggedright (required: no \justifying / \justify / \rightskip-zero override in source (template's \raggedright produces ragged-right))
       fix: Remove the override; the UF template's `\raggedright` (cls:171) produces the required ragged-right alignment.
       see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f5--text-alignment-ragged-right
 

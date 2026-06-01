@@ -1,0 +1,21 @@
+
+[source layer]
+  (F-series)
+    [must-fix] UF-F5 main.tex — \rightskip set to zero overrides template's \raggedright (required: no \justifying / \justify / \rightskip-zero override in source (template's \raggedright produces ragged-right))
+      fix: Remove the override; the UF template's `\raggedright` (cls:171) produces the required ragged-right alignment.
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f5--text-alignment-ragged-right
+  (P-series)
+    [must-fix] UF-P1 main.tex — \setAcknowledgementsFile{'ack'} but no file found in project root (required: ack (or ack.tex) exists in project root)
+      fix: Create the named file in the project root (or fix the macro argument).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk
+    [must-fix] UF-P1 main.tex — \setAbstractFile{'abs'} but no file found in project root (required: abs (or abs.tex) exists in project root)
+      fix: Create the named file in the project root (or fix the macro argument).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk
+    [must-fix] UF-P1 main.tex — \setReferenceFile{'refs'} but no file found in project root (required: refs (or refs.bib) exists in project root)
+      fix: Create the named file in the project root (or fix the macro argument).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk
+    [must-fix] UF-P1 main.tex — \setBiographicalFile{'bio'} but no file found in project root (required: bio (or bio.tex) exists in project root)
+      fix: Create the named file in the project root (or fix the macro argument).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk
+
+Summary: 5 must-fix, 0 review.

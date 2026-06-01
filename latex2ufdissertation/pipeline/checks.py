@@ -46,6 +46,20 @@ _SETFILE_RULES = (
 )
 
 
+# Catalog § UF-F5: \rightskip zero-assignment patterns (re-justify vector).
+# setlength form: value starts with 0 and contains no "fil" stretch component.
+# {0pt} and {0pt plus 0pt} match; {0pt plus 1fil} does not (ragged reinforcement).
+_F5_RIGHTSKIP_SETLENGTH = re.compile(
+    r"\\setlength\s*\{\s*\\rightskip\s*\}\s*\{\s*0(?!.*fil)"
+)
+# Direct TeX assignment: \rightskip=0pt, \rightskip=\z@
+# The (?!.*fil) guard excludes ragged-right glue (\rightskip=0pt plus 1fil).
+_F5_RIGHTSKIP_DIRECT = re.compile(r"\\rightskip\s*=\s*(?:0(?!.*fil)|\\z@)")
+# Space-separated assignment: \rightskip 0pt  (no equals sign)
+# The (?!.*fil) guard excludes ragged-right glue (\rightskip 0pt plus 1fil).
+_F5_RIGHTSKIP_SPACE = re.compile(r"\\rightskip\s+0(?!.*fil)")
+
+
 _F2_SOURCE_FIX_HINT = (
     "Font override present; the UF template's newtx reload at "
     "\\begin{document} may neutralize it. The PDF layer confirms "
@@ -537,13 +551,15 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
         )
 
     # UF-F5: text-alignment overrides. Template's \raggedright (cls:171) is the
-    # ragged-right behavior UF requires. \justifying and \justify both override
-    # it. Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)
-    # are line-breaking helpers, not alignment overrides — they aren't in this
-    # scan, so they're silently ignored regardless of position. \raggedright
-    # itself is also silent because we only look for the override commands.
-    # Trailing (?![a-zA-Z]) ensures \justify does not match the \justify prefix
-    # inside \justifying (which has its own match) or any \justifyFoo variant.
+    # ragged-right behavior UF requires. Two override vectors are scanned:
+    #
+    # Vector 1 — \justifying / \justify (via ragged2e):
+    #   Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)
+    #   are line-breaking helpers, not alignment overrides — they aren't in this
+    #   scan, so they're silently ignored regardless of position. \raggedright
+    #   itself is also silent because we only look for the override commands.
+    #   Trailing (?![a-zA-Z]) ensures \justify does not match the \justify prefix
+    #   inside \justifying (which has its own match) or any \justifyFoo variant.
     for cmd in (r"\justifying", r"\justify"):
         for _ in re.finditer(re.escape(cmd) + r"(?![a-zA-Z])", nc):
             issues.add(
@@ -551,10 +567,34 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                 location=rel,
                 observed=f"{cmd} overrides template's \\raggedright",
                 required=(
-                    "no \\justifying / \\justify override in source "
+                    "no \\justifying / \\justify / \\rightskip-zero override in source "
                     "(template's \\raggedright produces ragged-right)"
                 ),
             )
+
+    # Vector 2 — \rightskip zero assignment (the compilable re-justify path):
+    #   Setting \rightskip to zero removes the ragged-right glue and re-justifies
+    #   paragraphs. Detected forms:
+    #     \setlength{\rightskip}{0...}      — setlength with zero value
+    #     \rightskip=0pt / \rightskip 0pt  — direct TeX assignment (zero)
+    #     \rightskip=\z@                    — plain TeX zero constant
+    #   Non-zero assignments (\rightskip=1pt, \rightskip{0pt plus 1fil}) are
+    #   allowlisted by matching only values beginning with 0 or \z@.
+    #   \raggedright contains no "rightskip" literal — no false-positive risk.
+    if (
+        _F5_RIGHTSKIP_SETLENGTH.search(nc)
+        or _F5_RIGHTSKIP_DIRECT.search(nc)
+        or _F5_RIGHTSKIP_SPACE.search(nc)
+    ):
+        issues.add(
+            "UF-F5",
+            location=rel,
+            observed="\\rightskip set to zero overrides template's \\raggedright",
+            required=(
+                "no \\justifying / \\justify / \\rightskip-zero override in source "
+                "(template's \\raggedright produces ragged-right)"
+            ),
+        )
 
     # UF-D2: non-LuaLaTeX compiler hint
     hint = re.search(r"%\s*!TEX\s+program\s*=\s*(pdflatex|xelatex)", raw)
