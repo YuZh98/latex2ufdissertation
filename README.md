@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 
-A safety-net validator for UF doctoral dissertations using the Fall 2025+ University of Florida LaTeX template. Given a project archive, project directory, or git URL, it produces a severity-tiered report citing the originating UF rule for each finding — one more pair of eyes before clicking submit. (PDF-only input and a separate PDF-layer of checks are planned for v1.0.)
+A safety-net validator for UF doctoral dissertations using the Fall 2025+ University of Florida LaTeX template. Given a project archive, project directory, git URL, or compiled PDF, it produces a severity-tiered report citing the originating UF rule for each finding — one more pair of eyes before clicking submit.
 
 > **The validator is advisory.** It is not a substitute for review by the UF Graduate Editorial Office. A clean report means none of the documented mechanical formatting rules in [`docs/uf-rules.md`](./docs/uf-rules.md) were violated; it does not guarantee UF will accept the dissertation. The student remains responsible.
 
@@ -39,13 +39,14 @@ The default command validates the project and compiles to PDF with LuaLaTeX. If 
 
 ## Inputs
 
-| Input | Source-layer validation | Compile |
-|---|---|---|
-| Project directory | yes | yes (unless `--dry-run`) |
-| `*.zip` archive | yes | yes (unless `--dry-run`) |
-| Git URL (https or ssh) | yes | yes (unless `--dry-run`) |
+| Input | Source-layer validation | PDF-layer validation | Compile |
+|---|---|---|---|
+| Project directory | yes | yes (after compile or on bundled PDF) | yes (unless `--dry-run`) |
+| `*.zip` archive | yes | yes (after compile or on bundled PDF) | yes (unless `--dry-run`) |
+| Git URL (https or ssh) | yes | yes (after compile) | yes (unless `--dry-run`) |
+| `*.pdf` (compiled PDF) | skipped | yes | no |
 
-PDF-only input and a separate PDF-layer of checks are planned for v1.0; see [`docs/spec-v1.0.md`](./docs/spec-v1.0.md).
+PDF-layer checks currently implemented: F2 (font family), F3 (font size), S1 (PDF present/readable), S5 (hyperlink annotations). Additional PDF backups (F1, F4, F6, F12) are deferred to later releases.
 
 ## Outputs
 
@@ -58,7 +59,7 @@ The JSON schema v1 shape:
 {
   "schema_version": "1.0",
   "input": "...",
-  "template_version": "..." | null,
+  "template_version": "unknown",   // detection deferred; always "unknown" today
   "findings": [ {severity, rule_id, layer, location, observed, required, fix_hint, source_url}, ... ],
   "summary": {must_fix_count, review_count, exit_code, exit_reason}
 }
@@ -70,14 +71,14 @@ The JSON schema v1 shape:
 |---|---|
 | `0` | Zero `must-fix` findings (`review`-only findings are advisory) |
 | `1` | One or more `must-fix` findings |
-| `2` | Fatal on this input (unsupported template, compile failure, unreadable input) |
+| `2` | Fatal on this input (compile failure, unreadable input, master's thesis input) |
 | `3` | Fatal on this environment (missing required toolchain, e.g. no LuaLaTeX) |
 
 ## Severity tiers
 
 Two tiers only:
 
-- **`must-fix`** — documented UF rule violation; submission will be rejected. Contributes to exit code 1.
+- **`must-fix`** — documented UF rule violation that the Editorial Office is expected to require fixing. Contributes to exit code 1. A few must-fix rules rest on heuristics or soft sources — see [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) §7.2 for caveats.
 - **`review`** — likely issue requiring human judgment; the tool flags, the student decides. Does not contribute to exit code.
 
 Every finding carries a `UF-*` rule ID and a link back to the rule's catalog entry in [`docs/uf-rules.md`](./docs/uf-rules.md). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full output contract.
@@ -96,9 +97,9 @@ Every finding carries a `UF-*` rule ID and a link back to the rule's catalog ent
 
 ## Scope
 
-**In scope for v0.1 (shipping today).** Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+). Source-layer validation. Three input modes: zip, directory, git URL. CLI as the engine. LuaLaTeX compile driver.
+**Current (v0.3.x, pre-1.0).** Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+). Source-layer and PDF-layer validation. Four input modes: zip, directory, git URL, compiled PDF. CLI as the engine. LuaLaTeX compile driver.
 
-**Planned for v1.0.** PDF-layer validation, PDF-only input mode, ETD-upload walkthrough (`--guide`). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full v1.0 specification.
+**Planned for v1.0.** ETD-upload walkthrough (`--guide`). Template-version detection and old-template refusal. Full PDF-layer coverage (F1, F4, F6, F12 backups). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full v1.0 specification and gate status.
 
 **Out of scope for v1.0.** Master's theses (deferred, same template, different `\thesisType`). The pre-Fall-2025 UF template (refused with a migration message). Source cleanup or Overleaf-export normalization. External URL liveness (reserved for `--check-links` in a future release). MCP server, browser extensions, editor extensions (separate artifacts that wrap the CLI). Hosted web service or GUI.
 
@@ -116,4 +117,4 @@ This tool compiles LaTeX. Only run it on sources you trust — see [`SECURITY.md
 
 ## Status
 
-v0.1 released. v1.0 work in progress; see [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for acceptance criteria. MIT license.
+v0.3.x released (pre-1.0). v1.0 work in progress; see [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the acceptance criteria and current gate status. MIT license.

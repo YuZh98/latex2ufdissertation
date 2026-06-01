@@ -22,7 +22,7 @@ Pipe-friendly:
   "schema_version": "1.0",
   "input": "my-thesis/",
   "detected_mode": "dir",
-  "template_version": "Fall 2025",
+  "template_version": "unknown",
   "findings": [ /* zero or more Finding objects */ ],
   "summary": {
     "must_fix_count": 0,
@@ -40,7 +40,7 @@ Pipe-friendly:
 | `schema_version` | string | no | Always `"1.0"` within the v1.x series. Bump on breaking shape change only. |
 | `input` | string | yes | The exact input string passed to the CLI (path, zip filename, or git URL). `null` only on fatal paths where the input was never resolved. |
 | `detected_mode` | string | no | How the input was classified: `"dir"`, `"zip"`, `"git"`, `"pdf"`, or `"unknown"`. (`"pdf"` is reserved for v1.0 PDF-only input.) |
-| `template_version` | string | no | Detected UF template version (e.g. `"Fall 2025"`), or `"unknown"` when undetectable (per spec § 5). |
+| `template_version` | string | no | Detected UF template version, or `"unknown"` when undetectable. **Status: detection not yet implemented — the field always emits `"unknown"` in the current build.** |
 | `findings` | array | no | Zero or more Finding objects. Empty array on clean runs and on fatal-input runs. |
 | `summary` | object | no | See `summary` below. |
 
@@ -74,7 +74,7 @@ Each finding represents one UF rule violation. The eight fields are frozen at v1
 
 ### Severity contract
 
-- `must-fix` — documented UF rule violation; submission would be rejected. Contributes to `must_fix_count` and trips `exit_code` 1.
+- `must-fix` — documented UF rule violation that the Editorial Office is expected to require fixing. Contributes to `must_fix_count` and trips `exit_code` 1. A few must-fix rules rest on heuristics or soft sources (D2 reads the `% !TEX` hint; F15's word cap is from the template file; F11 flags `\paragraph` per a template comment) — see [`spec-v1.0.md`](./spec-v1.0.md) §7.2 soft-rules 12/2/3.
 - `review` — likely issue requiring human judgment. Contributes to `review_count` only; never trips a non-zero exit code on its own.
 
 ### Finding sort order
@@ -110,7 +110,7 @@ The reason an exit code was chosen. The mapping is closed: any unknown reason in
 | `clean` | `0` | Zero must-fix findings. Review-only findings still report `clean`. |
 | `must_fix_present` | `1` | At least one must-fix finding |
 | `compile_failure` | `2` | LuaLaTeX compile failed; PDF layer cannot proceed |
-| `unsupported_template` | `2` | Detected template predates Fall 2025 or is not the UF dissertation class |
+| `unsupported_template` | `2` | Detected template predates Fall 2025 or is not the UF dissertation class (**not yet reachable — no raise site; old-template detection is deferred**) |
 | `unreadable_input` | `2` | Input path, zip, or git URL could not be read |
 | `thesis_input` | `2` | Input is a master's thesis (`\thesisType{thesis}`); out of scope for v1.0 |
 | `missing_toolchain` | `3` | Required external tool not on `PATH` (e.g. no LuaLaTeX) |

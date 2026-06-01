@@ -16,7 +16,7 @@ This document is the authoritative rule set the validator checks against. Every 
 
 Severity tiers:
 
-- **must-fix** — Documented UF rule. Violations cause submission rejection.
+- **must-fix** — Documented UF rule violation that the Editorial Office is expected to require fixing before acceptance. A few must-fix rules rest on heuristics or soft sources (D2 reads the `% !TEX` hint rather than confirming the actual engine; F15's 350-word cap comes from the template file, not a UF web doc; F11 flags `\paragraph` per a template comment) — see soft-rules 12, 2, and 3 in [`spec-v1.0.md`](./spec-v1.0.md) §7.2 for the revisit conditions.
 - **review** — Likely issue. Requires human judgment; tool flags, student decides.
 
 ---
@@ -235,6 +235,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Layer:** pdf only
 - **Strategy:** detect large vertical whitespace blocks within chapter body (>2x normal leading) via PDF bbox analysis. Flag location + page.
 - **Note:** Wording is "best to" → review, not must-fix.
+- **Status: no automated check.** The PDF bbox whitespace detector is not yet implemented; F12 has no emit site in the current build.
 
 ### UF-F13 — Document class is `ufdissertation`
 
@@ -275,6 +276,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Layer:** source
 - **Strategy:** parse chapter structure; flag any `\section` containing exactly one `\subsection`, or `\subsection` with exactly one `\subsubsection`.
 - **Note:** Review not must-fix — orphan subsection is style, not formal rejection per UF web docs.
+- **Status: no automated check.** The subsection-pairing structural parser is not yet implemented; F16 has no emit site in the current build.
 
 ---
 
@@ -294,7 +296,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Source:** S3 — common rejection reasons include *"absent sections (Acknowledgments, Abstract, References, Biographical Sketch)"*
 - **Layer:** source primary
 - **Strategy:** subset of UF-F8 with elevated detection priority. These four are the most-rejected omissions.
-- **Note:** Implementation-wise, F8 already covers them — S2 is a marketing-friendly grouping in the report output, not a separate code path.
+- **Note:** S2 has no detector of its own — the rejection-driver sections are enforced via UF-F8. S2 is a catalog grouping that highlights the highest-rejection-risk subset; it does not emit separate findings.
 
 ### UF-S3 — Broken internal cross-references
 
@@ -369,14 +371,14 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Source:** S3 (*"Cite on first page in unnumbered footnote with full citation"*)
 - **Layer:** source content check
 - **Strategy:** detect `\footnotetext[0]{...}` pattern at chapter start (the pattern C4:4 demonstrates). If chapter contains this pattern → presence confirmed. If document looks like a multi-article dissertation (multiple chapters with `\footnotetext[0]` patterns) but missing on one → flag for review.
-- **Note:** Can't auto-detect "is this chapter from a published article" w/o student annotation. Surface this as a checklist item in `--guide` mode rather than auto-checking.
+- **Note:** Can't auto-detect "is this chapter from a published article" w/o student annotation. Intended to surface as a checklist item in `--guide` mode. **Status: no automated check. J1 has no emit site in the current build. `--guide` is planned but not yet implemented.**
 
 ### UF-J2 — Co-author acknowledgment (when applicable)
 
 - **Severity:** review (manual checklist only)
 - **Source:** S3 (*"please make sure to acknowledge any work that your co-authors have done"*)
 - **Layer:** content check, low-confidence
-- **Strategy:** if multiple `\footnotetext[0]` patterns detected (suggesting journal-article mode), surface a checklist item: "verify co-authors acknowledged in Acknowledgments section." No auto-detect.
+- **Strategy:** if multiple `\footnotetext[0]` patterns detected (suggesting journal-article mode), surface a checklist item: "verify co-authors acknowledged in Acknowledgments section." No auto-detect. **Status: no automated check. J2 has no emit site in the current build.**
 
 **Dropped from prior draft:**
 - ~~J1 single abstract/ToC/refs across articles~~ → redundant with F9; dropped
@@ -392,6 +394,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Source:** S5 (PDF/UA-1, PDF/UA-2, WCAG 2.1/2.2 AA) + S4 (*"required for accessibility"* — template uses LuaLaTeX + TeX Live 2025 for tagging)
 - **Layer:** pdf
 - **Strategy — corrected (verified):** the original premise is wrong. A **canonical** LuaLaTeX + TeX Live 2025 build of this template produces an **untagged** PDF (no `/StructTreeRoot`, `/MarkInfo`, or `/Lang` — confirmed on the demo). Missing tags are the template's *normal* output, **not** a sign of the wrong compiler. Enforcing A1 (even as `review`) would therefore fire on every conforming dissertation and break acceptance gate §8.2. A1 is consequently **not a per-run finding**; the untagged-output fact is surfaced as standing informational text under UF-A2 (per [`spec-v1.0.md`](./spec-v1.0.md) §6). Accessibility tagging is unverifiable on this template by construction.
+- **Status: no automated check.** A1 has no emit site in the current build; it is informational only.
 
 ### UF-A2 — Known template accessibility limitations
 
@@ -417,11 +420,11 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 | F9 singleton structure | must-fix | source | duplicate `\set*File` / `\chapter` scan |
 | F10 ≥3 chapters | must-fix | source | count `\chapter` / `\include` |
 | F11 heading styles | must-fix | source | override scan + `\paragraph` flag |
-| F12 blank gaps | review | pdf | vertical-whitespace detection |
+| F12 blank gaps | review | pdf | vertical-whitespace detection (**no automated check — deferred**) |
 | F13 documentclass | must-fix | source | `\documentclass` parse |
 | F14 metadata macros | must-fix | source | presence check |
 | F15 abstract ≤ 350 words | must-fix | source+pdf | word count |
-| F16 subsection pairing | review | source | structural parse |
+| F16 subsection pairing | review | source | structural parse (**no automated check — deferred**) |
 | S1 PDF present | must-fix | pdf | trivial |
 | S2 rejection-driver sections | must-fix | source | F8 subset (report grouping) |
 | S3 broken internal refs | must-fix | source | label/cite resolver |
@@ -431,7 +434,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 | D2 LuaLaTeX directive | must-fix | source | `% !TEX program` scan |
 | D3 overrideTitles/Chapters | review | source | `\documentclass` option scan |
 | P1 setFile companions exist | must-fix | source | filesystem check |
-| J1 self-pub footnote | review (checklist) | content | `\footnotetext[0]` pattern |
-| J2 co-author ack | review (checklist) | content | manual checklist if article mode signaled |
-| A1 PDF tagged | review | pdf | `/StructTreeRoot` parse |
+| J1 self-pub footnote | review (checklist) | content | `\footnotetext[0]` pattern (**no automated check — deferred; `--guide` planned**) |
+| J2 co-author ack | review (checklist) | content | manual checklist if article mode signaled (**no automated check — deferred**) |
+| A1 PDF tagged | review | pdf | `/StructTreeRoot` parse (**no automated check — informational only; unverifiable on this template**) |
 | A2 template caveats | review | pdf | informational surfacing |

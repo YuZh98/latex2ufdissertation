@@ -21,12 +21,12 @@ The tool is **advisory**. The student remains responsible for the dissertation. 
 ### In scope
 
 - Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+ UF template)
-- Two-layer validation: LaTeX source + compiled PDF. The PDF layer introduces the project's first runtime dependency (`pdfminer.six`), **lazy-imported** so the source-only and `--dry-run` paths remain stdlib-only. This is a deliberate, documented departure from the prior stdlib-only constraint.
-- Four input modes: project zip, project directory, git URL, compiled PDF (PDF-only input is the v1.0 addition)
+- Two-layer validation: LaTeX source + compiled PDF. The PDF layer uses `pdfminer.six`, which is **lazy-imported** so `--dry-run` and source-only execution paths do not import it at runtime; it is still a required install dependency listed in `[project] dependencies`. This is a deliberate, documented departure from the prior stdlib-only constraint.
+- Four input modes: project zip, project directory, git URL, compiled PDF (PDF-only input mode)
 - Compilation as a means to obtain the PDF when source input is given (utility, not headline feature)
 - CLI as the engine
 - Machine-readable JSON output for downstream tooling
-- An ETD-upload walkthrough (`--guide` flag) summarizing the student's next steps in GIMS
+- An ETD-upload walkthrough (`--guide` flag) summarizing the student's next steps in GIMS (**planned — not yet implemented; see §8 gate status**)
 
 ### Out of scope for v1.0
 
@@ -83,7 +83,7 @@ A versioned schema documented in [`json-schema.md`](./json-schema.md). Stdout is
 - `schema_version`
 - `input`: the input string passed to the CLI
 - `detected_mode`: how the input was classified (`dir` / `zip` / `git` / `pdf` / `unknown`; `pdf` reserved for v1.0 PDF input)
-- `template_version`: detected UF template version, or `unknown`
+- `template_version`: detected UF template version, or `"unknown"`. **Status: detection not yet implemented — the field always emits `"unknown"` in the current build. Old-template detection and old-template refusal are deferred; see hard-rule 9.**
 - `findings`: array of `{severity, rule_id, layer, location, observed, required, fix_hint, source_url}`
 - `summary`: `{must_fix_count, review_count, exit_code, exit_reason}`
 
@@ -91,7 +91,7 @@ A versioned schema documented in [`json-schema.md`](./json-schema.md). Stdout is
 
 - `0` — zero must-fix findings (review-only state still exits 0; review findings are advisory)
 - `1` — at least one must-fix finding
-- `2` — fatal: unsupported template, compile failure, unreadable input, master's thesis input (out-of-scope), pre-Fall-2025 template
+- `2` — fatal: compile failure, unreadable input, master's thesis input (out-of-scope). **Note: "unsupported template" and "pre-Fall-2025 template" exit-2 paths are deferred — no raise site exists today (template-version detection is not yet implemented); a wrong `\documentclass` fires UF-F13 as exit 1, not exit 2.**
 - `3` — missing required toolchain (e.g. no LuaLaTeX on `PATH`)
 
 Exit code `2` is overloaded across several failure modes. Downstream scripts that need to distinguish them parse the stderr message (and the `summary.exit_reason` field in JSON output). Code `3` is kept separate so wrappers can distinguish "the project is broken" (2) from "the host machine is missing tools" (3) without parsing strings. Machine consumers thus see four states: succeed (`0`), fail validation (`1`), cannot proceed on this input (`2`), or cannot proceed in this environment (`3`).
@@ -108,11 +108,11 @@ input ──► normalize ──► template-version detect ──►
    └──► pdf layer    (checks) ──┴──► findings aggregator ──► report (human or JSON)
 ```
 
-Input normalization produces a workspace containing project files and (where applicable) a PDF. Template-version detection happens before any check fires. If `\documentclass` is not `ufdissertation`, or the cls signals a pre-Fall-2025 version, the tool exits 2 with a clear message pointing at the UF migration guide.
+Input normalization produces a workspace containing project files and (where applicable) a PDF. Template-version detection is **deferred** (see hard-rule 9 — always emits `"unknown"` today). A wrong `\documentclass` is caught by the UF-F13 source check (exit 1), not by a pre-check exit 2; `\thesisType{Thesis}` triggers exit 2 before any other check fires (hard-rule 8 — implemented).
 
 ### Severity tiers (locked)
 
-- **must-fix** — documented UF rule violation; submission will be rejected. Contributes to exit code 1.
+- **must-fix** — documented UF rule violation that the Editorial Office is expected to require fixing before acceptance. Contributes to exit code 1. A few must-fix rules rest on heuristics or soft sources (D2 reads the `% !TEX` hint rather than confirming the actual engine; F15's 350-word cap comes from the template file, not a UF web doc; F11 flags `\paragraph` per a template comment) — see soft-rules 12, 2, and 3 in §7.2 for the revisit conditions.
 - **review** — likely issue requiring human judgment; tool flags, student decides. Does not contribute to exit code.
 
 Two tiers only. No INFO / TIP / SUGGESTION / NIT. Adding more tiers dilutes the signal.
@@ -141,7 +141,7 @@ Same input → same output. No timestamps, randomized check ordering, or system-
 6. **Offline by default.** Any check that requires network sits behind an explicit opt-in flag, defaulting off.
 7. **Determinism.** Same input → byte-identical JSON output. Same input → human-readable output identical except for any ANSI color codes when stdout is a TTY. The PDF layer must **ignore volatile PDF metadata** (`/CreationDate`, `/ModDate`, `/ID`, and timestamp fields of `/Producer`) and **normalize per-compile font subset prefixes** (the random `ABCDEF+` glyph-name prefix) before emission; otherwise findings would vary per compile. The `/Producer` *engine name* is stable and may be read (e.g. for UF-D2). For source input, the determinism guarantee is over the *findings*, not the compiled PDF bytes — recompiling the same source legitimately produces a different PDF (restamped timestamps, fresh subset prefixes), but the findings extracted from it are identical.
 8. **Dissertation only.** Encountering `\thesisType{Thesis}` triggers exit 2 with a "master's theses are out of scope for v1.0" message.
-9. **Fall 2025+ template only.** Encountering an older template version triggers exit 2 with a "old template not supported, see migration guide" message and a link to the UF resource.
+9. **Fall 2025+ template only.** Encountering an older template version triggers exit 2 with a "old template not supported, see migration guide" message and a link to the UF resource. **Status: not yet implemented — `template_version` is always `"unknown"`; no old-template detection or old-template refusal exists today. The `UnsupportedTemplate` exception type is defined but has no raise site. Old-template detection is deferred (see open issue). This rule remains a v1.0 goal.**
 10. **JSON schema is versioned and stable.** Once v1.0 ships, the JSON schema does not change without a major-version bump. Schema version field is mandatory.
 11. **Public API is frozen at v1.0.** A documented export list enumerates every name downstream wrappers (Chrome extension, VS Code extension, CI integrations) may depend on. Anything not on that list is internal and may change without notice.
 
@@ -201,6 +201,12 @@ A release is v1.0.0 when **all** of the following hold:
 8. PyPI classifier is `Development Status :: 5 - Production/Stable`.
 
 These are gates, not aspirations. A release that misses any of them is not v1.0.0.
+
+**Current gate status (pre-1.0 — as of v0.3.x):** Gates 1, 2, 3, 5, 6, 7 are partially or substantially met; the following are known gaps:
+
+- **Gate 4** ("all four input modes exercised in tests"): git input mode is detection-only in the test suite — no full clone/validate cycle is tested.
+- **Gate 8** (PyPI `Production/Stable`): `pyproject.toml` classifier is currently `4 - Beta`. Will be updated to `5 - Production/Stable` at the v1.0.0 release.
+- **Hard-rule 9** (old-template detection/refusal) is a prerequisite for gates 1–3 to be fully satisfied.
 
 Project-engineering gates (CI matrix, coverage threshold, pre-commit hook set, deprecation-strict pytest pass) are tracked in [`CONTRIBUTING.md`](../CONTRIBUTING.md), not here. Those are how the project is built; the criteria above are what v1.0 *is*.
 
