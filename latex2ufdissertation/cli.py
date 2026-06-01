@@ -242,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
             output = _resolve_output_path(args.input, root, args.output)
             _err(f"  compiling to {output}")
             try:
-                compile_pdf(master, root, output)
+                compile_pdf(master, output)
             except MissingToolchain as e:
                 issues.set_exit_reason(EXIT_REASON_MISSING_TOOLCHAIN)
                 _err(f"Error: {e}")
