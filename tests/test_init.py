@@ -1,9 +1,16 @@
+import io
+import zipfile
 from unittest.mock import patch
 
 import pytest
 
-from latex2ufdissertation.pipeline.init import BUNDLED_TEMPLATE_DIR, init_project
-from latex2ufdissertation.pipeline.types import ConverterError
+from latex2ufdissertation.pipeline.init import (
+    BUNDLED_TEMPLATE_DIR,
+    FETCH_MAX_BYTES,
+    _fetch_remote,
+    init_project,
+)
+from latex2ufdissertation.pipeline.types import ConverterError, UnreadableInput
 
 
 def test_bundled_template_exists():
@@ -34,3 +41,72 @@ def test_init_creates_parent_dirs(tmp_path):
     with patch("latex2ufdissertation.pipeline.init._fetch_remote", side_effect=ConnectionError):
         init_project(target)
     assert target.exists()
+
+
+# ---------------------------------------------------------------------------
+# Security: zip-slip in remote fetch (item 7)
+# ---------------------------------------------------------------------------
+
+
+def _make_zip_bytes(members: dict) -> bytes:
+    """Build an in-memory zip with the given {member_name: content} dict."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        for name, content in members.items():
+            zf.writestr(name, content)
+    return buf.getvalue()
+
+
+def test_fetch_remote_zip_slip_rejected(tmp_path):
+    """_fetch_remote must reject a zip with traversal members (zip-slip)."""
+    evil_zip = _make_zip_bytes({"../evil.tex": "bad"})
+
+    def fake_urlopen(req, timeout=None):
+        class _Resp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                pass
+
+            def read(self, n=-1):
+                return evil_zip
+
+        return _Resp()
+
+    with patch("latex2ufdissertation.pipeline.init.urllib.request.urlopen", fake_urlopen):
+        with pytest.raises(UnreadableInput, match="zip-slip"):
+            _fetch_remote(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# Security: unbounded read cap (item 8)
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_remote_rejects_oversized_response(tmp_path):
+    """Downloads exceeding FETCH_MAX_BYTES must raise ConverterError."""
+
+    def fake_urlopen(req, timeout=None):
+        class _Resp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                pass
+
+            def read(self, n=-1):
+                # Return FETCH_MAX_BYTES + 1 bytes to trigger the cap.
+                return b"x" * (FETCH_MAX_BYTES + 1)
+
+        return _Resp()
+
+    with patch("latex2ufdissertation.pipeline.init.urllib.request.urlopen", fake_urlopen):
+        with pytest.raises(ConverterError, match="too large"):
+            _fetch_remote(tmp_path)
+
+
+def test_fetch_remote_constant_defined():
+    """FETCH_MAX_BYTES must be a named constant (no magic numbers)."""
+    assert isinstance(FETCH_MAX_BYTES, int)
+    assert FETCH_MAX_BYTES == 50 * 1024 * 1024  # 50 MB

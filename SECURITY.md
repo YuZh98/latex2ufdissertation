@@ -18,6 +18,10 @@ Please include:
 - A minimal reproduction (input file, command line, observed behavior).
 - The version (`latex2ufdissertation --version`) and Python version you tested.
 
+## Security / trusted input
+
+This tool compiles LaTeX and clones git repos. **Only run it on dissertation sources you trust.** Compiling untrusted LaTeX can execute arbitrary code: `\directlua` (the LuaTeX built-in Lua interpreter) is always active and cannot be disabled by the host process. The tool mitigates the risk with `-no-shell-escape` (disables `\write18`), restricted file-access env vars (`openin_any=p`, `openout_any=p`, `shell_escape=f`), and a git-URL allowlist limited to GitHub and GitLab — but these controls do not prevent a malicious document from using `\directlua` to run arbitrary Lua code. Treat the input the same way you would treat an executable you are about to run.
+
 ## What counts as a vulnerability
 
 This is a local-only CLI tool with no network calls in its default code path. The realistic security surface is narrow but non-empty:
