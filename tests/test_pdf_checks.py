@@ -1175,6 +1175,27 @@ def test_extract_pages_raises_unreadable_on_ps_exception(
             _extract_pages(dummy_pdf)
 
 
+@pytest.mark.parametrize("exc", [MemoryError("oom"), RecursionError("too deep")])
+def test_extract_pages_maps_resource_exhaustion_to_unreadable(
+    tmp_path: Path, exc: BaseException
+) -> None:
+    """A malicious PDF that drives pdfminer into MemoryError / RecursionError
+    must be mapped to UnreadableInput (clean exit 2), not escape as a raw
+    traceback.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import _extract_pages
+    from latex2ufdissertation.pipeline.types import UnreadableInput
+
+    dummy_pdf = tmp_path / "bomb.pdf"
+    dummy_pdf.write_bytes(b"%PDF-1.7\n")
+
+    with patch("pdfminer.high_level.extract_pages", side_effect=exc):
+        with pytest.raises(UnreadableInput):
+            _extract_pages(dummy_pdf)
+
+
 def test_cli_directory_named_pdf_exits_2(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

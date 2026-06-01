@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 
 from latex2ufdissertation.pipeline.checks import _setfile_arg, run_checks
-from latex2ufdissertation.pipeline.rules import MUST_FIX, REVIEW
-from latex2ufdissertation.pipeline.types import Issues
+from latex2ufdissertation.pipeline.rules import MUST_FIX, REVIEW, SOURCE
+from latex2ufdissertation.pipeline.types import Issues, ThesisInput
 
 
 def _project(tmp_path: Path, master: str, extra: dict[str, str] | None = None) -> Path:
@@ -30,11 +30,14 @@ _VALID = r"""\documentclass{ufdissertation}
 \begin{document}\chapter{Introduction}\chapter{Main Body}\chapter{Closing Summary}\end{document}
 """
 
+# Required companions carry minimal non-empty content so the empty-companion
+# advisory (UF-P1 review) does not fire on the baseline. Content is deliberately
+# command-free prose / one inert bib entry so it trips no other check.
 _VALID_FILES = {
-    "ack.tex": "",
-    "abs.tex": "",
-    "refs.bib": "",
-    "bio.tex": "",
+    "ack.tex": "Placeholder acknowledgements content.\n",
+    "abs.tex": "Placeholder abstract content.\n",
+    "refs.bib": "@misc{placeholder, title={Placeholder}}\n",
+    "bio.tex": "Placeholder biography content.\n",
 }
 
 
@@ -1144,3 +1147,292 @@ def test_f2_same_package_both_forms_emits_once(tmp_path):
     run_checks(master, tmp_path, issues)
     f2 = [f for f in issues.findings if f.rule_id == "UF-F2" and "mathpazo" in (f.observed or "")]
     assert len(f2) == 1, f"expected exactly 1 UF-F2 for mathpazo, got {len(f2)}"
+
+
+# ---------------------------------------------------------------------------
+# Soundness pass: override scans recurse into \input / \include files (#1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "rule_id,override",
+    [
+        ("UF-F1", r"\geometry{margin=0.5in}"),
+        ("UF-F4", r"\singlespacing"),
+        ("UF-F5", r"\justifying"),
+        ("UF-F6", r"\pagenumbering{roman}"),
+        ("UF-F7", r"\setlength{\parindent}{0pt}"),
+        ("UF-F11", r"\titleformat{\section}{\Large}{}{0pt}{}"),
+        ("UF-F2", r"\usepackage{mathpazo}"),
+        ("UF-F3", r"\fontsize{14pt}{16pt}\selectfont"),
+    ],
+)
+def test_override_in_included_file_is_caught(tmp_path, rule_id, override):
+    # CATASTROPHIC fix: override scans must walk \input / \include targets,
+    # not only main.tex. Place the override in a chapter file and confirm the
+    # finding fires with location pointing at that file.
+    files = dict(_VALID_FILES)
+    files["chapters.tex"] = f"\\chapter{{Intro}}\n{override}\n\\chapter{{Body}}\\chapter{{End}}\n"
+    body = r"\input{chapters}"
+    master = _project(tmp_path, _with_body(body), files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    hits = [f for f in issues.findings if f.rule_id == rule_id]
+    assert hits, f"expected {rule_id} for override {override!r} in included file"
+    assert any("chapters.tex" in f.location for f in hits), (
+        f"expected location in chapters.tex; got {[f.location for f in hits]}"
+    )
+
+
+def test_override_in_included_file_location_is_root_relative(tmp_path):
+    # A subdir master whose include carries an override must report the
+    # finding's location relative to ROOT (src/chapters.tex), not relative to
+    # the master's own directory — mirroring how the master's own location is
+    # computed.
+    sub = tmp_path / "src"
+    sub.mkdir()
+    (sub / "master.tex").write_text(_with_body(r"\input{chapters}"), encoding="utf-8")
+    for name, body in _VALID_FILES.items():
+        (sub / name).write_text(body, encoding="utf-8")
+    (sub / "chapters.tex").write_text(
+        "\\chapter{Intro}\\justifying\\chapter{Body}\\chapter{End}\n", encoding="utf-8"
+    )
+    issues = Issues()
+    run_checks(sub / "master.tex", tmp_path, issues)  # root is PARENT of master dir
+    f5 = [f for f in issues.findings if f.rule_id == "UF-F5"]
+    assert f5, "expected UF-F5 from the subdir include"
+    assert all(f.location == "src/chapters.tex" for f in f5), [f.location for f in f5]
+
+
+def test_override_recursion_is_transitive(tmp_path):
+    # main → chapters.tex → deep.tex; an override two levels deep must be caught.
+    files = dict(_VALID_FILES)
+    files["chapters.tex"] = "\\chapter{Intro}\\chapter{Body}\\chapter{End}\n\\input{deep}\n"
+    files["deep.tex"] = "\\justifying\n"
+    master = _project(tmp_path, _with_body(r"\input{chapters}"), files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f5 = [f for f in issues.findings if f.rule_id == "UF-F5"]
+    assert f5, "expected UF-F5 from a transitively-included file"
+    assert any("deep.tex" in f.location for f in f5)
+
+
+def test_setfile_companion_not_scanned_for_overrides(tmp_path):
+    # \set*File companion files (e.g. abstractFile.tex) are NOT part of the
+    # override-scan set — the demo's abstract legitimately contains literal
+    # \texttt{...pagenumbering...} prose that must not trip F6.
+    files = dict(_VALID_FILES)
+    files["abs.tex"] = "Discussion of \\pagenumbering{roman} as a concept.\n"
+    master = _project(tmp_path, _VALID, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F6" not in _rule_ids(issues)
+
+
+# ---------------------------------------------------------------------------
+# Strip order: verbatim stripped before comments (#2)
+# ---------------------------------------------------------------------------
+
+
+def test_percent_in_verbatim_does_not_corrupt_stripping(tmp_path):
+    # A `%` inside verbatim must not eat the block's \end{verbatim}. A real
+    # override after the verbatim block must still be detected.
+    body = (
+        "\\chapter{Intro}\n"
+        "\\begin{verbatim}\n50% off\n\\end{verbatim}\n"
+        "\\justifying\n"
+        "\\chapter{Body}\\chapter{End}"
+    )
+    master = _project(tmp_path, _with_body(body), _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f5 = [f for f in issues.findings if f.rule_id == "UF-F5"]
+    assert f5, "expected UF-F5 after a verbatim block containing a %"
+
+
+# ---------------------------------------------------------------------------
+# S3: \cref / \Cref / \autoref / \nameref join the ref-command set (#3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("cmd", [r"\cref", r"\Cref", r"\autoref", r"\nameref"])
+def test_cref_family_broken_reference_fires_uf_s3(tmp_path, cmd):
+    body = "\\chapter{Intro}" + f"{cmd}{{fig:nonexistent}}" + "\\chapter{Body}\\chapter{Summary}"
+    src = _VALID.replace(_VALID_BODY, body)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    s3 = [f for f in issues.findings if f.rule_id == "UF-S3"]
+    assert s3, f"expected UF-S3 for broken {cmd}"
+    assert any("fig:nonexistent" in (f.observed or "") for f in s3)
+
+
+def test_cref_multi_key_resolves_independently_uf_s3(tmp_path):
+    # \cref{a,b} is valid cleveref multi-key form; resolved keys must not fire.
+    body = (
+        "\\chapter{Intro}\\label{fig:a}\\label{fig:b}"
+        "\\cref{fig:a,fig:b}"
+        "\\chapter{Body}\\chapter{Summary}"
+    )
+    src = _VALID.replace(_VALID_BODY, body)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-S3" not in _rule_ids(issues)
+
+
+# ---------------------------------------------------------------------------
+# F4: scope-aware — allowed environments do not trip must-fix (#4)
+# ---------------------------------------------------------------------------
+
+
+def test_singlespacing_in_longtable_does_not_fire_uf_f4(tmp_path):
+    body = (
+        "\\chapter{Intro}\n"
+        "\\begin{longtable}{l}\n\\singlespacing\nrow\\\\\n\\end{longtable}\n"
+        "\\chapter{Body}\\chapter{End}"
+    )
+    master = _project(tmp_path, _with_body(body), _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F4" not in _rule_ids(issues)
+
+
+def test_setstretch_in_itemize_does_not_fire_uf_f4(tmp_path):
+    body = (
+        "\\chapter{Intro}\n"
+        "\\begin{itemize}\n\\setstretch{1}\n\\item x\n\\end{itemize}\n"
+        "\\chapter{Body}\\chapter{End}"
+    )
+    master = _project(tmp_path, _with_body(body), _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F4" not in _rule_ids(issues)
+
+
+def test_body_level_singlespacing_still_fires_uf_f4(tmp_path):
+    # Outside any allowed scope, a bare \singlespacing must still be must-fix.
+    body = "\\chapter{Intro}\\singlespacing\\chapter{Body}\\chapter{End}"
+    master = _project(tmp_path, _with_body(body), _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f4 = [f for f in issues.findings if f.rule_id == "UF-F4"]
+    assert f4, "expected UF-F4 for body-level \\singlespacing"
+    assert f4[0].severity == MUST_FIX
+
+
+# ---------------------------------------------------------------------------
+# Layer: source-only checks emit layer=source, not the phantom "both" (#5)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "rule_id,override",
+    [
+        ("UF-F1", r"\geometry{margin=0.5in}"),
+        ("UF-F4", r"\singlespacing"),
+        ("UF-F6", r"\pagenumbering{roman}"),
+    ],
+)
+def test_source_only_checks_emit_source_layer(tmp_path, rule_id, override):
+    body = "\\chapter{Intro}" + override + "\\chapter{Body}\\chapter{End}"
+    master = _project(tmp_path, _with_body(body), _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    hits = [f for f in issues.findings if f.rule_id == rule_id]
+    assert hits
+    assert all(f.layer == SOURCE for f in hits), [f.layer for f in hits]
+
+
+def test_f15_emits_source_layer(tmp_path):
+    files = dict(_VALID_FILES)
+    files["abs.tex"] = " ".join(["word"] * 351) + "\n"
+    master = _project(tmp_path, _VALID, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f15 = [f for f in issues.findings if f.rule_id == "UF-F15"]
+    assert f15
+    assert all(f.layer == SOURCE for f in f15)
+
+
+# ---------------------------------------------------------------------------
+# Presence != content: empty required companions fire UF-P1 review (#6)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "empty_file,cmd_label",
+    [
+        ("ack.tex", r"\setAcknowledgementsFile"),
+        ("abs.tex", r"\setAbstractFile"),
+        ("bio.tex", r"\setBiographicalFile"),
+        ("refs.bib", r"\setReferenceFile"),
+    ],
+)
+def test_empty_required_companion_fires_uf_p1_review(tmp_path, empty_file, cmd_label):
+    files = dict(_VALID_FILES)
+    files[empty_file] = "   \n  \t\n"  # whitespace only
+    master = _project(tmp_path, _VALID, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    p1 = [f for f in issues.findings if f.rule_id == "UF-P1" and cmd_label in (f.observed or "")]
+    assert p1, f"expected UF-P1 review for empty {empty_file}"
+    assert all(f.severity == REVIEW for f in p1)
+    assert any("empty" in (f.observed or "").lower() for f in p1)
+
+
+def test_comment_only_required_companion_fires_uf_p1_review(tmp_path):
+    files = dict(_VALID_FILES)
+    files["abs.tex"] = "% just a comment, no real content\n"
+    master = _project(tmp_path, _VALID, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    p1 = [
+        f
+        for f in issues.findings
+        if f.rule_id == "UF-P1" and "setAbstractFile" in (f.observed or "")
+    ]
+    assert p1
+    assert all(f.severity == REVIEW for f in p1)
+
+
+def test_nonempty_required_companion_does_not_fire_uf_p1(tmp_path):
+    master = _project(tmp_path, _VALID, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-P1" not in _rule_ids(issues)
+
+
+def test_empty_optional_companion_does_not_fire_uf_p1_review(tmp_path):
+    # Optional \set*File companions that exist but are empty are not advised on —
+    # only required companions get the empty-content review.
+    decl = r"\setDedicationFile{ded}"
+    src = _VALID.replace(r"\begin{document}", decl + "\n" + r"\begin{document}")
+    files = dict(_VALID_FILES)
+    files["ded.tex"] = "\n"
+    master = _project(tmp_path, src, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    p1 = [f for f in issues.findings if f.rule_id == "UF-P1" and "Dedication" in (f.observed or "")]
+    assert p1 == [], [f.observed for f in p1]
+
+
+# ---------------------------------------------------------------------------
+# Thesis refusal: \thesisType{Thesis} raises ThesisInput early (#8)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("value", ["Thesis", "thesis", " Thesis ", "THESIS"])
+def test_thesis_type_raises_thesis_input(tmp_path, value):
+    src = _VALID.replace(r"\thesisType{Dissertation}", f"\\thesisType{{{value}}}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    with pytest.raises(ThesisInput):
+        run_checks(master, tmp_path, issues)
+
+
+def test_dissertation_does_not_raise_thesis_input(tmp_path):
+    master = _project(tmp_path, _VALID, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)  # must not raise
+    assert issues.findings == []

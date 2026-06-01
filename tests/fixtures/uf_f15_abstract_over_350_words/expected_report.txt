@@ -1,5 +1,5 @@
 
-[both layer]
+[source layer]
   (F-series)
     [must-fix] UF-F15 abs.tex — 351 words in abstract (must be <= 350) (required: abstract content <= 350 words)
       fix: Trim the abstract to <= 350 words (catalog § UF-F15, template's own abstractFile.tex specifies this cap).

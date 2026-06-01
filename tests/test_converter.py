@@ -32,9 +32,11 @@ def _make_valid_project(tmp_path):
     proj = tmp_path / "p"
     proj.mkdir()
     (proj / "master.tex").write_text(_MIN_VALID, encoding="utf-8")
+    # Required companions carry minimal non-empty content: an empty required
+    # companion now (correctly) raises the UF-P1 empty-content review advisory.
     for f in ("ack.tex", "abs.tex", "bio.tex"):
-        (proj / f).write_text("", encoding="utf-8")
-    (proj / "refs.bib").write_text("", encoding="utf-8")
+        (proj / f).write_text("Placeholder content.\n", encoding="utf-8")
+    (proj / "refs.bib").write_text("@misc{placeholder, title={Placeholder}}\n", encoding="utf-8")
     return proj
 
 

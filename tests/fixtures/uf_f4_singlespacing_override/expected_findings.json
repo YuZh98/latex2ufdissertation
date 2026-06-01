@@ -3,7 +3,7 @@
   "findings": [
     {
       "fix_hint": "Remove the line-spacing override; the UF template's `\\doublespacing` (cls:198) sets the required body spacing with documented exceptions.",
-      "layer": "both",
+      "layer": "source",
       "location": "main.tex",
       "observed": "\\singlespacing overrides template's \\doublespacing",
       "required": "no line-spacing override at source level (template's \\doublespacing applies; documented exceptions handled inside captions / longtable / itemize / abstract / bib)",

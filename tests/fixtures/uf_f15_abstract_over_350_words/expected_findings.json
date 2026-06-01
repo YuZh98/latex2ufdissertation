@@ -3,7 +3,7 @@
   "findings": [
     {
       "fix_hint": "Trim the abstract to <= 350 words (catalog \u00a7 UF-F15, template's own abstractFile.tex specifies this cap).",
-      "layer": "both",
+      "layer": "source",
       "location": "abs.tex",
       "observed": "351 words in abstract (must be <= 350)",
       "required": "abstract content <= 350 words",

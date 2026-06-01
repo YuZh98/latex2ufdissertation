@@ -1,5 +1,5 @@
 
-[both layer]
+[source layer]
   (F-series)
     [must-fix] UF-F6 main.tex — \pagenumbering{roman} overrides template's arabic default (required: \pagenumbering{arabic} (template's default))
       fix: Remove the page-numbering override; UF requires arabic numerals centered at bottom (cls:179-188). `\pagenumbering{arabic}` is fine.
