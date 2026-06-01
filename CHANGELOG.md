@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-01
+
+### Fixed
+- Resolve `\set*File` / `\input` / bib / abstract companions and the LuaLaTeX compile working directory relative to the master `.tex`'s own directory, not the workspace root. A project whose master lives in a subdirectory (e.g. a repo with the dissertation under `src/`) no longer gets spurious `UF-P1` "file not found" findings or a failed compile, and lualatex `stdin` is detached so a missing-file prompt can't hang on a TTY (#63)
+
 ## [0.3.0] - 2026-06-01
 
 ### Added
