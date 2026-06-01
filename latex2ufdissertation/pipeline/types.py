@@ -78,17 +78,24 @@ class Issues:
         observed: str | None = None,
         required: str | None = None,
         fix_hint: str | None = None,
+        severity: str | None = None,
+        layer: str | None = None,
     ) -> None:
         """Resolve severity, layer, source_url, and default fix_hint from
         RULES[rule_id]. Per-finding `fix_hint` (when provided) overrides
-        the rule-level default. Diagnostic line goes to stderr so --json
-        stdout stays a single JSON document.
+        the rule-level default. `severity` and `layer` may be overridden
+        per-call so the same rule_id can emit at different tiers from
+        different validation layers (e.g. source=review, pdf=must-fix).
+        Diagnostic line goes to stderr so --json stdout stays a single
+        JSON document.
         """
         rule = RULES[rule_id]  # KeyError on unknown ID is the right failure mode
+        effective_severity = severity if severity is not None else rule.severity
+        effective_layer = layer if layer is not None else rule.layer
         finding = Finding(
-            severity=rule.severity,
+            severity=effective_severity,
             rule_id=rule.id,
-            layer=rule.layer,
+            layer=effective_layer,
             location=location,
             observed=observed,
             required=required,
@@ -97,7 +104,8 @@ class Issues:
         )
         self.findings.append(finding)
         loc = f" {location}" if location else ""
-        print(f"  [{rule.severity}] {rule.id}{loc} — {observed or rule.title}", file=sys.stderr)
+        msg = f"  [{effective_severity}] {rule.id}{loc} — {observed or rule.title}"
+        print(msg, file=sys.stderr)
 
     def must_fix_count(self) -> int:
         return sum(1 for f in self.findings if f.severity == MUST_FIX)
