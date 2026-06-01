@@ -49,9 +49,7 @@ _SETFILE_RULES = (
 # Catalog § UF-F5: \rightskip zero-assignment patterns (re-justify vector).
 # setlength form: value starts with 0 and contains no "fil" stretch component.
 # {0pt} and {0pt plus 0pt} match; {0pt plus 1fil} does not (ragged reinforcement).
-_F5_RIGHTSKIP_SETLENGTH = re.compile(
-    r"\\setlength\s*\{\s*\\rightskip\s*\}\s*\{\s*0(?!.*fil)"
-)
+_F5_RIGHTSKIP_SETLENGTH = re.compile(r"\\setlength\s*\{\s*\\rightskip\s*\}\s*\{\s*0(?!.*fil)")
 # Direct TeX assignment: \rightskip=0pt, \rightskip=\z@
 # The (?!.*fil) guard excludes ragged-right glue (\rightskip=0pt plus 1fil).
 _F5_RIGHTSKIP_DIRECT = re.compile(r"\\rightskip\s*=\s*(?:0(?!.*fil)|\\z@)")

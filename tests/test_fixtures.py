@@ -38,9 +38,7 @@ def _fixture_dirs() -> list[Path]:
     # checks. PDF-only fixtures (e.g. uf_f2_pdf_font_violation) have no main.tex
     # and are tested directly in test_pdf_checks.py.
     return sorted(
-        d
-        for d in FIXTURES_DIR.iterdir()
-        if d.is_dir() and (d / "input" / "main.tex").is_file()
+        d for d in FIXTURES_DIR.iterdir() if d.is_dir() and (d / "input" / "main.tex").is_file()
     )
 
 

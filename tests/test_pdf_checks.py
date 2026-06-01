@@ -19,9 +19,7 @@ _VIOLATION_PDF = (
 _F3_VIOLATION_PDF = (
     _REPO_ROOT / "tests" / "fixtures" / "uf_f3_pdf_size_violation" / "input" / "violation.pdf"
 )
-_S5_DRAFT_PDF = (
-    _REPO_ROOT / "tests" / "fixtures" / "uf_s5_draft_mode" / "input" / "draft.pdf"
-)
+_S5_DRAFT_PDF = _REPO_ROOT / "tests" / "fixtures" / "uf_s5_draft_mode" / "input" / "draft.pdf"
 
 _VIOLATION_AVAILABLE = pytest.mark.skipif(
     not _VIOLATION_PDF.exists(), reason="F2 violation PDF fixture not present"
@@ -33,9 +31,7 @@ _S5_DRAFT_AVAILABLE = pytest.mark.skipif(
     not _S5_DRAFT_PDF.exists(), reason="S5 draft-mode PDF fixture not present"
 )
 
-_DEMO_AVAILABLE = pytest.mark.skipif(
-    not _DEMO_PDF.exists(), reason="demo PDF not present"
-)
+_DEMO_AVAILABLE = pytest.mark.skipif(not _DEMO_PDF.exists(), reason="demo PDF not present")
 
 
 # ---------------------------------------------------------------------------
@@ -81,9 +77,7 @@ def test_extract_pages_demo_body_font() -> None:
 
     pages = _extract_pages(_DEMO_PDF)
     assert any(
-        p.body_font is not None
-        and p.body_font.startswith("TeXGyreTermes")
-        and p.body_size == 12.0
+        p.body_font is not None and p.body_font.startswith("TeXGyreTermes") and p.body_size == 12.0
         for p in pages
     ), "No page found with TeXGyreTermes body font at 12.0pt"
 
@@ -212,9 +206,10 @@ def test_run_pdf_checks_missing_toolchain_if_pdfminer_absent(
         from latex2ufdissertation.pipeline import pdf_checks as _mod
 
         with pytest.raises(MissingToolchain, match="pdfminer"):
-            _mod.run_pdf_checks(dummy_pdf, __import__(
-                "latex2ufdissertation.pipeline.types", fromlist=["Issues"]
-            ).Issues())
+            _mod.run_pdf_checks(
+                dummy_pdf,
+                __import__("latex2ufdissertation.pipeline.types", fromlist=["Issues"]).Issues(),
+            )
 
 
 def test_run_pdf_checks_unreadable_on_syntax_error(
@@ -295,10 +290,7 @@ def test_extract_pages_dominant_font_wins_by_glyph_count(
         return c
 
     # 10 glyphs FontA@12.0, 3 glyphs ABCDEF+FontB@10.0 (subset prefix present)
-    fake_page = (
-        [make_char("FontA", 12.0)] * 10
-        + [make_char("ABCDEF+FontB", 10.0)] * 3
-    )
+    fake_page = [make_char("FontA", 12.0)] * 10 + [make_char("ABCDEF+FontB", 10.0)] * 3
 
     with patch("pdfminer.high_level.extract_pages", return_value=[fake_page]):
         pages = _extract_pages(dummy_pdf)

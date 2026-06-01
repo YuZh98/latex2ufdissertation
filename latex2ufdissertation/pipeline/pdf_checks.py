@@ -122,12 +122,8 @@ def _extract_pages(pdf_path: Path) -> list[PageData]:
                 size_counter[round(char.size, 1)] += 1
             if font_counter:
                 # Tie-break: count desc then name desc → deterministic.
-                body_font = max(
-                    font_counter.items(), key=lambda kv: (kv[1], kv[0])
-                )[0]
-                body_size = max(
-                    size_counter.items(), key=lambda kv: (kv[1], kv[0])
-                )[0]
+                body_font = max(font_counter.items(), key=lambda kv: (kv[1], kv[0]))[0]
+                body_size = max(size_counter.items(), key=lambda kv: (kv[1], kv[0]))[0]
             else:
                 body_font = None
                 body_size = None
