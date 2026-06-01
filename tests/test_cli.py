@@ -66,9 +66,9 @@ def test_main_json_directory_input_reports_detected_mode_dir(
 def test_main_json_pdf_input_reports_pdf_mode_and_unreadable(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    # PDF input is reserved for v1.0: detected_mode is "pdf" but resolve()
-    # rejects it, so the JSON pairs detected_mode "pdf" with the fatal
-    # unreadable_input exit_reason. Documents the live behavior gap.
+    # A malformed PDF stub (missing /Root) is routed through the PDF layer
+    # (v1.0 pdf-input mode). pdfminer raises PDFSyntaxError which the PDF
+    # layer converts to UnreadableInput → exit 2 / unreadable_input.
     pdf = tmp_path / "paper.pdf"
     pdf.write_bytes(b"%PDF-1.7\n")
     rc = main(["--json", str(pdf)])

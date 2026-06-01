@@ -1,4 +1,4 @@
-from latex2ufdissertation.pipeline.rules import MUST_FIX, REVIEW, SOURCE
+from latex2ufdissertation.pipeline.rules import BOTH, MUST_FIX, PDF, REVIEW, SOURCE
 from latex2ufdissertation.pipeline.types import (
     ConverterError,
     Finding,
@@ -95,3 +95,47 @@ def test_converter_error_hierarchy():
 
 def test_severity_constants_are_distinct():
     assert MUST_FIX != REVIEW
+
+
+# --- Override tests (severity/layer per-call overrides) ---
+
+
+def test_add_severity_layer_override_changes_finding():
+    """add() with severity/layer overrides uses the supplied values, not the registry's."""
+    # UF-F2 registry: severity=must-fix, layer=both — override to review/source
+    issues = Issues()
+    issues.add("UF-F2", severity=REVIEW, layer=SOURCE)
+    f = issues.findings[0]
+    assert f.severity == REVIEW
+    assert f.layer == SOURCE
+
+
+def test_add_no_override_uses_registry_values():
+    """add() without overrides preserves the exact registry severity and layer."""
+    issues = Issues()
+    issues.add("UF-F2")
+    f = issues.findings[0]
+    assert f.severity == MUST_FIX
+    assert f.layer == BOTH
+
+
+def test_add_override_does_not_affect_fix_hint_or_source_url():
+    """severity/layer overrides must not disturb fix_hint or source_url resolution."""
+    issues = Issues()
+    issues.add("UF-F2", severity=REVIEW, layer=PDF)
+    f = issues.findings[0]
+    # fix_hint falls back to registry value (UF-F2 has one)
+    assert f.fix_hint is not None
+    assert "Times New Roman" in f.fix_hint or "font" in f.fix_hint.lower()
+    # source_url comes from the registry unchanged
+    assert f.source_url.startswith("https://github.com/")
+
+
+def test_add_severity_override_appears_in_stderr(capsys):
+    """The stderr diagnostic line must print the *effective* severity, not always the registry's."""
+    issues = Issues()
+    issues.add("UF-F2", severity=REVIEW, layer=SOURCE)
+    captured = capsys.readouterr()
+    assert "review" in captured.err
+    # The registry value (must-fix) must NOT appear in its place
+    assert "must-fix" not in captured.err

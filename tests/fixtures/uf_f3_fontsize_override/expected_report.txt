@@ -1,8 +1,11 @@
 
 [source layer]
   (F-series)
-    [must-fix] UF-F3 main.tex — \fontsize{14pt}{16pt}\selectfont overrides template's 12pt default (required: no \fontsize{...}{...}\selectfont override in source (template's 12pt applies))
-      fix: Remove the `\fontsize{...}{...}\selectfont` override; the UF template's `\LoadClass[12pt]` (cls:1) sets 12-point throughout.
+    [review] UF-F3 main.tex — \fontsize{14pt}{16pt}\selectfont overrides template's 12pt default (required: no \fontsize{...}{...}\selectfont override in source (template's 12pt applies))
+      fix: A \fontsize{...}{...}\selectfont may be legal localized sizing (e.g. on a title page or caption). The PDF layer confirms the rendered body-mode size.
       see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f3--font-size-12pt
 
-Summary: 1 must-fix, 0 review.
+Summary: 0 must-fix, 1 review.
+
+---
+Note: Advisory (not a finding): The ufdissertation template produces untagged PDFs (no /StructTreeRoot, /MarkInfo, or /Lang entries). PDF/UA accessibility features such as tag structure, alt-text, table-header semantics, and reading order are therefore outside the scope of this tool's verification. This is a known template limitation, not a violation detected in your submission.

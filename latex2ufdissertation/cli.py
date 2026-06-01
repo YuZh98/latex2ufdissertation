@@ -25,6 +25,11 @@ from latex2ufdissertation.pipeline.types import (
     UnreadableInput,
 )
 
+# _BUNDLED_PDF_NAMES lists the filenames tried when looking for a pre-compiled
+# PDF in a zip / dir project root. The stem-match fallback is applied after
+# these fixed names are exhausted (see _find_bundled_pdf).
+_BUNDLED_PDF_NAMES = ("main.pdf",)
+
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -55,6 +60,15 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _err(msg: str) -> None:
+    """Write *msg* followed by a newline to stderr.
+
+    Used for all CLI progress and error messages so the implementation
+    stays consistent with project conventions for stderr output.
+    """
+    sys.stderr.write(msg + "\n")
+
+
 def _emit_json(issues: Issues) -> None:
     # sort_keys keeps byte-identical output across runs on the same input.
     print(json.dumps(format_json(issues), indent=2, sort_keys=True))
@@ -66,9 +80,27 @@ def _emit_report(issues: Issues, json_out: bool) -> None:
     `--json | jq ...` works without any extra filtering, and the user
     still sees findings as they happen via Issues.add's diagnostic line.
     """
-    print(format_human(issues), file=sys.stderr)
+    _err(format_human(issues))
     if json_out:
         _emit_json(issues)
+
+
+def _find_bundled_pdf(root: Path, main_tex: Path | None) -> Path | None:
+    """Return a pre-compiled PDF from *root* if one exists, else None.
+
+    Search order:
+    1. Fixed names in _BUNDLED_PDF_NAMES (e.g. main.pdf).
+    2. <main_tex_stem>.pdf when main_tex is provided.
+    """
+    for name in _BUNDLED_PDF_NAMES:
+        candidate = root / name
+        if candidate.is_file():
+            return candidate
+    if main_tex is not None:
+        candidate = root / f"{main_tex.stem}.pdf"
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _resolve_output_path(input_str: str, root: Path, explicit: str | None) -> Path:
@@ -121,30 +153,59 @@ def main(argv: list[str] | None = None) -> int:
             init_project(Path(args.init))
             return 0
         except ConverterError as e:
-            print(f"Error: {e}", file=sys.stderr)
+            _err(f"Error: {e}")
             return 2
 
     if not args.input:
-        print(
-            "Error: INPUT required (use --init to scaffold a new project)",
-            file=sys.stderr,
-        )
+        _err("Error: INPUT required (use --init to scaffold a new project)")
         return 2
 
     issues.input_path = args.input
     issues.detected_mode = input_mode(args.input)
 
+    # PDF-input mode: single compiled PDF supplied directly. Skip source layer
+    # and compile; run the PDF layer and emit the report. Handled before
+    # resolve() because resolve() cannot produce a project directory from a bare
+    # PDF — its contract is "project tree + cleanup" and does not apply here.
+    if issues.detected_mode == "pdf":
+        pdf_path = Path(args.input)
+        if not pdf_path.exists() or not pdf_path.is_file():
+            issues.set_exit_reason(EXIT_REASON_UNREADABLE_INPUT)
+            _err(f"Error: input not found or not a file: {args.input}")
+            if args.json_out:
+                _emit_json(issues)
+            return 2
+        _err("  source layer skipped (PDF-only input)")
+        try:
+            from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+
+            run_pdf_checks(pdf_path, issues)
+        except MissingToolchain as e:
+            issues.set_exit_reason(EXIT_REASON_MISSING_TOOLCHAIN)
+            _err(f"Error: {e}")
+            if args.json_out:
+                _emit_json(issues)
+            return 3
+        except UnreadableInput as e:
+            issues.set_exit_reason(EXIT_REASON_UNREADABLE_INPUT)
+            _err(f"Error: {e}")
+            if args.json_out:
+                _emit_json(issues)
+            return 2
+        _emit_report(issues, args.json_out)
+        return exit_code(issues)
+
     try:
         root, cleanup = resolve(args.input)
     except UnreadableInput as e:
         issues.set_exit_reason(EXIT_REASON_UNREADABLE_INPUT)
-        print(f"Error: {e}", file=sys.stderr)
+        _err(f"Error: {e}")
         if args.json_out:
             _emit_json(issues)
         return 2
     except ConverterError as e:
         issues.set_exit_reason(e.exit_reason)
-        print(f"Error: {e}", file=sys.stderr)
+        _err(f"Error: {e}")
         if args.json_out:
             _emit_json(issues)
         return 2
@@ -153,39 +214,65 @@ def main(argv: list[str] | None = None) -> int:
         master = detect_main_tex(root, hint=args.main)
         issues.main_tex = str(master.relative_to(root))
 
-        print(f"  validating {issues.main_tex}", file=sys.stderr)
+        _err(f"  validating {issues.main_tex}")
         run_checks(master, root, issues)
 
         if args.dry_run:
             _emit_report(issues, args.json_out)
             return exit_code(issues)
 
-        if not lualatex_available():
-            issues.set_exit_reason(EXIT_REASON_MISSING_TOOLCHAIN)
-            print("Error: lualatex not found — install TeX Live 2025", file=sys.stderr)
-            # Skip the human report on fatal toolchain paths — a "clean"
-            # summary alongside a fatal error is actively misleading.
-            # JSON consumers still get the structured payload.
-            if args.json_out:
-                _emit_json(issues)
-            return 3
+        # Per spec §4: prefer a bundled PDF in the project root; compile only
+        # when none is present. This preserves the student's own PDF when one
+        # was submitted inside the archive and avoids a LuaLaTeX dependency on
+        # CI / machines without TeX Live.
+        produced_pdf = _find_bundled_pdf(root, master)
+        if produced_pdf is not None:
+            _err(f"  using bundled PDF {produced_pdf.name}")
+        else:
+            if not lualatex_available():
+                issues.set_exit_reason(EXIT_REASON_MISSING_TOOLCHAIN)
+                _err("Error: lualatex not found — install TeX Live 2025")
+                # Skip the human report on fatal toolchain paths — a "clean"
+                # summary alongside a fatal error is actively misleading.
+                # JSON consumers still get the structured payload.
+                if args.json_out:
+                    _emit_json(issues)
+                return 3
 
-        output = _resolve_output_path(args.input, root, args.output)
-        print(f"  compiling to {output}", file=sys.stderr)
+            output = _resolve_output_path(args.input, root, args.output)
+            _err(f"  compiling to {output}")
+            try:
+                compile_pdf(master, root, output)
+            except MissingToolchain as e:
+                issues.set_exit_reason(EXIT_REASON_MISSING_TOOLCHAIN)
+                _err(f"Error: {e}")
+                if args.json_out:
+                    _emit_json(issues)
+                return 3
+            produced_pdf = output
+
         try:
-            compile_pdf(master, root, output)
+            from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+
+            run_pdf_checks(produced_pdf, issues)
         except MissingToolchain as e:
             issues.set_exit_reason(EXIT_REASON_MISSING_TOOLCHAIN)
-            print(f"Error: {e}", file=sys.stderr)
+            _err(f"Error: {e}")
             if args.json_out:
                 _emit_json(issues)
             return 3
+        except UnreadableInput as e:
+            issues.set_exit_reason(EXIT_REASON_UNREADABLE_INPUT)
+            _err(f"Error: {e}")
+            if args.json_out:
+                _emit_json(issues)
+            return 2
 
         _emit_report(issues, args.json_out)
         return exit_code(issues)
     except ConverterError as e:
         issues.set_exit_reason(e.exit_reason)
-        print(f"Error: {e}", file=sys.stderr)
+        _err(f"Error: {e}")
         if args.json_out:
             _emit_json(issues)
         return 2

@@ -66,7 +66,7 @@ Each finding represents one UF rule violation. The eight fields are frozen at v1
 | `severity` | string | no | `"must-fix"` or `"review"` |
 | `rule_id` | string | no | UF rule identifier matching the catalog in `docs/uf-rules.md` (e.g. `"UF-F1"`, `"UF-S3"`, `"UF-A1"`) |
 | `layer` | string | no | `"source"`, `"pdf"`, or `"both"` |
-| `location` | string | no | File and line for source-layer findings (`"path/to/file.tex:LINE"`), page number for PDF-layer findings (`"page N"`), or empty string when no positional anchor applies |
+| `location` | string | no | File and line for source-layer findings (`"path/to/file.tex:LINE"`), page number for PDF-layer findings (`"p.N"`), or empty string when no positional anchor applies |
 | `observed` | string | yes | What the validator saw. `null` when the rule has no observable value (e.g. a missing-file finding) |
 | `required` | string | yes | What the rule requires. `null` when not applicable |
 | `fix_hint` | string | yes | One-line remediation. May be `null`. Per-finding hint overrides the rule-level default in `RULES[rule_id]` |

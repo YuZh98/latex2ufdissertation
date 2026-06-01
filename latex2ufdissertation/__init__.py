@@ -7,6 +7,7 @@ may change without notice.
 """
 
 from latex2ufdissertation.pipeline.checks import run_checks
+from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
 from latex2ufdissertation.pipeline.rules import RULES, Rule
 from latex2ufdissertation.pipeline.types import (
     ConverterError,
@@ -32,4 +33,5 @@ __all__ = [
     "UnsupportedTemplate",
     "__version__",
     "run_checks",
+    "run_pdf_checks",
 ]

@@ -114,17 +114,19 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
   - `\setmainfont{...}` (fontspec override)
   - Additional font packages: `mathpazo`, `mathptmx`, `libertine`, etc.
   - Manual `\fontfamily{...}\selectfont`
-- **PDF backup:** `pdffonts` output — flag any embedded font outside Times/Termes/Arial/Helvetica/CM-math families
+- **PDF backup (authoritative):** per-page **body-mode** font — the most-common glyph font on each page (subset prefix `^[A-Z]{6}\+` stripped), *not* a document-wide font list. Math (`NewTXMI`, `txsys`, `txexs`) and monospace (`LMMono`) are legitimate template fonts and must not be flagged; the body-mode excludes them because body text dominates by glyph count. Flag a page whose body-mode font is outside the Times/Termes/Arial/Helvetica family. Verified: `\fontfamily{ppl}\selectfont` renders the body as `LMRoman` (non-Times); `\usepackage{mathpazo}` does **not** change the body-mode (newtx wins).
+- **Layer authority** (per [`spec-v1.0.md`](./spec-v1.0.md) §7.1.2): the source override-scan flags *intent* and over-fires on overrides the template neutralizes (the "mirage" — `newtx` reloads at `\begin{document}`, so the body still renders Times). Source therefore fires as `review`; the PDF layer holds the `must-fix` verdict. Registry severity stays `must-fix` (the source emit site passes a per-call `review` override), preserving catalog↔registry parity.
 
 ### UF-F3 — Font size 12pt
 
 - **Severity:** must-fix
 - **Source:** S1 (*"12-point ... throughout"*) + C1:1 `\LoadClass[12pt]{report}`
-- **Layer:** source primary
+- **Layer:** source primary, pdf backup
 - **Strategy:** template-enforced via `\LoadClass[12pt]`. Source: scan for size override patterns inappropriate to context:
   - `\fontsize{...}{...}\selectfont` in body
   - `\tiny`, `\scriptsize`, `\footnotesize`, `\small`, `\large`, `\Large`, `\LARGE`, `\huge`, `\Huge` in body text
   - Allowed contexts: captions, headings (template-handled — flag only direct user override)
+- **PDF backup:** per-page **body-mode** size; flag a page whose body-mode size ≠ 12 pt (tolerance ±0.5 pt). This is the authoritative check: the source scan over-fires on *localized-legal* sizing (a one-off `\fontsize` on a title/caption — issue #47), whereas body-mode ignores non-body runs. Verified: `\fontsize{20}{24}\selectfont` moves the body-mode to ~20 pt; legitimate captions/headings do not. Source therefore fires as `review`; PDF holds the `must-fix` verdict.
 
 ### UF-F4 — Line spacing
 
@@ -134,7 +136,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Strategy:** template-enforced. Source: scan for override patterns:
   - `\singlespacing`, `\onehalfspacing`, `\setstretch{...}` outside allowed scopes (within `longtable`, `itemize`, caption, abstract, bib — fine)
   - `\renewcommand{\baselinestretch}{...}`
-- **PDF backup:** line-pitch sampling per text block, flag blocks with leading inconsistent w/ template defaults
+- **PDF backup:** measure the **gap/font-size ratio** per page (≈2.0 double-spaced, ≈1.2 single), *not* the absolute line gap — verified this conflates spacing with font size (`\singlespacing`+`\fontsize{20}{24}` still measures ~24 pt absolute gap because `\fontsize` resets `\baselineskip`). Exclude the legitimately single-spaced bibliography page-range, identified via the `/Names/Dests` `REFERENCES` destination (degrade to page-global if hyperref destinations are absent, e.g. under `\hypersetup{draft}`).
 
 ### UF-F5 — Text alignment (ragged-right)
 
@@ -142,9 +144,12 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Source:** S1 (*"Left-aligned text with ragged right-hand margin — do not justify text"*) + C1:171 `\raggedright`
 - **Layer:** source primary
 - **Strategy:** template-enforced globally. Source: scan for override patterns:
-  - `\justifying`, `\justify`
+  - `\justifying`, `\justify` (via `\usepackage{ragged2e}`)
+  - `\setlength{\rightskip}{0pt}` / `\rightskip=0pt` / `\rightskip 0pt` / `\rightskip=\z@` (zero right-skip glue — the compilable, realistic re-justification vector)
   - `ragged2e` package w/ overrides
   - `\begin{flushleft}`/`\end{flushleft}` mass usage (acceptable in local contexts)
+- **Source layer is the sound must-fix authority.** The scan covers both override vectors: the `\usepackage{ragged2e}\justifying` path and the `\rightskip`-zero assignment path. A PDF-layer right-edge-distribution check is **deferred to v1.1** as defense-in-depth only.
+- **Note (verified):** Bare `\justifying` (without `ragged2e`) is **undefined** in this template and fails to compile, so it would never reach a finding in practice. The scan covers `\justifying` because `\usepackage{ragged2e}\justifying` is a valid, compilable override path.
 - **Note:** Default `report` class justifies. Template's `\raggedright` is what makes ragged-right the actual behavior. Without it, output would justify. So this rule is real.
 - **Not-an-override allowlist:** `\sloppy` (and the equivalent `sloppypar` environment) loosens LaTeX's line-breaking criteria to reduce overfull-hbox warnings but does **not** justify text. The bundled UF example file uses `\sloppy` on the same line as `\documentclass`, in the form `\documentclass[editMode]{ufdissertation}\sloppy`. The validator's F5 override scan must allowlist `\sloppy` regardless of position — on its own line, on the same line as `\documentclass`, or anywhere else in the preamble or body.
 
@@ -157,7 +162,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
   - `\pagenumbering{roman}`, `\pagenumbering{Roman}`, `\pagenumbering{alph}`, etc.
   - `\renewcommand{\thepage}{...}`
   - Custom `\fancyfoot` / `\fancyhead` / `\cfoot` redefinitions
-- **PDF backup:** extract `/PageLabels` from PDF; verify all numeric + bottom-center positioning via PDF parser
+- **PDF backup — not viable / moot (verified):** the demo has **no `/PageLabels`** (the original PDF-backup plan is infeasible), and the template numbers **arabic throughout** (cls:177; demo front matter is "2".."11", no roman region), so there is no front-matter/body numbering boundary for the PDF to police. The source scan already catches `\pagenumbering{roman}`/`\renewcommand{\thepage}`. PDF-F6 adds essentially nothing and is not planned.
 - **Note:** Title page unnumbered by template (`\thispagestyle{empty}` cls:282) — accept as exception.
 
 ### UF-F7 — Paragraph indentation
@@ -281,6 +286,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Source:** S2 (*"Your dissertation must be submitted in PDF format"*)
 - **Layer:** pdf
 - **Strategy:** if input mode is zip/dir without PDF and no compile step succeeded → must-fix. If pdf input mode → trivially satisfied.
+- **Note (verified):** on the source/compile path this is near-tautological — a failed compile is already exit 2 (`build.py`) *before* the PDF layer runs, so S1 cannot fire there. Its only non-trivial niche is a present-but-empty/0-page PDF (narrow the check to "parses + ≥1 page"); a fully unparseable input PDF is exit-2 unreadable-input, not an S1 finding.
 
 ### UF-S2 — Required sections present (rejection-driver subset of F8)
 
@@ -332,6 +338,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Source:** S4 (*"LuaLaTeX with TexLive 2025 (required for accessibility)"*)
 - **Layer:** source
 - **Strategy:** scan main `.tex` for `% !TEX program = ...` directives. Flag if non-LuaLaTeX (pdflatex / xelatex / latex). Absence = OK (default LuaLaTeX assumed).
+- **PDF backup (planned):** read the PDF `/Producer` engine name — a determinism-safe, stable field (unlike `/CreationDate`/`/ID`). Canonical LuaLaTeX stamps `LuaTeX-…`; pdfTeX stamps `pdfTeX`; `xdvipdfmx` is ambiguous (XeLaTeX or LuaLaTeX-via-dvi). The `% !TEX` hint is *not* the compiler — a project silently built with pdflatex passes the source check; `/Producer` confirms the *actual* engine. This is a backup, not a replacement: it reliably catches `pdfTeX` but cannot positively confirm "LuaLaTeX-direct" when the value is `xdvipdfmx`.
 
 ### UF-D3 — `overrideTitles` / `overrideChapters` options
 
@@ -384,7 +391,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Severity:** review
 - **Source:** S5 (PDF/UA-1, PDF/UA-2, WCAG 2.1/2.2 AA) + S4 (*"required for accessibility"* — template uses LuaLaTeX + TeX Live 2025 for tagging)
 - **Layer:** pdf
-- **Strategy:** extract `/StructTreeRoot` from PDF. If absent → review w/ note that LuaLaTeX + TeX Live 2025 should produce tagged output; missing tags suggest wrong compiler or stale TeX Live.
+- **Strategy — corrected (verified):** the original premise is wrong. A **canonical** LuaLaTeX + TeX Live 2025 build of this template produces an **untagged** PDF (no `/StructTreeRoot`, `/MarkInfo`, or `/Lang` — confirmed on the demo). Missing tags are the template's *normal* output, **not** a sign of the wrong compiler. Enforcing A1 (even as `review`) would therefore fire on every conforming dissertation and break acceptance gate §8.2. A1 is consequently **not a per-run finding**; the untagged-output fact is surfaced as standing informational text under UF-A2 (per [`spec-v1.0.md`](./spec-v1.0.md) §6). Accessibility tagging is unverifiable on this template by construction.
 
 ### UF-A2 — Known template accessibility limitations
 
@@ -401,7 +408,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 |---|---|---|---|
 | F1 margins | must-fix | source+pdf | template-enforced override scan |
 | F2 font family | must-fix | source+pdf | template-enforced override scan |
-| F3 font size | must-fix | source | template-enforced override scan |
+| F3 font size | must-fix | source+pdf | template-enforced override scan |
 | F4 line spacing | must-fix | source+pdf | template-enforced override scan |
 | F5 alignment | must-fix | source | template-enforced override scan |
 | F6 page numbering | must-fix | source+pdf | template-enforced override scan |

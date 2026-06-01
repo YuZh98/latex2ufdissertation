@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from latex2ufdissertation.pipeline.rules import REVIEW, SOURCE
 from latex2ufdissertation.pipeline.types import Issues
 
 _DOCCLASS_RE = re.compile(r"\\documentclass(\[([^\]]*)\])?\{([^}]+)\}")
@@ -42,6 +43,33 @@ _SETFILE_RULES = (
     (r"\setDedicationFile", (".tex",), "Dedication", False),
     (r"\setAbbreviationsFile", (".tex",), "Abbreviations", False),
     (r"\setAppendixFile", (".tex",), "Appendix", False),
+)
+
+
+# Catalog § UF-F5: \rightskip zero-assignment patterns (re-justify vector).
+# setlength form: value starts with 0 and contains no "fil" stretch component.
+# {0pt} and {0pt plus 0pt} match; {0pt plus 1fil} does not (ragged reinforcement).
+_F5_RIGHTSKIP_SETLENGTH = re.compile(r"\\setlength\s*\{\s*\\rightskip\s*\}\s*\{\s*0(?![^\\}]*fil)")
+# Direct TeX assignment: \rightskip=0pt, \rightskip=\z@
+# The (?![^\\}]*fil) guard excludes ragged-right glue (\rightskip=0pt plus 1fil
+# and \rightskip=\z@ plus 1fil). Both the 0-value and \z@ branches carry the
+# guard so that ragged-right reinforcement forms do not false-fire.
+_F5_RIGHTSKIP_DIRECT = re.compile(r"\\rightskip\s*=\s*(?:0(?![^\\}]*fil)|\\z@(?![^\\}]*fil))")
+# Space-separated assignment: \rightskip 0pt  (no equals sign)
+# The (?!.*fil) guard excludes ragged-right glue (\rightskip 0pt plus 1fil).
+_F5_RIGHTSKIP_SPACE = re.compile(r"\\rightskip\s+0(?![^\\}]*fil)")
+
+
+_F2_SOURCE_FIX_HINT = (
+    "Font override present; the UF template's newtx reload at "
+    "\\begin{document} may neutralize it. The PDF layer confirms "
+    "whether the rendered body is actually non-Times."
+)
+
+_F3_SOURCE_FIX_HINT = (
+    "A \\fontsize{...}{...}\\selectfont may be legal localized sizing "
+    "(e.g. on a title page or caption). The PDF layer confirms the "
+    "rendered body-mode size."
 )
 
 
@@ -157,11 +185,14 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
         observed = f"\\fontsize{{{f3m.group(1)}}}{{{f3m.group(2)}}}\\selectfont"
         issues.add(
             "UF-F3",
+            severity=REVIEW,
+            layer=SOURCE,
             location=rel,
             observed=f"{observed} overrides template's 12pt default",
             required=(
                 "no \\fontsize{...}{...}\\selectfont override in source (template's 12pt applies)"
             ),
+            fix_hint=_F3_SOURCE_FIX_HINT,
         )
 
     # UF-F7: paragraph-indentation overrides. Template's \indentfirst (cls:203)
@@ -427,9 +458,12 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     if re.search(r"\\setmainfont\s*(?:\[[^\]]*\])?\s*\{", nc):
         issues.add(
             "UF-F2",
+            severity=REVIEW,
+            layer=SOURCE,
             location=rel,
             observed="\\setmainfont override present in source",
             required="no \\setmainfont override (template loads Times / Arial)",
+            fix_hint=_F2_SOURCE_FIX_HINT,
         )
     _F2_PACKAGES = (
         "mathpazo",
@@ -449,16 +483,22 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                 _f2_seen.add(token)
                 issues.add(
                     "UF-F2",
+                    severity=REVIEW,
+                    layer=SOURCE,
                     location=rel,
                     observed=f"font-replacement package `{token}` loaded",
                     required=f"remove \\usepackage{{{token}}} (template provides Times / Arial)",
+                    fix_hint=_F2_SOURCE_FIX_HINT,
                 )
     if re.search(r"\\fontfamily\s*\{[^}]+\}\s*\\selectfont", nc):
         issues.add(
             "UF-F2",
+            severity=REVIEW,
+            layer=SOURCE,
             location=rel,
             observed="\\fontfamily{...}\\selectfont override present in source",
             required="no manual \\fontfamily override (template handles font selection)",
+            fix_hint=_F2_SOURCE_FIX_HINT,
         )
 
     # UF-F4: line spacing (source-half). Template enforces \doublespacing
@@ -511,13 +551,15 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
         )
 
     # UF-F5: text-alignment overrides. Template's \raggedright (cls:171) is the
-    # ragged-right behavior UF requires. \justifying and \justify both override
-    # it. Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)
-    # are line-breaking helpers, not alignment overrides — they aren't in this
-    # scan, so they're silently ignored regardless of position. \raggedright
-    # itself is also silent because we only look for the override commands.
-    # Trailing (?![a-zA-Z]) ensures \justify does not match the \justify prefix
-    # inside \justifying (which has its own match) or any \justifyFoo variant.
+    # ragged-right behavior UF requires. Two override vectors are scanned:
+    #
+    # Vector 1 — \justifying / \justify (via ragged2e):
+    #   Allowlist: \sloppy and \sloppypar (per catalog § UF-F5 explicit note)
+    #   are line-breaking helpers, not alignment overrides — they aren't in this
+    #   scan, so they're silently ignored regardless of position. \raggedright
+    #   itself is also silent because we only look for the override commands.
+    #   Trailing (?![a-zA-Z]) ensures \justify does not match the \justify prefix
+    #   inside \justifying (which has its own match) or any \justifyFoo variant.
     for cmd in (r"\justifying", r"\justify"):
         for _ in re.finditer(re.escape(cmd) + r"(?![a-zA-Z])", nc):
             issues.add(
@@ -525,10 +567,34 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                 location=rel,
                 observed=f"{cmd} overrides template's \\raggedright",
                 required=(
-                    "no \\justifying / \\justify override in source "
+                    "no \\justifying / \\justify / \\rightskip-zero override in source "
                     "(template's \\raggedright produces ragged-right)"
                 ),
             )
+
+    # Vector 2 — \rightskip zero assignment (the compilable re-justify path):
+    #   Setting \rightskip to zero removes the ragged-right glue and re-justifies
+    #   paragraphs. Detected forms:
+    #     \setlength{\rightskip}{0...}      — setlength with zero value
+    #     \rightskip=0pt / \rightskip 0pt  — direct TeX assignment (zero)
+    #     \rightskip=\z@                    — plain TeX zero constant
+    #   Non-zero assignments (\rightskip=1pt, \rightskip{0pt plus 1fil}) are
+    #   allowlisted by matching only values beginning with 0 or \z@.
+    #   \raggedright contains no "rightskip" literal — no false-positive risk.
+    if (
+        _F5_RIGHTSKIP_SETLENGTH.search(nc)
+        or _F5_RIGHTSKIP_DIRECT.search(nc)
+        or _F5_RIGHTSKIP_SPACE.search(nc)
+    ):
+        issues.add(
+            "UF-F5",
+            location=rel,
+            observed="\\rightskip set to zero overrides template's \\raggedright",
+            required=(
+                "no \\justifying / \\justify / \\rightskip-zero override in source "
+                "(template's \\raggedright produces ragged-right)"
+            ),
+        )
 
     # UF-D2: non-LuaLaTeX compiler hint
     hint = re.search(r"%\s*!TEX\s+program\s*=\s*(pdflatex|xelatex)", raw)

@@ -5,7 +5,7 @@
       "fix_hint": "Remove the override; the UF template's `\\raggedright` (cls:171) produces the required ragged-right alignment.",
       "layer": "source",
       "location": "main.tex",
-      "observed": "\\justifying overrides template's \\raggedright",
+      "observed": "\\rightskip set to zero overrides template's \\raggedright",
       "required": "no \\justifying / \\justify / \\rightskip-zero override in source (template's \\raggedright produces ragged-right)",
       "rule_id": "UF-F5",
       "severity": "must-fix",

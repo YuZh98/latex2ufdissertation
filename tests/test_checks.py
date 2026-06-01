@@ -597,7 +597,8 @@ def test_font_override_fires_uf_f2(tmp_path, override):
     run_checks(master, tmp_path, issues)
     f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
     assert f2
-    assert f2[0].severity == MUST_FIX
+    # Source-layer F2 is advisory (review); PDF layer is the authoritative must-fix.
+    assert f2[0].severity == REVIEW
 
 
 @pytest.mark.parametrize(
@@ -704,7 +705,7 @@ def test_fontsize_selectfont_fires_uf_f3(tmp_path, args):
     f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
     assert len(f3) == 1
     assert override in (f3[0].observed or "")
-    assert f3[0].severity == MUST_FIX
+    assert f3[0].severity == REVIEW
 
 
 @pytest.mark.parametrize(
@@ -794,6 +795,55 @@ def test_justify_in_comment_does_not_fire_uf_f5(tmp_path):
     issues = Issues()
     run_checks(master, tmp_path, issues)
     assert "UF-F5" not in _rule_ids(issues)
+
+
+@pytest.mark.parametrize(
+    "snippet",
+    [
+        r"\setlength{\rightskip}{0pt}",
+        r"\setlength{\rightskip}{0pt plus 0pt}",
+        r"\rightskip=0pt",
+        r"\rightskip 0pt",
+        r"\rightskip=\z@",
+        r"\rightskip=0pt\hfill",
+    ],
+)
+def test_rightskip_zero_override_fires_uf_f5(tmp_path, snippet):
+    # Catalog § UF-F5 (rightskip vector): setting \rightskip to zero
+    # re-justifies paragraphs — the compilable, realistic override path.
+    # All common forms must fire.
+    src = _VALID.replace(r"\begin{document}", r"\begin{document}" + "\n" + snippet)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f5 = [f for f in issues.findings if f.rule_id == "UF-F5"]
+    assert len(f5) == 1, f"Expected 1 UF-F5 finding, got {len(f5)} for {snippet!r}"
+    assert "\\rightskip" in (f5[0].observed or ""), f5[0].observed
+    assert f5[0].severity == MUST_FIX
+
+
+@pytest.mark.parametrize(
+    "snippet",
+    [
+        r"\sloppy",
+        r"\raggedright",
+        r"\setlength{\rightskip}{1pt}",
+        r"\setlength{\rightskip}{0pt plus 1fil}",
+        r"\rightskip=0pt plus 1fil",
+        r"\rightskip 0pt plus 1fil",
+        r"\rightskip=\z@ plus 1fil",
+    ],
+)
+def test_rightskip_non_zero_or_safe_does_not_fire_uf_f5(tmp_path, snippet):
+    # Guard: non-zero rightskip assignments and allowlisted commands must
+    # NOT trigger UF-F5. \sloppy and \raggedright are already in the
+    # existing allowlist; the non-zero rightskip forms are new guards.
+    # \rightskip=\z@ plus 1fil is ragged-right reinforcement — must not fire.
+    src = _VALID.replace(r"\begin{document}", r"\begin{document}" + "\n" + snippet)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F5" not in _rule_ids(issues), f"Unexpected UF-F5 for {snippet!r}"
 
 
 @pytest.mark.parametrize("month", ["February", "June", "Spring", "01", "may"])
