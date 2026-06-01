@@ -1436,3 +1436,79 @@ def test_dissertation_does_not_raise_thesis_input(tmp_path):
     issues = Issues()
     run_checks(master, tmp_path, issues)  # must not raise
     assert issues.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Path-containment: \set*File / \input args must not escape the project root
+# ---------------------------------------------------------------------------
+
+
+def test_setabstractfile_absolute_path_no_crash_no_read(tmp_path):
+    # \setAbstractFile{/etc/passwd} must not crash and must not read /etc/passwd.
+    # Expected outcome: UF-P1 "not found" (escaping path treated as absent).
+    src = _VALID.replace(r"\setAbstractFile{abs}", r"\setAbstractFile{/etc/passwd}")
+    files = {k: v for k, v in _VALID_FILES.items() if k != "abs.tex"}
+    master = _project(tmp_path, src, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)  # must not raise
+    # The escaping path is treated as not found → UF-P1 fires, UF-F15 does not.
+    assert "UF-P1" in _rule_ids(issues)
+    assert "UF-F15" not in _rule_ids(issues)
+
+
+def test_setabstractfile_dotdot_traversal_no_crash_no_read(tmp_path):
+    # \setAbstractFile{../../../../etc/passwd} must not crash and must not read
+    # the traversed file. The escaping path is treated as absent (UF-P1).
+    src = _VALID.replace(r"\setAbstractFile{abs}", r"\setAbstractFile{../../../../etc/passwd}")
+    files = {k: v for k, v in _VALID_FILES.items() if k != "abs.tex"}
+    master = _project(tmp_path, src, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)  # must not raise
+    assert "UF-P1" in _rule_ids(issues)
+    assert "UF-F15" not in _rule_ids(issues)
+
+
+def test_setabstractfile_traversal_never_reads_escaped_file(tmp_path):
+    # Escaping abstract file with >350 words must NOT trigger UF-F15 (i.e., the
+    # file is never read). Creates a sentinel file outside root and references it.
+    secret = tmp_path / "secret.tex"
+    secret.write_text(" ".join(["w"] * 400), encoding="utf-8")
+    root = tmp_path / "proj"
+    root.mkdir()
+    # Build a full valid project inside root, but point abstract at ../secret
+    src = _VALID.replace(r"\setAbstractFile{abs}", r"\setAbstractFile{../secret}")
+    (root / "master.tex").write_text(src, encoding="utf-8")
+    files_without_abs = {k: v for k, v in _VALID_FILES.items() if k != "abs.tex"}
+    for name, body in files_without_abs.items():
+        (root / name).write_text(body, encoding="utf-8")
+    issues = Issues()
+    run_checks(root / "master.tex", root, issues)  # must not raise
+    # 400 words in the escaped file → if it were read, UF-F15 would fire.
+    assert "UF-F15" not in _rule_ids(issues), "escaped file was read (containment broken)"
+    assert "UF-P1" in _rule_ids(issues)
+
+
+def test_inproject_input_still_resolves(tmp_path):
+    # A legitimate \input{chapters/intro} with chapters/intro.tex inside root
+    # must still be found and scanned (no regression from containment guard).
+    chapters = tmp_path / "chapters"
+    chapters.mkdir()
+    (chapters / "intro.tex").write_text(
+        "\\chapter{Intro}\\justifying\\chapter{Body}\\chapter{End}\n",
+        encoding="utf-8",
+    )
+    body = r"\input{chapters/intro}"
+    master = _project(tmp_path, _with_body(body), _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f5 = [f for f in issues.findings if f.rule_id == "UF-F5"]
+    assert f5, "expected UF-F5 from in-project subdirectory include"
+
+
+def test_inproject_setabstractfile_still_resolves(tmp_path):
+    # A normal \setAbstractFile{abs} with abs.tex beside the master must still
+    # resolve correctly — no regression from the containment guard.
+    master = _project(tmp_path, _VALID, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert issues.findings == []  # abs.tex found, word count OK, no UF-P1 / UF-F15
