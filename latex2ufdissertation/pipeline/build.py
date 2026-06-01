@@ -1,5 +1,6 @@
 """LuaLaTeX compile driver."""
 
+import os
 import shutil
 import subprocess
 import sys
@@ -50,12 +51,45 @@ def compile_pdf(
     detached project root, so ``\\input``/``\\include`` and the produced PDF
     resolve correctly even when the master lives in a subdirectory. ``stdin`` is
     detached (``DEVNULL``) so a missing-file prompt cannot block on a TTY.
+
+    Security notes:
+    - Filenames starting with ``-`` are rejected before subprocess invocation
+      to prevent flag injection into lualatex/biber.
+    - ``-no-shell-escape`` disables ``\\write18`` (shell escape).
+    - The env vars ``shell_escape=f``, ``openin_any=p``, ``openout_any=p``
+      restrict file read/write to the project tree.
+    - ``\\directlua`` (LuaTeX built-in) cannot be disabled via env or flags;
+      only compile sources you trust.
     """
     if not lualatex_available():
         raise MissingToolchain("lualatex not found — install TeX Live 2025")
 
+    # Belt-and-suspenders: reject filenames that start with '-' to prevent
+    # flag injection into lualatex/biber argv.
+    if main_tex.name.startswith("-"):
+        raise ConverterError("unsafe master filename")
+
     work_dir = main_tex.parent
-    cmd = ["lualatex", "-interaction=nonstopmode", "-halt-on-error", main_tex.name]
+
+    # Restrict shell/file ops as defence-in-depth.
+    # shell_escape=f  → disables \write18 (belt-and-suspenders alongside -no-shell-escape)
+    # openin_any=p    → restricts \input to files under the project tree
+    # openout_any=p   → restricts \output (log, aux) to the project tree
+    # Note: \directlua cannot be disabled here — trusted input only.
+    compile_env = {
+        **os.environ,
+        "shell_escape": "f",
+        "openin_any": "p",
+        "openout_any": "p",
+    }
+
+    cmd = [
+        "lualatex",
+        "-no-shell-escape",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        main_tex.name,
+    ]
     log_text = ""
     for pass_n in (1, 2, 3):
         try:
@@ -65,6 +99,7 @@ def compile_pdf(
                 timeout=COMPILE_TIMEOUT,
                 capture_output=True,
                 stdin=subprocess.DEVNULL,
+                env=compile_env,
             )
             log_text = r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace")
         except subprocess.TimeoutExpired as exc:
@@ -74,13 +109,17 @@ def compile_pdf(
             stem = main_tex.stem
             bcf = work_dir / f"{stem}.bcf"
             if bcf.exists():
-                subprocess.run(
-                    ["biber", stem],
-                    cwd=work_dir,
-                    capture_output=True,
-                    timeout=COMPILE_TIMEOUT,
-                    stdin=subprocess.DEVNULL,
-                )
+                try:
+                    subprocess.run(
+                        ["biber", stem],
+                        cwd=work_dir,
+                        capture_output=True,
+                        timeout=COMPILE_TIMEOUT,
+                        stdin=subprocess.DEVNULL,
+                        env=compile_env,
+                    )
+                except subprocess.TimeoutExpired as exc:
+                    raise ConverterError(f"biber timed out after {COMPILE_TIMEOUT}s") from exc
 
     produced = work_dir / f"{main_tex.stem}.pdf"
     if not produced.exists():

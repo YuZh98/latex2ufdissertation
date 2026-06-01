@@ -7,11 +7,13 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
+from latex2ufdissertation.pipeline.resolve import _safe_extract
 from latex2ufdissertation.pipeline.types import ConverterError
 
 BUNDLED_TEMPLATE_DIR = Path(__file__).parent / "template"
 UF_IT_TEMPLATE_URL = "https://it.ufl.edu/helpdesk/media/itufledu/tampd-graduate-resources-/Dissertation___Thesis_Example_File.zip"
 FETCH_TIMEOUT = 30  # seconds
+FETCH_MAX_BYTES = 50 * 1024 * 1024  # 50 MB cap on remote template download
 
 
 def _fetch_remote(dest: Path) -> None:
@@ -21,9 +23,14 @@ def _fetch_remote(dest: Path) -> None:
         headers={"User-Agent": "latex2ufdissertation"},
     )
     with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT) as resp:
-        data = resp.read()
+        data = resp.read(FETCH_MAX_BYTES + 1)
+
+    if len(data) > FETCH_MAX_BYTES:
+        raise ConverterError(f"remote template too large (> {FETCH_MAX_BYTES // (1024 * 1024)} MB)")
+
     with zipfile.ZipFile(BytesIO(data)) as zf:
-        zf.extractall(dest)
+        _safe_extract(zf, dest)
+
     entries = [p for p in dest.iterdir() if p.name not in ("__MACOSX",)]
     if len(entries) == 1 and entries[0].is_dir():
         inner = entries[0]

@@ -7,31 +7,86 @@ import tempfile
 import zipfile
 from collections.abc import Callable
 from pathlib import Path
+from urllib.parse import urlparse
 
 from latex2ufdissertation.pipeline.types import ConverterError, UnreadableInput
 
 RESOLVE_GIT_TIMEOUT = 300  # seconds
 
+# Hosts allowed for git clone via https:// URLs.
+_HTTPS_ALLOWED_HOSTS: frozenset[str] = frozenset({"github.com", "www.github.com", "gitlab.com"})
+
+# Hosts allowed in the scp-style "git@host:..." form.
+_SCP_ALLOWED_HOSTS: frozenset[str] = frozenset({"github.com", "gitlab.com"})
+
 
 def _looks_like_git_url(s: str) -> bool:
-    if s.startswith(("http://", "https://", "git@", "ssh://")):
-        return s.endswith(".git") or "github.com" in s or "gitlab.com" in s
-    return False
+    """Return True only for git URLs with an allow-listed host.
+
+    Accepted forms:
+      - https://<allowed-host>/...   (any path; .git suffix optional)
+      - ssh://<allowed-host>/...     (SSH clone URL form)
+      - git@<allowed-host>:...       (scp-style; any path)
+
+    Rejected:
+      - http:// (cleartext)
+      - Any host not in the allowlists above (blocks SSRF / IMDS)
+      - IP-literal hosts (caught by hostname not being in allowlist)
+      - Subdomain-prefix bypass (e.g. github.com.evil.com) — caught by
+        exact-match against urlparse().hostname rather than substring.
+    """
+    # scp form: git@host:path — urlparse cannot handle this reliably.
+    if s.startswith("git@"):
+        rest = s[len("git@") :]
+        colon = rest.find(":")
+        if colon == -1:
+            return False
+        host = rest[:colon].lower()
+        return host in _SCP_ALLOWED_HOSTS
+
+    # https:// and ssh:// are accepted; http:// and anything else is not.
+    try:
+        parsed = urlparse(s)
+    except ValueError:
+        return False
+
+    if parsed.scheme not in {"https", "ssh"}:
+        return False
+
+    # Reject embedded userinfo (e.g. https://evil.com@github.com/...): the host
+    # is allow-listed, but arbitrary credentials would be forwarded to git clone.
+    if parsed.username or parsed.password:
+        return False
+
+    # parsed.hostname strips port, userinfo, and lowercases; None for malformed.
+    host = parsed.hostname
+    if not host:
+        return False
+    return host in _HTTPS_ALLOWED_HOSTS
+
+
+def _safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
+    """Extract all members of *zf* into *dest*, rejecting any path that
+    escapes *dest* (zip-slip).  Uses ``Path.is_relative_to`` (Python 3.9+)
+    for a correct containment check — the old ``startswith(str(dest))``
+    missed sibling-prefix paths such as ``../destextra/evil``.
+    """
+    dest_resolved = dest.resolve()
+    for member in zf.namelist():
+        target = (dest / member).resolve()
+        if not target.is_relative_to(dest_resolved):
+            raise UnreadableInput(f"zip-slip: {member}")
+    for member in zf.namelist():
+        if member.startswith("__MACOSX/") or member.endswith("/.DS_Store"):
+            continue
+        zf.extract(member, dest)
 
 
 def _zip_extract_unwrapping(zip_path: Path, dest: Path) -> Path:
     """Extract zip into dest. If the zip has a single top-level directory,
     return that directory (auto-unwrap). Otherwise return dest."""
     with zipfile.ZipFile(zip_path) as zf:
-        dest_resolved = str(dest.resolve())
-        for member in zf.namelist():
-            target = (dest / member).resolve()
-            if not str(target).startswith(dest_resolved):
-                raise UnreadableInput(f"zip-slip: {member}")
-        for member in zf.namelist():
-            if member.startswith("__MACOSX/") or member.endswith("/.DS_Store"):
-                continue
-            zf.extract(member, dest)
+        _safe_extract(zf, dest)
 
     entries = [p for p in dest.iterdir() if p.name not in ("__MACOSX",)]
     if len(entries) == 1 and entries[0].is_dir():
@@ -65,7 +120,11 @@ def resolve(input_str: str) -> tuple[Path, Callable[[], None]]:
     """
     if _looks_like_git_url(input_str):
         tmp = Path(tempfile.mkdtemp(prefix="l2ufd_git_"))
-        root = _clone_git(input_str, tmp)
+        try:
+            root = _clone_git(input_str, tmp)
+        except BaseException:
+            shutil.rmtree(tmp, ignore_errors=True)
+            raise
         return root, lambda: shutil.rmtree(tmp, ignore_errors=True)
 
     p = Path(input_str)
@@ -77,7 +136,14 @@ def resolve(input_str: str) -> tuple[Path, Callable[[], None]]:
 
     if p.suffix.lower() == ".zip":
         tmp = Path(tempfile.mkdtemp(prefix="l2ufd_zip_"))
-        root = _zip_extract_unwrapping(p, tmp)
+        try:
+            root = _zip_extract_unwrapping(p, tmp)
+        except (zipfile.BadZipFile, OSError) as e:
+            shutil.rmtree(tmp, ignore_errors=True)
+            raise UnreadableInput(f"not a valid zip: {e}") from e
+        except BaseException:
+            shutil.rmtree(tmp, ignore_errors=True)
+            raise
         return root, lambda: shutil.rmtree(tmp, ignore_errors=True)
 
     raise UnreadableInput(f"unsupported input type: {input_str}")
