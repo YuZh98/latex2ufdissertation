@@ -6,6 +6,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-06-01
+
+Hardening release addressing a multi-agent adversarial review (security, crash-safety, validation soundness, and documentation honesty).
+
+### Security
+- Zip extraction is containment-checked (`is_relative_to`), fixing a sibling-prefix zip-slip bypass; the same guard now covers the `--init` remote-template fetch (previously unguarded `extractall`), with a 50 MB download cap (#66)
+- Git-URL handling rewritten with `urlparse`: host is exact-matched against `{github.com, gitlab.com}`; rejects subdomain-prefix (`github.com.evil.com`), IP/IMDS literals, `http://`, and embedded userinfo (`evil.com@github.com`) (#66)
+- LuaLaTeX compile hardened: `-no-shell-escape` plus restricted env (`shell_escape=f`, `openin_any=p`, `openout_any=p`) blocks `\write18` and `\input{/etc/passwd}` exfiltration; master filenames starting with `-` are rejected (flag injection). Compiling untrusted LaTeX is documented as unsafe — `\directlua` cannot be disabled (#66, SECURITY.md)
+- `\set*File` / abstract / `\input` path resolution is confined to the project root; an absolute or `..`-traversal argument is no longer read and can no longer crash the tool (#70)
+
+### Fixed
+- Override scans (`UF-F1`/`F2`/`F3`/`F4`/`F5`/`F6`/`F7`/`F11`) now recurse through `\input`/`\include`; overrides placed in a preamble or chapter file are no longer missed (previously a clean report on a non-conforming document) (#68)
+- Error paths now exit 2 with a clean message and valid `--json` instead of a traceback: corrupt zip, `--main` outside the project root, `--init` into an unwritable path, malformed/encrypted PDF (#66, #67, #70)
+- `UF-F4` no longer false-fires on `\singlespacing` inside `longtable`/`itemize`/caption/table/figure scopes (#68)
+- `UF-S3` now catches broken `\cref`/`\Cref`/`\autoref`/`\nameref` (#68)
+- Verbatim blocks are stripped before comments, so a `%` inside `verbatim` no longer corrupts scanning (#68)
+- `_find_bundled_pdf` searches the master's own directory, so a subdirectory master's bundled PDF is found (#67)
+- `--version` reads the installed package metadata instead of a hardcoded (stale) string (#67)
+
+### Added
+- Thesis refusal: `\thesisType{Thesis}` exits 2 (`thesis_input`), implementing the spec hard rule (#68)
+- An empty required `\set*File` companion (exists but blank) now produces a `review` finding (presence is not content) (#68)
+
+### Changed
+- Documentation reconciled with the implementation: template-version detection and `--guide` marked deferred/not-implemented; `pdfminer.six` described accurately as a required dependency (lazy-imported, not a stdlib-only install); the `must-fix` definition softened with `D2`/`F15`/`F11` caveats; `uf-rules.md` marks rules with no automated check; §8 gate status noted (#69)
+
 ## [0.3.1] - 2026-06-01
 
 ### Fixed
