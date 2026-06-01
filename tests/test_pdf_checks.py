@@ -20,6 +20,7 @@ _F3_VIOLATION_PDF = (
     _REPO_ROOT / "tests" / "fixtures" / "uf_f3_pdf_size_violation" / "input" / "violation.pdf"
 )
 _S5_DRAFT_PDF = _REPO_ROOT / "tests" / "fixtures" / "uf_s5_draft_mode" / "input" / "draft.pdf"
+_S1_EMPTY_PDF = _REPO_ROOT / "tests" / "fixtures" / "uf_s1_empty_pdf" / "input" / "empty.pdf"
 
 _VIOLATION_AVAILABLE = pytest.mark.skipif(
     not _VIOLATION_PDF.exists(), reason="F2 violation PDF fixture not present"
@@ -29,6 +30,9 @@ _F3_VIOLATION_AVAILABLE = pytest.mark.skipif(
 )
 _S5_DRAFT_AVAILABLE = pytest.mark.skipif(
     not _S5_DRAFT_PDF.exists(), reason="S5 draft-mode PDF fixture not present"
+)
+_S1_EMPTY_AVAILABLE = pytest.mark.skipif(
+    not _S1_EMPTY_PDF.exists(), reason="S1 empty PDF fixture not present"
 )
 
 _DEMO_AVAILABLE = pytest.mark.skipif(not _DEMO_PDF.exists(), reason="demo PDF not present")
@@ -172,6 +176,39 @@ def test_run_pdf_checks_s1_fires_on_all_none_pages(tmp_path: Path) -> None:
 
     assert len(issues.findings) == 1
     assert issues.findings[0].rule_id == "UF-S1"
+
+
+# ---------------------------------------------------------------------------
+# Gate 3: committed S1 fixture (real PDF, no mocks)
+# ---------------------------------------------------------------------------
+
+
+@_S1_EMPTY_AVAILABLE
+def test_run_pdf_checks_s1_fires_on_committed_empty_fixture() -> None:
+    """Gate 3 — S1 fixture: a committed PDF that parses but has no extractable
+    text must produce exactly one finding: UF-S1 (must-fix, pdf layer).
+
+    The fixture (tests/fixtures/uf_s1_empty_pdf/input/empty.pdf) was compiled
+    with LuaLaTeX from a one-page document that has no body text:
+      \\phantomsection + \\addcontentsline produces an Outlines entry so S5
+      does not fire (S5 fires only when BOTH link_count==0 AND no Outlines).
+    F2 and F3 skip pages whose body_font is None, so they are also silent.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    issues = Issues()
+    run_pdf_checks(_S1_EMPTY_PDF, issues)
+
+    assert len(issues.findings) == 1, (
+        f"expected exactly 1 finding (UF-S1), got {len(issues.findings)}: "
+        f"{[f.rule_id for f in issues.findings]}"
+    )
+    finding = issues.findings[0]
+    assert finding.rule_id == "UF-S1"
+    assert finding.severity == MUST_FIX
+    assert finding.layer == PDF
 
 
 # ---------------------------------------------------------------------------
