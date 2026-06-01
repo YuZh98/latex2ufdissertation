@@ -78,6 +78,23 @@ _F3_SOURCE_FIX_HINT = (
 )
 
 
+def _resolve_within(base: Path, root: Path, arg: str) -> Path | None:
+    """Resolve a macro-supplied path under *base*, returning it only if it stays
+    inside the project *root*. Absolute paths and ``..``-traversals that escape
+    the root return ``None`` (treated as not-found; the file is never read).
+    The returned path is the unresolved ``base / arg`` so callers' existing
+    ``relative_to`` / visited-set logic is unchanged; the containment check
+    is performed on fully-resolved paths to handle symlinks correctly.
+    """
+    candidate = base / arg
+    try:
+        if not candidate.resolve().is_relative_to(root.resolve()):
+            return None
+    except Exception:
+        return None
+    return candidate
+
+
 def _strip_comments(text: str) -> str:
     return re.sub(r"(?m)(?<!\\)%[^\n]*", "", text)
 
@@ -126,12 +143,12 @@ def _collect_include_texts(nc: str, base: Path, root: Path, master: Path) -> lis
 
     Returns a list of (location, cleaned_text) for each distinct included file,
     where *location* is the path relative to *root* (mirroring the master's own
-    display-relative `rel`, falling back to the file name when it resolves
-    outside root, e.g. via ``\\input{../x}``). Files are resolved relative to
-    *base* (the master's directory, LaTeX semantics); a visited-set keyed on
-    the resolved path prevents cycles (seeded with the master so an include
-    that loops back to the master is not re-scanned), and a hard cap guards
-    pathological graphs.
+    display-relative `rel`). Files are resolved relative to *base* (the master's
+    directory, LaTeX semantics); a visited-set keyed on the resolved path
+    prevents cycles (seeded with the master so an include that loops back to
+    the master is not re-scanned), and a hard cap guards pathological graphs.
+    Include targets that escape the project root (absolute paths or
+    ``..``-traversals) are silently skipped and never read.
 
     The master's own text is NOT included here — callers scan the master via
     `nc` directly so its location stays the display-relative master name.
@@ -144,8 +161,9 @@ def _collect_include_texts(nc: str, base: Path, root: Path, master: Path) -> lis
     while frontier and len(visited) < _MAX_INCLUDE_FILES:
         current = frontier.pop()
         for included in re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", current):
-            for candidate in (base / included, base / f"{included}.tex"):
-                if not (candidate.exists() and candidate.is_file()):
+            for raw_arg in (included, f"{included}.tex"):
+                candidate = _resolve_within(base, root, raw_arg)
+                if candidate is None or not (candidate.exists() and candidate.is_file()):
                     continue
                 resolved = candidate.resolve()
                 if resolved in visited:
@@ -256,7 +274,11 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                     required=f"{cmd}{{<{label.lower()}-file-stem>}}",
                 )
             continue
-        candidates = [base / arg] + [base / f"{arg}{s}" for s in suffixes]
+        candidates = [
+            c
+            for raw in ([arg] + [f"{arg}{s}" for s in suffixes])
+            if (c := _resolve_within(base, root, raw)) is not None
+        ]
         existing = next((c for c in candidates if c.exists() and c.is_file()), None)
         if existing is None:
             issues.add(
@@ -355,8 +377,9 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     _chapter_pat = re.compile(r"\\chapter\*?\s*\{[^}]+\}")
     chapter_count = len(_chapter_pat.findall(nc))
     for included in re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", nc):
-        for candidate in (base / included, base / f"{included}.tex"):
-            if candidate.exists() and candidate.is_file():
+        for raw_arg in (included, f"{included}.tex"):
+            candidate = _resolve_within(base, root, raw_arg)
+            if candidate is not None and candidate.exists() and candidate.is_file():
                 included_nc = _clean(candidate.read_text(encoding="utf-8", errors="replace"))
                 chapter_count += len(_chapter_pat.findall(included_nc))
                 break
@@ -454,7 +477,12 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     # PDF-layer backup deferred to v1.0 PDF layer.
     abs_arg = _setfile_arg(nc, r"\setAbstractFile")
     if abs_arg:
-        for candidate in (base / abs_arg, base / f"{abs_arg}.tex"):
+        _abs_candidates = [
+            c
+            for raw in (abs_arg, f"{abs_arg}.tex")
+            if (c := _resolve_within(base, root, raw)) is not None
+        ]
+        for candidate in _abs_candidates:
             if candidate.exists() and candidate.is_file():
                 text = _clean(candidate.read_text(encoding="utf-8", errors="replace"))
                 # Strip backslash-commands with optional bracket + brace args;
@@ -493,21 +521,24 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     )
     second_level: set[str] = set()
     for included in included_names:
-        for candidate in (base / included, base / f"{included}.tex"):
-            if candidate.exists() and candidate.is_file():
+        for raw_arg in (included, f"{included}.tex"):
+            candidate = _resolve_within(base, root, raw_arg)
+            if candidate is not None and candidate.exists() and candidate.is_file():
                 lvl1_nc = _clean(candidate.read_text(encoding="utf-8", errors="replace"))
                 all_nc.append(lvl1_nc)
                 second_level.update(re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", lvl1_nc))
                 break
     for included in second_level - included_names:
-        for candidate in (base / included, base / f"{included}.tex"):
-            if candidate.exists() and candidate.is_file():
+        for raw_arg in (included, f"{included}.tex"):
+            candidate = _resolve_within(base, root, raw_arg)
+            if candidate is not None and candidate.exists() and candidate.is_file():
                 all_nc.append(_clean(candidate.read_text(encoding="utf-8", errors="replace")))
                 break
     bib_name = _setfile_arg(nc, r"\setReferenceFile")
     if bib_name:
-        for candidate in (base / bib_name, base / f"{bib_name}.bib"):
-            if candidate.exists() and candidate.is_file():
+        for raw_arg in (bib_name, f"{bib_name}.bib"):
+            candidate = _resolve_within(base, root, raw_arg)
+            if candidate is not None and candidate.exists() and candidate.is_file():
                 bib_text = candidate.read_text(encoding="utf-8", errors="replace")
                 bib_keys.update(
                     m.group(2)
