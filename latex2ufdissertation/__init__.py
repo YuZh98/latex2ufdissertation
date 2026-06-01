@@ -6,6 +6,8 @@ Code extension, CI integrations). Anything not listed is internal and
 may change without notice.
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
 from latex2ufdissertation.pipeline.checks import run_checks
 from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
 from latex2ufdissertation.pipeline.rules import RULES, Rule
@@ -19,7 +21,10 @@ from latex2ufdissertation.pipeline.types import (
     UnsupportedTemplate,
 )
 
-__version__ = "0.2.0"
+try:
+    __version__ = version("latex2ufdissertation")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
 
 __all__ = [
     "ConverterError",

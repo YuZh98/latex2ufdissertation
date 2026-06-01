@@ -86,12 +86,32 @@ def _emit_report(issues: Issues, json_out: bool) -> None:
 
 
 def _find_bundled_pdf(root: Path, main_tex: Path | None) -> Path | None:
-    """Return a pre-compiled PDF from *root* if one exists, else None.
+    """Return a pre-compiled PDF from the project if one exists, else None.
 
     Search order:
-    1. Fixed names in _BUNDLED_PDF_NAMES (e.g. main.pdf).
-    2. <main_tex_stem>.pdf when main_tex is provided.
+    1. Fixed names in _BUNDLED_PDF_NAMES next to *main_tex* (master's dir).
+    2. <main_tex_stem>.pdf next to *main_tex*.
+    3. Fixed names in _BUNDLED_PDF_NAMES in *root* (only when master is in a subdir).
+    4. <main_tex_stem>.pdf in *root*.
+
+    Searching master's directory first ensures a PDF placed alongside the
+    master (the common bundled-submission layout) is found even when root
+    and master's parent differ.
     """
+    master_dir = main_tex.parent if main_tex is not None else None
+
+    # Pass 1: master's directory (skipped when master is at root level, or when
+    # main_tex is None, to avoid redundant work in the common single-dir case).
+    if master_dir is not None and master_dir != root:
+        for name in _BUNDLED_PDF_NAMES:
+            candidate = master_dir / name
+            if candidate.is_file():
+                return candidate
+        candidate = master_dir / f"{main_tex.stem}.pdf"  # type: ignore[union-attr]
+        if candidate.is_file():
+            return candidate
+
+    # Pass 2: project root.
     for name in _BUNDLED_PDF_NAMES:
         candidate = root / name
         if candidate.is_file():
@@ -100,6 +120,7 @@ def _find_bundled_pdf(root: Path, main_tex: Path | None) -> Path | None:
         candidate = root / f"{main_tex.stem}.pdf"
         if candidate.is_file():
             return candidate
+
     return None
 
 
@@ -149,14 +170,24 @@ def main(argv: list[str] | None = None) -> int:
         return _print_demo_location()
 
     if args.init:
+        # --init is a scaffolding operation with no validation state; there is
+        # no exit_reason to populate, so --json emits nothing for this path.
+        # The --json contract ("always a single JSON document on stdout")
+        # applies to the validation/conversion flow below (after input is
+        # resolved).
         try:
             init_project(Path(args.init))
             return 0
         except ConverterError as e:
             _err(f"Error: {e}")
             return 2
+        except OSError as e:
+            _err(f"Error: {e}")
+            return 2
 
     if not args.input:
+        # Pre-flight: no validation state exists yet; --json emits nothing here
+        # (same scoping rationale as --init above).
         _err("Error: INPUT required (use --init to scaffold a new project)")
         return 2
 
@@ -212,7 +243,12 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         master = detect_main_tex(root, hint=args.main)
-        issues.main_tex = str(master.relative_to(root))
+        try:
+            issues.main_tex = str(master.relative_to(root))
+        except ValueError:
+            # Symlink mismatch (e.g. /var/... vs /private/var/...): fall back
+            # to the full path so the JSON payload is still informative.
+            issues.main_tex = str(master)
 
         _err(f"  validating {issues.main_tex}")
         run_checks(master, root, issues)
@@ -221,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
             _emit_report(issues, args.json_out)
             return exit_code(issues)
 
-        # Per spec §4: prefer a bundled PDF in the project root; compile only
+        # Per spec §4: prefer a bundled PDF (master's dir first, then root); compile only
         # when none is present. This preserves the student's own PDF when one
         # was submitted inside the archive and avoids a LuaLaTeX dependency on
         # CI / machines without TeX Live.
