@@ -1,5 +1,5 @@
 
-[both layer]
+[source layer]
   (F-series)
     [must-fix] UF-F1 main.tex — margin override pattern present in source (required: no \geometry / \newgeometry / \setlength{\textwidth|textheight} / \hoffset / \voffset override (template sets 1 inch all around))
       fix: Remove the margin override; the UF template's `geometry` package (cls:153-157) sets the required 1 inch all around.

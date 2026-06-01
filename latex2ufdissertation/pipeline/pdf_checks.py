@@ -161,7 +161,10 @@ def _extract_pages(pdf_path: Path) -> list[PageData]:
                 body_font = None
                 body_size = None
             results.append(PageData(page_num=page_num, body_font=body_font, body_size=body_size))
-    except (PDFException, PSException, OSError) as exc:
+    except (PDFException, PSException, OSError, MemoryError, RecursionError) as exc:
+        # MemoryError / RecursionError are not OSError subclasses; a malicious or
+        # pathological PDF can drive pdfminer into either. Map them to a clean
+        # UnreadableInput (exit 2) rather than letting a raw traceback escape.
         raise UnreadableInput(f"Cannot parse PDF: {pdf_path.name} — {exc}") from exc
 
     return results

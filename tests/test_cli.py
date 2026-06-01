@@ -205,6 +205,33 @@ def test_json_contract_detect_error(tmp_path: Path, capsys: pytest.CaptureFixtur
     assert "summary" in payload
 
 
+_THESIS_MAIN = (
+    r"\documentclass{ufdissertation}"
+    + "\n"
+    + r"\thesisType{Thesis}"
+    + "\n\\begin{document}\n\\end{document}\n"
+)
+
+
+def test_thesis_input_exits_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """A \\thesisType{Thesis} project must exit 2 (master's theses out of scope)."""
+    (tmp_path / "main.tex").write_text(_THESIS_MAIN, encoding="utf-8")
+    rc = main(["--dry-run", str(tmp_path)])
+    assert rc == 2
+
+
+def test_thesis_input_json_is_valid_and_reports_reason(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The thesis-refusal path with --json must emit valid JSON with
+    exit_reason == thesis_input."""
+    (tmp_path / "main.tex").write_text(_THESIS_MAIN, encoding="utf-8")
+    rc = main(["--json", "--dry-run", str(tmp_path)])
+    assert rc == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["summary"]["exit_reason"] == "thesis_input"
+
+
 def test_json_contract_missing_toolchain(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

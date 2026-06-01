@@ -3,7 +3,7 @@
   "findings": [
     {
       "fix_hint": "Remove the margin override; the UF template's `geometry` package (cls:153-157) sets the required 1 inch all around.",
-      "layer": "both",
+      "layer": "source",
       "location": "main.tex",
       "observed": "margin override pattern present in source",
       "required": "no \\geometry / \\newgeometry / \\setlength{\\textwidth|textheight} / \\hoffset / \\voffset override (template sets 1 inch all around)",
