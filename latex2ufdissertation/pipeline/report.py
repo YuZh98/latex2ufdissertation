@@ -23,6 +23,18 @@ from latex2ufdissertation.pipeline.types import Finding, Issues
 
 SCHEMA_VERSION = "1.0"
 
+# UF-A2 standing advisory — emitted in every human report as a clearly
+# separated note block.  It is NOT a Finding and must never appear in the
+# JSON output (JSON schema is frozen at v1.0).  Static text guarantees
+# determinism.
+A2_ADVISORY = (
+    "Advisory (not a finding): The ufdissertation template produces untagged PDFs "
+    "(no /StructTreeRoot, /MarkInfo, or /Lang entries). PDF/UA accessibility features "
+    "such as tag structure, alt-text, table-header semantics, and reading order are "
+    "therefore outside the scope of this tool's verification. This is a known "
+    "template limitation, not a violation detected in your submission."
+)
+
 # Maps every spec-§5 exit_reason to its exit-code state. Used by
 # format_json so summary.exit_code never lies on a fatal-path payload
 # (any non-clean / non-must-fix / non-missing-toolchain reason → 2).
@@ -88,11 +100,18 @@ def format_human(issues: Issues) -> str:
     success message. Otherwise group by layer then rule category, with
     a per-finding line citing severity, rule ID, location, and the
     observed-vs-required pair where present.
+
+    A standing UF-A2 advisory block is appended to every report
+    (clean or not) to inform users of the template's known accessibility
+    limitations.  It is NOT a Finding and does not affect counts or exit
+    codes.
     """
+    advisory_block = f"\n---\nNote: {A2_ADVISORY}\n"
+
     must_fix = issues.must_fix_count()
     review = issues.review_count()
     if not issues.findings:
-        return "\nSummary: 0 must-fix, 0 review — clean.\n"
+        return "\nSummary: 0 must-fix, 0 review — clean.\n" + advisory_block
 
     lines: list[str] = []
     current_layer = None
@@ -115,7 +134,7 @@ def format_human(issues: Issues) -> str:
             lines.append(f"      fix: {f.fix_hint}")
         lines.append(f"      see: {f.source_url}")
     lines.append(f"\nSummary: {must_fix} must-fix, {review} review.")
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines) + "\n" + advisory_block
 
 
 def format_json(issues: Issues) -> dict:

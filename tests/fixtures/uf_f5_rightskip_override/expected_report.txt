@@ -19,3 +19,6 @@
       see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk
 
 Summary: 5 must-fix, 0 review.
+
+---
+Note: Advisory (not a finding): The ufdissertation template produces untagged PDFs (no /StructTreeRoot, /MarkInfo, or /Lang entries). PDF/UA accessibility features such as tag structure, alt-text, table-header semantics, and reading order are therefore outside the scope of this tool's verification. This is a known template limitation, not a violation detected in your submission.

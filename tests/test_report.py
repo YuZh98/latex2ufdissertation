@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from latex2ufdissertation.pipeline.report import (
+    A2_ADVISORY,
     SCHEMA_VERSION,
     exit_code,
     format_human,
@@ -191,3 +192,55 @@ def test_findings_in_json_use_spec_sort_key_layer_rule_id_location():
     ids = [f["rule_id"] for f in payload["findings"]]
     # All three are source layer; pure lex order on rule_id.
     assert ids == sorted(ids), f"JSON sort order diverged from spec: {ids}"
+
+
+# --- A2 standing advisory tests ---
+
+
+def test_a2_advisory_appears_in_human_report_clean_run():
+    # A2 must appear on the clean path (early return, no findings).
+    issues = Issues()
+    out = format_human(issues)
+    assert A2_ADVISORY in out
+
+
+def test_a2_advisory_appears_in_human_report_with_findings():
+    # A2 must also appear when there are findings (findings path).
+    issues = _populated_issues()
+    out = format_human(issues)
+    assert A2_ADVISORY in out
+
+
+def test_a2_advisory_absent_from_json_output():
+    # A2 is human-only; the JSON schema is frozen. The advisory text must
+    # not appear anywhere in the serialised JSON payload.
+    issues = Issues()
+    json_str = json.dumps(format_json(issues), sort_keys=True)
+    assert A2_ADVISORY not in json_str
+
+    issues2 = _populated_issues()
+    json_str2 = json.dumps(format_json(issues2), sort_keys=True)
+    assert A2_ADVISORY not in json_str2
+
+
+def test_a2_advisory_does_not_affect_counts_or_exit_code():
+    # Emitting A2 is additive only; it must not change must_fix_count,
+    # review_count, or exit_code on either a clean or a findings-bearing run.
+    clean = Issues()
+    assert clean.must_fix_count() == 0
+    assert clean.review_count() == 0
+    assert exit_code(clean) == 0
+    # Presence of the advisory text in human output does not change state.
+    format_human(clean)
+    assert clean.must_fix_count() == 0
+    assert clean.review_count() == 0
+    assert exit_code(clean) == 0
+
+    populated = _populated_issues()
+    before_must = populated.must_fix_count()
+    before_review = populated.review_count()
+    before_exit = exit_code(populated)
+    format_human(populated)
+    assert populated.must_fix_count() == before_must
+    assert populated.review_count() == before_review
+    assert exit_code(populated) == before_exit
