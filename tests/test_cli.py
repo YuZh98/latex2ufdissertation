@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -352,3 +356,74 @@ def test_version_matches_importlib_metadata() -> None:
     from latex2ufdissertation import __version__
 
     assert __version__ == version("latex2ufdissertation")
+
+
+# ---------------------------------------------------------------------------
+# Gate 4: git-input mode end-to-end (clone mocked, full pipeline exercised)
+# ---------------------------------------------------------------------------
+
+_DEMO_DIR = Path(__file__).resolve().parent.parent / "examples" / "demo_dissertation"
+_DEMO_AVAILABLE_FOR_GIT = pytest.mark.skipif(
+    not _DEMO_DIR.is_dir(), reason="demo_dissertation directory not present"
+)
+
+
+@_DEMO_AVAILABLE_FOR_GIT
+def test_git_input_mode_end_to_end(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Gate 4 — git input: full pipeline with a mocked clone.
+
+    resolve._clone_git calls subprocess.run with
+      ["git", "clone", "--depth", "1", url, dest].
+    We intercept that call, copy the demo project into dest (which mkdtemp
+    already created), and return a zero CompletedProcess.  Everything after
+    the clone — detect_main_tex, run_checks, emit_report — runs for real.
+
+    Assertions:
+    - detected_mode == "git" in the JSON payload.
+    - Exit code 0 (demo satisfies all source-layer must-fix rules; --dry-run
+      skips compilation and PDF checks).
+    - The temp clone directory is cleaned up by the time main() returns.
+    """
+    git_url = "https://github.com/someuser/somerepo.git"
+    recorded_dirs: list[str] = []
+    real_mkdtemp = tempfile.mkdtemp
+
+    def spy_mkdtemp(**kwargs: object) -> str:
+        d = real_mkdtemp(**kwargs)
+        recorded_dirs.append(d)
+        return d
+
+    def fake_clone(
+        cmd: list[str], *args: object, **kwargs: object
+    ) -> subprocess.CompletedProcess[bytes]:
+        dest = Path(cmd[-1])
+        shutil.copytree(str(_DEMO_DIR), str(dest), dirs_exist_ok=True)
+        return subprocess.CompletedProcess(cmd, 0, b"", b"")
+
+    with (
+        patch(
+            "latex2ufdissertation.pipeline.resolve.subprocess.run",
+            side_effect=fake_clone,
+        ),
+        patch(
+            "latex2ufdissertation.pipeline.resolve.tempfile.mkdtemp",
+            side_effect=spy_mkdtemp,
+        ),
+    ):
+        rc = main(["--json", "--dry-run", git_url])
+
+    payload = json.loads(capsys.readouterr().out)
+
+    # detected_mode must be "git" — set from input_mode(url) before the clone.
+    assert payload["detected_mode"] == "git", (
+        f"expected detected_mode='git', got {payload['detected_mode']!r}"
+    )
+
+    # Exit 0: demo satisfies every source-layer must-fix rule under --dry-run.
+    assert rc == 0, (
+        f"expected exit 0 for clean demo via git input, got {rc}; findings: {payload['findings']}"
+    )
+
+    # Temp clone dir must be cleaned up (finally: cleanup() in cli.main).
+    for d in recorded_dirs:
+        assert not Path(d).exists(), f"git clone temp dir was not cleaned up: {d}"
