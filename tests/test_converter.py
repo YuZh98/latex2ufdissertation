@@ -39,9 +39,11 @@ def _make_valid_project(tmp_path):
 
 
 def test_version():
+    from importlib.metadata import version
+
     r = _run("--version")
     assert r.returncode == 0
-    assert "0.2.0" in r.stdout
+    assert version("latex2ufdissertation") in r.stdout
 
 
 def test_missing_input_returns_2(tmp_path):

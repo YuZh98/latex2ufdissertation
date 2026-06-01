@@ -90,3 +90,55 @@ def test_detect_skips_commented_documentclass(tmp_path):
     _write(tmp_path, "real.tex", r"\documentclass{ufdissertation}")
     _write(tmp_path, "fake.tex", "% \\documentclass{ufdissertation}")
     assert detect_main_tex(tmp_path) == tmp_path / "real.tex"
+
+
+# ---------------------------------------------------------------------------
+# Robustness: path-escape, non-file hints, and dash-prefix names
+# ---------------------------------------------------------------------------
+
+
+def test_detect_hint_outside_root_raises(tmp_path):
+    """A hint that resolves outside root must raise ConverterError, not ValueError."""
+    from latex2ufdissertation.pipeline.types import ConverterError
+
+    _write(tmp_path, "real.tex", r"\documentclass{ufdissertation}")
+    with pytest.raises(ConverterError, match="outside"):
+        detect_main_tex(tmp_path, hint="/etc/passwd")
+
+
+def test_detect_hint_not_a_file_raises(tmp_path):
+    """A hint pointing at a directory must raise ConverterError."""
+    from latex2ufdissertation.pipeline.types import ConverterError
+
+    sub = tmp_path / "subdir"
+    sub.mkdir()
+    with pytest.raises(ConverterError):
+        detect_main_tex(tmp_path, hint="subdir")
+
+
+def test_detect_hint_nonexistent_raises(tmp_path):
+    """A hint that does not exist must raise ConverterError."""
+    from latex2ufdissertation.pipeline.types import ConverterError
+
+    _write(tmp_path, "real.tex", r"\documentclass{ufdissertation}")
+    with pytest.raises(ConverterError):
+        detect_main_tex(tmp_path, hint="ghost.tex")
+
+
+def test_detect_hint_dash_prefix_raises(tmp_path):
+    """A master whose filename starts with '-' must be rejected as a subprocess-injection risk."""
+    from latex2ufdissertation.pipeline.types import ConverterError
+
+    _write(tmp_path, "-x.tex", r"\documentclass{ufdissertation}")
+    with pytest.raises(ConverterError, match=r"-"):
+        detect_main_tex(tmp_path, hint="-x.tex")
+
+
+def test_detect_autodiscovered_dash_prefix_skipped(tmp_path):
+    """Auto-discovery must skip (not return) any .tex file whose name starts with '-'."""
+    from latex2ufdissertation.pipeline.types import ConverterError
+
+    _write(tmp_path, "-x.tex", r"\documentclass{ufdissertation}")
+    # Only the dash-prefixed file exists; no safe master → ConverterError
+    with pytest.raises(ConverterError):
+        detect_main_tex(tmp_path)
