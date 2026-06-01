@@ -58,6 +58,16 @@ _F3_SIZE_TOLERANCE_PT: float = 0.5
 #   Helvetica      — metric-compatible Arial substitute
 #   NimbusSans     — GhostScript/TeXLive Helvetica substitute
 #
+# The prefixes below cover real Times New Roman embeds from pdf-input mode (a PDF
+# compiled with a true Times font rather than the template's TeXGyreTermes). UF
+# allows Times New Roman or Arial; both render paths are conforming:
+#
+#   Times          — covers TimesNewRomanPSMT (Windows/Adobe CID embed),
+#                    Times-Roman (Type 1 canonical), TimesNewRoman (bare stem)
+#   NimbusRom      — covers NimbusRomNo9L / NimbusRoman
+#                    (GhostScript/TeXLive Times substitute, parallel to NimbusSans
+#                    which is already listed as the Helvetica/Arial substitute)
+#
 # Any font whose prefix-stripped base name does NOT start with one of these
 # prefixes is a non-conforming body font (e.g. LMRoman*, cmr10, Palatino-Roman).
 _F2_ALLOWED_PREFIXES: tuple[str, ...] = (
@@ -69,6 +79,9 @@ _F2_ALLOWED_PREFIXES: tuple[str, ...] = (
     "Arial",
     "Helvetica",
     "NimbusSans",
+    # Real Times New Roman render names (pdf-input mode; UF allows Times or Arial).
+    "Times",  # TimesNewRomanPSMT / Times-Roman / TimesNewRoman
+    "NimbusRom",  # NimbusRomNo9L / NimbusRoman (GhostScript Times substitute)
 )
 
 
@@ -176,6 +189,10 @@ def _check_f2(pages: list[PageData], issues: Issues) -> None:
                 location=f"p.{page.page_num}",
                 observed=page.body_font,
                 required="Times New Roman or Arial body font",
+                fix_hint=(
+                    "Rendered body font is not Times New Roman or Arial; "
+                    "remove any \\fontfamily / \\setmainfont override in the source."
+                ),
             )
 
 
@@ -203,6 +220,10 @@ def _check_f3(pages: list[PageData], issues: Issues) -> None:
                 location=f"p.{page.page_num}",
                 observed=f"{page.body_size}pt body text",
                 required="12-point body text",
+                fix_hint=(
+                    "Rendered body text is not 12 pt; "
+                    "check for a \\fontsize{...}{...}\\selectfont override affecting the body."
+                ),
             )
 
 

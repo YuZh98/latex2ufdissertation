@@ -7,15 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 ## [Unreleased]
 
 ### Added
-- PDF validation layer (`pipeline/pdf_checks.py`): runs on a bundled or freshly-compiled PDF, and on `*.pdf` input (new `pdf` input mode, which skips the source layer). A per-page body-mode primitive (most-common glyph font/size, subset-prefix stripped) backs the rendered-output checks
-- PDF-layer rules: `UF-S1` (PDF parses and has content), PDF-authoritative `UF-F2` (body-mode font outside the Times/Arial family) and `UF-F3` (body-mode size ≠ 12 pt), and `UF-S5` (review — fires when link annotations *and* the document outline are both absent, e.g. `\hypersetup{draft}` left on)
-- `UF-A2`: standing accessibility advisory in the human report (the `ufdissertation` template emits untagged PDFs — informational, not a finding)
-- `pdfminer.six` runtime dependency, lazy-imported so the source-only and `--dry-run` paths remain stdlib-only
+- PDF validation layer (`pipeline/pdf_checks.py`): runs on a bundled or freshly-compiled PDF, and on `*.pdf` input (new `pdf` input mode, which skips the source layer). A per-page body-mode primitive (most-common glyph font/size, subset-prefix stripped) backs the rendered-output checks (#53)
+- PDF-layer rules: `UF-S1` (PDF parses and has content), PDF-authoritative `UF-F2` (body-mode font outside the Times/Arial family) and `UF-F3` (body-mode size ≠ 12 pt), and `UF-S5` (review — fires when link annotations *and* the document outline are both absent, e.g. `\hypersetup{draft}` left on) (#53)
+- `UF-A2`: standing accessibility advisory in the human report (the `ufdissertation` template emits untagged PDFs — informational, not a finding) (#53)
+- `pdfminer.six` runtime dependency, lazy-imported so the source-only and `--dry-run` paths remain stdlib-only (#53)
 - `release.yml`: pushing a `vX.Y.Z` tag publishes a GitHub Release with notes from the matching CHANGELOG section and the bundled demo PDF attached
 
 ### Changed
 - `UF-F2` / `UF-F3`: the `must-fix` verdict now comes from the PDF layer (which sees the rendered result); the source-layer finding is demoted to `review`. A font/size override the template neutralizes no longer rejects a compliant dissertation (#40, #47)
-- `UF-F5`: source scan retargeted from `\justifying` (undefined in this template — never compiles) to the compilable `\rightskip`-zero re-justification vector, so the source-layer check is sound
+- `UF-F5`: source scan retargeted from `\justifying` (undefined in this template — never compiles) to the compilable `\rightskip`-zero re-justification vector, so the source-layer check is sound (#53)
 - JSON output: added `detected_mode` (`dir`/`zip`/`git`/`pdf`/`unknown`); `template_version` now emits `"unknown"` instead of `null` when undetectable — reconciles `format_json` with the locked `spec-v1.0.md §5` contract (#12)
 
 ### Fixed

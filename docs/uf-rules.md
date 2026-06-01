@@ -408,7 +408,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 |---|---|---|---|
 | F1 margins | must-fix | source+pdf | template-enforced override scan |
 | F2 font family | must-fix | source+pdf | template-enforced override scan |
-| F3 font size | must-fix | source | template-enforced override scan |
+| F3 font size | must-fix | source+pdf | template-enforced override scan |
 | F4 line spacing | must-fix | source+pdf | template-enforced override scan |
 | F5 alignment | must-fix | source | template-enforced override scan |
 | F6 page numbering | must-fix | source+pdf | template-enforced override scan |

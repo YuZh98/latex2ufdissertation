@@ -10,46 +10,6 @@
       "rule_id": "UF-F5",
       "severity": "must-fix",
       "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f5--text-alignment-ragged-right"
-    },
-    {
-      "fix_hint": "Create the named file in the project root (or fix the macro argument).",
-      "layer": "source",
-      "location": "main.tex",
-      "observed": "\\setAcknowledgementsFile{'ack'} but no file found in project root",
-      "required": "ack (or ack.tex) exists in project root",
-      "rule_id": "UF-P1",
-      "severity": "must-fix",
-      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk"
-    },
-    {
-      "fix_hint": "Create the named file in the project root (or fix the macro argument).",
-      "layer": "source",
-      "location": "main.tex",
-      "observed": "\\setAbstractFile{'abs'} but no file found in project root",
-      "required": "abs (or abs.tex) exists in project root",
-      "rule_id": "UF-P1",
-      "severity": "must-fix",
-      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk"
-    },
-    {
-      "fix_hint": "Create the named file in the project root (or fix the macro argument).",
-      "layer": "source",
-      "location": "main.tex",
-      "observed": "\\setReferenceFile{'refs'} but no file found in project root",
-      "required": "refs (or refs.bib) exists in project root",
-      "rule_id": "UF-P1",
-      "severity": "must-fix",
-      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk"
-    },
-    {
-      "fix_hint": "Create the named file in the project root (or fix the macro argument).",
-      "layer": "source",
-      "location": "main.tex",
-      "observed": "\\setBiographicalFile{'bio'} but no file found in project root",
-      "required": "bio (or bio.tex) exists in project root",
-      "rule_id": "UF-P1",
-      "severity": "must-fix",
-      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk"
     }
   ],
   "input": "<INPUT>",
@@ -57,7 +17,7 @@
   "summary": {
     "exit_code": 1,
     "exit_reason": "must_fix_present",
-    "must_fix_count": 5,
+    "must_fix_count": 1,
     "review_count": 0
   },
   "template_version": "unknown"

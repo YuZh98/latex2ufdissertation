@@ -176,8 +176,8 @@ These are decisions that are committed *for now* but may change before the v1.0 
 9. **UF-F2 (font family) and UF-F3 (font size) fire as `review` at the source layer and `must-fix` at the PDF layer.** The source override-scan flags intent; the PDF layer adjudicates the rendered result (per §7.1.2). On `--dry-run` / PDF-absent paths, only the source-layer `review` is available.
    *Revisit if:* a source-only signal proves sound enough to carry the must-fix verdict without the PDF, or the PDF check proves too noisy to be must-fix.
 
-10. **UF-F5 (alignment) is adjudicated at the PDF layer.** The source-layer command scan is unreliable here (`\justifying` does not compile in this template; the realistic re-justification vector `\rightskip=0pt` is not a single scannable command), so the rendered right-edge distribution is the authority.
-    *Revisit if:* a reliable source-level vector for re-justification is identified.
+10. **UF-F5 (alignment) is a `must-fix` at the source layer.** The originally-planned PDF right-edge check was deferred; the source scan was retargeted from `\justifying` (undefined in this template — never compiles) to the compilable `\rightskip`-zero re-justification vector (guarded against stretch-glue false positives), making the source check sound. A PDF right-edge distribution check remains a possible defense-in-depth addition in v1.1.
+    *Revisit if:* the source scan produces false positives in practice, or the Editorial Office identifies a re-justification vector that does not manifest as `\rightskip`-zero in source.
 
 11. **UF-S5 (hyperlink annotations) is implemented as `review` via PDF annotation/outline presence.** A conforming project (hyperref active) always emits link annotations and an outline; their absence (e.g. `\hypersetup{draft}` left on) is the signal.
     *Revisit if:* the Editorial Office confirms non-functional hyperlinks as a formal rejection driver (would argue for `must-fix`).

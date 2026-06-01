@@ -41,7 +41,8 @@ _DEMO_AVAILABLE = pytest.mark.skipif(not _DEMO_PDF.exists(), reason="demo PDF no
 
 def test_subset_prefix_strip() -> None:
     """Random 6-uppercase-letter prefix followed by '+' must be stripped."""
-    _SUBSET_RE = re.compile(r"^[A-Z]{6}\+")
+    from latex2ufdissertation.pipeline.pdf_checks import _SUBSET_RE
+
     raw = "MBKJME+TeXGyreTermesX-Regular"
     stripped = _SUBSET_RE.sub("", raw)
     assert stripped == "TeXGyreTermesX-Regular"
@@ -49,7 +50,8 @@ def test_subset_prefix_strip() -> None:
 
 def test_subset_prefix_strip_no_prefix() -> None:
     """Font names without a prefix must be left unchanged."""
-    _SUBSET_RE = re.compile(r"^[A-Z]{6}\+")
+    from latex2ufdissertation.pipeline.pdf_checks import _SUBSET_RE
+
     raw = "TeXGyreTermesX-Regular"
     assert _SUBSET_RE.sub("", raw) == "TeXGyreTermesX-Regular"
 
@@ -431,6 +433,72 @@ def test_check_f2_silent_on_allowed_fonts(tmp_path: Path) -> None:
 
     f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
     assert f2 == [], f"unexpected UF-F2 findings on allowed fonts: {f2}"
+
+
+def test_check_f2_silent_on_true_times_fonts(tmp_path: Path) -> None:
+    """_check_f2: real Times New Roman render names (pdf-input mode) must not
+    emit UF-F2.  UF allows Times New Roman or Arial; a PDF compiled with a
+    true Times-NR font (not the template's TeXGyreTermes) is conforming.
+
+    Covered names:
+      TimesNewRomanPSMT  — Windows/Adobe CID embed of Times New Roman
+      Times-Roman        — Type 1 canonical name
+      TimesNewRoman      — bare stem (some PDF producers)
+      NimbusRomNo9L-Regu — GhostScript/TeXLive Times substitute
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    mock_pages = [
+        PageData(page_num=1, body_font="TimesNewRomanPSMT", body_size=12.0),
+        PageData(page_num=2, body_font="Times-Roman", body_size=12.0),
+        PageData(page_num=3, body_font="TimesNewRoman", body_size=12.0),
+        PageData(page_num=4, body_font="NimbusRomNo9L-Regu", body_size=12.0),
+    ]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert f2 == [], f"True Times New Roman names must not trigger UF-F2; unexpected findings: {f2}"
+
+
+def test_check_f2_lmroman_still_fires(tmp_path: Path) -> None:
+    """_check_f2: LMRoman12-Regular (Computer Modern Roman) is non-conforming
+    and must still emit UF-F2 after the Times-family prefixes are added.
+    Regression guard: widening the allowlist must not mask real violations.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    mock_pages = [PageData(page_num=5, body_font="LMRoman12-Regular", body_size=12.0)]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert len(f2) == 1, f"LMRoman12-Regular must fire UF-F2; got {len(f2)} findings"
+    assert f2[0].severity == MUST_FIX
+    assert f2[0].layer == PDF
 
 
 @_DEMO_AVAILABLE
