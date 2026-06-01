@@ -41,35 +41,48 @@ def format_errors(log: str) -> str:
 
 def compile_pdf(
     main_tex: Path,
-    root: Path,
     output_pdf: Path,
     open_pdf: bool = True,
 ) -> Path | None:
-    """Run LuaLaTeX (+ biber if needed) and copy the resulting PDF to output_pdf."""
+    """Run LuaLaTeX (+ biber if needed) and copy the resulting PDF to output_pdf.
+
+    Compilation runs in the master's own directory (``main_tex.parent``), not a
+    detached project root, so ``\\input``/``\\include`` and the produced PDF
+    resolve correctly even when the master lives in a subdirectory. ``stdin`` is
+    detached (``DEVNULL``) so a missing-file prompt cannot block on a TTY.
+    """
     if not lualatex_available():
         raise MissingToolchain("lualatex not found — install TeX Live 2025")
 
+    work_dir = main_tex.parent
     cmd = ["lualatex", "-interaction=nonstopmode", "-halt-on-error", main_tex.name]
     log_text = ""
     for pass_n in (1, 2, 3):
         try:
-            r = subprocess.run(cmd, cwd=root, timeout=COMPILE_TIMEOUT, capture_output=True)
+            r = subprocess.run(
+                cmd,
+                cwd=work_dir,
+                timeout=COMPILE_TIMEOUT,
+                capture_output=True,
+                stdin=subprocess.DEVNULL,
+            )
             log_text = r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace")
         except subprocess.TimeoutExpired as exc:
             raise ConverterError(f"lualatex timed out after {COMPILE_TIMEOUT}s") from exc
 
         if pass_n == 1 and biber_available():
             stem = main_tex.stem
-            bcf = root / f"{stem}.bcf"
+            bcf = work_dir / f"{stem}.bcf"
             if bcf.exists():
                 subprocess.run(
                     ["biber", stem],
-                    cwd=root,
+                    cwd=work_dir,
                     capture_output=True,
                     timeout=COMPILE_TIMEOUT,
+                    stdin=subprocess.DEVNULL,
                 )
 
-    produced = root / f"{main_tex.stem}.pdf"
+    produced = work_dir / f"{main_tex.stem}.pdf"
     if not produced.exists():
         formatted = format_errors(log_text)
         if formatted:

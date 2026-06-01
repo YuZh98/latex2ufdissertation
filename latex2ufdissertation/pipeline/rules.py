@@ -301,7 +301,7 @@ RULES: dict[str, Rule] = {
         SOURCE,
         "`\\set*File` companions exist on disk",
         _anchor("UF-P1", "setfile-companions-exist-on-disk"),
-        fix_hint="Create the named file in the project root (or fix the macro argument).",
+        fix_hint="Create the named file next to the master .tex (or fix the macro argument).",
     ),
     # Journal-article (J)
     "UF-J1": Rule(

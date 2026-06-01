@@ -107,6 +107,11 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     raw = main_tex.read_text(encoding="utf-8", errors="replace")
     nc = _strip_verbatim(_strip_comments(raw))
     rel = str(main_tex.relative_to(root)) if main_tex.is_relative_to(root) else main_tex.name
+    # Companion / \input / bib / abstract files resolve relative to the master's
+    # own directory (LaTeX semantics), not the workspace root — so a master in a
+    # subdirectory finds its siblings. `root` is kept only for the display-relative
+    # `rel`. When the master sits at the project root, `base == root`.
+    base = main_tex.parent
 
     # UF-F13: documentclass must be ufdissertation
     m = _DOCCLASS_RE.search(nc)
@@ -156,13 +161,13 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                     required=f"{cmd}{{<{label.lower()}-file-stem>}}",
                 )
             continue
-        candidates = [root / arg] + [root / f"{arg}{s}" for s in suffixes]
+        candidates = [base / arg] + [base / f"{arg}{s}" for s in suffixes]
         if not any(c.exists() for c in candidates):
             issues.add(
                 "UF-P1",
                 location=rel,
-                observed=f"{cmd}{{{arg!r}}} but no file found in project root",
-                required=f"{arg} (or {arg}{suffixes[0]}) exists in project root",
+                observed=f"{cmd}{{{arg!r}}} but no matching file found next to the master .tex",
+                required=f"{arg} (or {arg}{suffixes[0]}) exists alongside the master .tex",
             )
 
     # UF-D1: editMode option (review tier — submission should not ship with it)
@@ -232,7 +237,7 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     _chapter_pat = re.compile(r"\\chapter\*?\s*\{[^}]+\}")
     chapter_count = len(_chapter_pat.findall(nc))
     for included in re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", nc):
-        for candidate in (root / included, root / f"{included}.tex"):
+        for candidate in (base / included, base / f"{included}.tex"):
             if candidate.exists() and candidate.is_file():
                 included_nc = _strip_verbatim(
                     _strip_comments(candidate.read_text(encoding="utf-8", errors="replace"))
@@ -331,7 +336,7 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     # PDF-layer backup deferred to v1.0 PDF layer.
     abs_arg = _setfile_arg(nc, r"\setAbstractFile")
     if abs_arg:
-        for candidate in (root / abs_arg, root / f"{abs_arg}.tex"):
+        for candidate in (base / abs_arg, base / f"{abs_arg}.tex"):
             if candidate.exists() and candidate.is_file():
                 text = candidate.read_text(encoding="utf-8", errors="replace")
                 text = _strip_verbatim(_strip_comments(text))
@@ -367,7 +372,7 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     )
     second_level: set[str] = set()
     for included in included_names:
-        for candidate in (root / included, root / f"{included}.tex"):
+        for candidate in (base / included, base / f"{included}.tex"):
             if candidate.exists() and candidate.is_file():
                 lvl1_nc = _strip_verbatim(
                     _strip_comments(candidate.read_text(encoding="utf-8", errors="replace"))
@@ -376,7 +381,7 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                 second_level.update(re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", lvl1_nc))
                 break
     for included in second_level - included_names:
-        for candidate in (root / included, root / f"{included}.tex"):
+        for candidate in (base / included, base / f"{included}.tex"):
             if candidate.exists() and candidate.is_file():
                 all_nc.append(
                     _strip_verbatim(
@@ -386,7 +391,7 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                 break
     bib_name = _setfile_arg(nc, r"\setReferenceFile")
     if bib_name:
-        for candidate in (root / bib_name, root / f"{bib_name}.bib"):
+        for candidate in (base / bib_name, base / f"{bib_name}.bib"):
             if candidate.exists() and candidate.is_file():
                 bib_text = candidate.read_text(encoding="utf-8", errors="replace")
                 bib_keys.update(

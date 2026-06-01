@@ -51,6 +51,32 @@ def test_valid_project_no_findings(tmp_path):
     assert issues.review_count() == 0
 
 
+def test_companions_resolve_next_to_master_in_subdir(tmp_path):
+    """Regression: a master in a subdirectory resolves its \\set*File companions
+    relative to its own directory (LaTeX semantics), not the workspace root."""
+    sub = tmp_path / "src"
+    sub.mkdir()
+    (sub / "master.tex").write_text(_VALID, encoding="utf-8")
+    for name, body in _VALID_FILES.items():
+        (sub / name).write_text(body, encoding="utf-8")  # companions next to the master
+    issues = Issues()
+    run_checks(sub / "master.tex", tmp_path, issues)  # root is the PARENT of the master dir
+    assert issues.findings == []
+
+
+def test_companions_at_root_not_found_for_subdir_master(tmp_path):
+    """Companions at the workspace root (not next to a subdir master) are not found —
+    confirms resolution is master-relative, matching where LaTeX would look."""
+    sub = tmp_path / "src"
+    sub.mkdir()
+    (sub / "master.tex").write_text(_VALID, encoding="utf-8")
+    for name, body in _VALID_FILES.items():
+        (tmp_path / name).write_text(body, encoding="utf-8")  # at root, NOT next to master
+    issues = Issues()
+    run_checks(sub / "master.tex", tmp_path, issues)
+    assert "UF-P1" in _rule_ids(issues)
+
+
 def test_wrong_documentclass_fires_uf_f13(tmp_path):
     src = r"\documentclass{article}" + "\n" + _VALID.split("\n", 1)[1]
     master = _project(tmp_path, src, _VALID_FILES)
