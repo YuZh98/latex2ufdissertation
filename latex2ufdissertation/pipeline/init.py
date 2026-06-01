@@ -10,9 +10,7 @@ from pathlib import Path
 from latex2ufdissertation.pipeline.types import ConverterError
 
 BUNDLED_TEMPLATE_DIR = Path(__file__).parent / "template"
-UF_IT_TEMPLATE_URL = (
-    "https://it.ufl.edu/wp-content/uploads/2025/11/Dissertation___Thesis_Example_File.zip"
-)
+UF_IT_TEMPLATE_URL = "https://it.ufl.edu/helpdesk/media/itufledu/tampd-graduate-resources-/Dissertation___Thesis_Example_File.zip"
 FETCH_TIMEOUT = 30  # seconds
 
 
