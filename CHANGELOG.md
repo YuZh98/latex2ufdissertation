@@ -17,6 +17,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - UF-F2/UF-F3 per-page findings are consolidated into a single page-range line in the human report (e.g. `pp.3-12,14 (10 pages)`); JSON output is not affected (#80)
 - `--dry-run` with a `.pdf` input now emits a warning that the flag has no effect (no source layer to skip) and continues to run PDF checks (#80)
 - `--help` input description updated to list `.tex` and `.pdf` alongside `.zip`, directory, and git URL (#80)
+- Under `--json` the live per-finding diagnostic stream on stderr is suppressed (the consolidated report still prints), so a multi-page UF-F2/UF-F3 violation no longer emits a line per page that the report already shows once (#81)
 
 ### Tests
 - Pinned security and crash-safety contracts as regression tests: corrupt-zip/bad-PDF exit codes, the `--json`-always-parseable property across every error path, `\set*File` path-traversal (absolute and `..`), flag-injection filenames, LuaLaTeX env hardening, and byte-identical `--json` determinism (#79)

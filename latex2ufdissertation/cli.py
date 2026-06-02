@@ -78,8 +78,10 @@ def _emit_json(issues: Issues) -> None:
 def _emit_report(issues: Issues, json_out: bool) -> None:
     """Emit the human report (always, to stderr) and optionally the JSON
     payload (to stdout). Keeping the human report on stderr means
-    `--json | jq ...` works without any extra filtering, and the user
-    still sees findings as they happen via Issues.add's diagnostic line.
+    `--json | jq ...` works without any extra filtering. Outside `--json`,
+    the user also sees findings live via Issues.add's per-finding diagnostic
+    line; under `--json` that live stream is suppressed (see
+    Issues.emit_progress) so it does not duplicate this report on stderr.
     """
     _err(format_human(issues))
     if json_out:
@@ -259,6 +261,10 @@ def _print_demo_location() -> int:
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     issues = Issues()
+    # Under --json the final report already prints to stderr; silence the live
+    # per-finding diagnostic stream so it does not duplicate (and so a 13-page
+    # F2 violation does not emit 13 lines that the consolidated report shows once).
+    issues.emit_progress = not args.json_out
 
     if args.demo:
         return _print_demo_location()

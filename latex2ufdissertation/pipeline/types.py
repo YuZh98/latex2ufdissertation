@@ -70,6 +70,10 @@ class Issues:
     template_version: str | None = None
     exit_reason: str = EXIT_REASON_CLEAN
     pdf_layer_ran: bool = False
+    # When False, add() does not print its per-finding diagnostic line. cli.main
+    # sets this False under --json so the live per-finding stream does not double
+    # up with the final report on stderr (the consolidated report still prints).
+    emit_progress: bool = True
 
     def add(
         self,
@@ -104,9 +108,10 @@ class Issues:
             source_url=rule.source_url,
         )
         self.findings.append(finding)
-        loc = f" {location}" if location else ""
-        msg = f"  [{effective_severity}] {rule.id}{loc} — {observed or rule.title}"
-        print(msg, file=sys.stderr)
+        if self.emit_progress:
+            loc = f" {location}" if location else ""
+            msg = f"  [{effective_severity}] {rule.id}{loc} — {observed or rule.title}"
+            print(msg, file=sys.stderr)
 
     def must_fix_count(self) -> int:
         return sum(1 for f in self.findings if f.severity == MUST_FIX)
