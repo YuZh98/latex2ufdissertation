@@ -296,7 +296,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Source:** S3 — common rejection reasons include *"absent sections (Acknowledgments, Abstract, References, Biographical Sketch)"*
 - **Layer:** source primary
 - **Strategy:** subset of UF-F8 with elevated detection priority. These four are the most-rejected omissions.
-- **Note:** S2 has no detector of its own — the rejection-driver sections are enforced via UF-F8. S2 is a catalog grouping that highlights the highest-rejection-risk subset; it does not emit separate findings.
+- **Note:** S2 co-fires alongside UF-F8 for each absent required rejection-driver section (Acknowledgements, Abstract, References, Biographical). When the `\set*File` macro for any of these four sections is absent from source, both UF-F8 and UF-S2 emit — UF-F8 for the structural page-order failure and UF-S2 for the elevated rejection-risk signal. S2 never fires for optional sections (Copyright, Dedication, Abbreviations, Appendix) and is silent when all four required sections are present.
 
 ### UF-S3 — Broken internal cross-references
 

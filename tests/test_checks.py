@@ -138,6 +138,71 @@ def test_missing_setfile_fires_uf_f8(tmp_path, set_cmd, file_name, cmd_label):
 
 
 @pytest.mark.parametrize(
+    "set_cmd,file_name,cmd_label,section_label",
+    [
+        (
+            r"\setAcknowledgementsFile{ack}",
+            "ack.tex",
+            r"\setAcknowledgementsFile",
+            "Acknowledgements",
+        ),  # noqa: E501
+        (r"\setAbstractFile{abs}", "abs.tex", r"\setAbstractFile", "Abstract"),
+        (r"\setReferenceFile{refs}{agsm}", "refs.bib", r"\setReferenceFile", "Reference"),
+        (r"\setBiographicalFile{bio}", "bio.tex", r"\setBiographicalFile", "Biographical"),
+    ],
+)
+def test_missing_required_setfile_cofires_uf_s2_with_f8(
+    tmp_path, set_cmd, file_name, cmd_label, section_label
+):
+    # UF-S2 co-fires alongside UF-F8 for each absent required section macro
+    # (the four rejection-driver sections). Both must appear for the same absence.
+    src = _VALID.replace(set_cmd, "")
+    files = dict(_VALID_FILES)
+    files.pop(file_name, None)
+    master = _project(tmp_path, src, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    s2_findings = [f for f in issues.findings if f.rule_id == "UF-S2"]
+    f8_findings = [f for f in issues.findings if f.rule_id == "UF-F8"]
+    assert s2_findings, "expected at least one UF-S2 finding"
+    assert f8_findings, "expected UF-F8 co-fire alongside UF-S2"
+    assert any(section_label in (f.observed or "") for f in s2_findings)
+    assert all(f.severity == MUST_FIX for f in s2_findings)
+    assert all(f.layer == SOURCE for f in s2_findings)
+    # fix_hint must mention the rejection-driver framing
+    assert all("rejection" in (f.fix_hint or "").lower() for f in s2_findings)
+
+
+def test_all_required_sections_present_no_uf_s2(tmp_path):
+    # When all four required sections are present, UF-S2 must be silent.
+    master = _project(tmp_path, _VALID, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-S2" not in _rule_ids(issues)
+
+
+@pytest.mark.parametrize(
+    "optional_label",
+    ["Copyright", "Dedication", "Abbreviations", "Appendix"],
+)
+def test_optional_section_absence_does_not_fire_uf_s2(tmp_path, optional_label):
+    # The optional sections are absent from _VALID. Even when a REQUIRED section
+    # is also absent (so UF-S2 does fire), no UF-S2 finding may target an optional
+    # section — only the four required rejection-driver sections do. This would
+    # fail if the `if required:` guard around the UF-S2 emission were dropped.
+    src = _VALID.replace(r"\setAbstractFile{abs}", "")
+    files = {k: v for k, v in _VALID_FILES.items() if k != "abs.tex"}
+    master = _project(tmp_path, src, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    s2_findings = [f for f in issues.findings if f.rule_id == "UF-S2"]
+    assert s2_findings, "expected UF-S2 for the absent required Abstract section"
+    assert not any(optional_label in (f.observed or "") for f in s2_findings), (
+        f"UF-S2 must not fire for optional section {optional_label}"
+    )
+
+
+@pytest.mark.parametrize(
     "file_name,cmd_label",
     [
         ("ack.tex", r"\setAcknowledgementsFile"),

@@ -273,6 +273,17 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                     observed=f"{cmd} not set",
                     required=f"{cmd}{{<{label.lower()}-file-stem>}}",
                 )
+                issues.add(
+                    "UF-S2",
+                    location=rel,
+                    observed=f"{label} section absent",
+                    required=f"{cmd}{{<{label.lower()}-file-stem>}} must be set",
+                    fix_hint=(
+                        f"{label} section absent — missing required sections "
+                        "(Acknowledgements/Abstract/References/Biographical) "
+                        "is among the most common UF rejection reasons."
+                    ),
+                )
             continue
         candidates = [
             c
