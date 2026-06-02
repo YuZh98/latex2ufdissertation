@@ -24,7 +24,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [0.3.2] - 2026-06-01
 
-Hardening release addressing a multi-agent adversarial review (security, crash-safety, validation soundness, and documentation honesty).
+Hardening release covering security, crash-safety, validation soundness, and documentation honesty.
 
 ### Security
 - Zip extraction is containment-checked (`is_relative_to`), fixing a sibling-prefix zip-slip bypass; the same guard now covers the `--init` remote-template fetch (previously unguarded `extractall`), with a 50 MB download cap (#66)
