@@ -334,6 +334,10 @@ def run_pdf_checks(pdf_path: Path, issues: Issues) -> None:
     Raises MissingToolchain (exit 3) if pdfminer.six is not installed.
     Raises UnreadableInput (exit 2) if the PDF cannot be parsed at all.
     """
+    # Mark the PDF layer as entered immediately so the flag is set even if a
+    # later check raises (fatal paths skip the human report anyway).
+    issues.pdf_layer_ran = True
+
     # _extract_pages propagates MissingToolchain / UnreadableInput on its own.
     pages = _extract_pages(pdf_path)
 

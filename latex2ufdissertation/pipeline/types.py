@@ -69,6 +69,7 @@ class Issues:
     main_tex: str | None = None
     template_version: str | None = None
     exit_reason: str = EXIT_REASON_CLEAN
+    pdf_layer_ran: bool = False
 
     def add(
         self,

@@ -13,6 +13,18 @@ def _strip_comments(text: str) -> str:
     return re.sub(r"(?m)(?<!\\)%[^\n]*", "", text)
 
 
+def first_documentclass(text: str) -> str | None:
+    """Return the class name of the FIRST (line-start, non-commented)
+    ``\\documentclass`` in *text*, stripped of surrounding whitespace, or
+    None if there is none. Optional ``[options]`` are ignored. This is the
+    single source of truth for "what document class does this file declare";
+    both master auto-detection (_score) and the bare-.tex input gate in
+    cli.main use it so the two never drift.
+    """
+    m = _FIRST_DOCCLASS.search(_strip_comments(text))
+    return m.group(2).strip() if m else None
+
+
 def _score(path: Path) -> int | None:
     """Return a master-score for `path` or None if no real \\documentclass present.
 
@@ -23,12 +35,11 @@ def _score(path: Path) -> int | None:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
-    nc = _strip_comments(text)
-    m = _FIRST_DOCCLASS.search(nc)
-    if not m:
+    cls = first_documentclass(text)
+    if cls is None:
         return None
-    score = len(_SETFILE_RE.findall(nc))
-    if m.group(2).strip() == "ufdissertation":
+    score = len(_SETFILE_RE.findall(_strip_comments(text)))
+    if cls == "ufdissertation":
         score += 100
     return score
 
