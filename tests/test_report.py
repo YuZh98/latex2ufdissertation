@@ -6,13 +6,19 @@ import json
 from pathlib import Path
 
 from latex2ufdissertation.pipeline.report import (
+    _FRAMING_NO_PDF,
+    _FRAMING_SCOPE,
+    _FRAMING_SEVERITY,
     A2_ADVISORY,
     SCHEMA_VERSION,
     exit_code,
     format_human,
     format_json,
 )
-from latex2ufdissertation.pipeline.types import Issues
+from latex2ufdissertation.pipeline.types import (
+    Finding,
+    Issues,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -194,31 +200,51 @@ def test_findings_in_json_use_spec_sort_key_layer_rule_id_location():
     assert ids == sorted(ids), f"JSON sort order diverged from spec: {ids}"
 
 
-# --- A2 standing advisory tests ---
+# --- A2 standing advisory tests (FIX #4: gated on pdf_layer_ran) ---
 
 
-def test_a2_advisory_appears_in_human_report_clean_run():
-    # A2 must appear on the clean path (early return, no findings).
+def test_a2_advisory_appears_when_pdf_layer_ran_clean():
+    # A2 must appear when pdf_layer_ran=True, even on the clean path.
     issues = Issues()
+    issues.pdf_layer_ran = True
     out = format_human(issues)
     assert A2_ADVISORY in out
 
 
-def test_a2_advisory_appears_in_human_report_with_findings():
-    # A2 must also appear when there are findings (findings path).
+def test_a2_advisory_appears_when_pdf_layer_ran_with_findings():
+    # A2 must appear when pdf_layer_ran=True and there are findings.
     issues = _populated_issues()
+    issues.pdf_layer_ran = True
     out = format_human(issues)
     assert A2_ADVISORY in out
+
+
+def test_a2_advisory_absent_when_pdf_layer_not_ran_clean():
+    # A2 must NOT appear when pdf_layer_ran=False (default, dry-run/source-only).
+    issues = Issues()
+    # pdf_layer_ran defaults to False
+    out = format_human(issues)
+    assert "Advisory (not a finding)" not in out
+
+
+def test_a2_advisory_absent_when_pdf_layer_not_ran_with_findings():
+    # A2 must NOT appear when pdf_layer_ran=False, even with findings.
+    issues = _populated_issues()
+    # pdf_layer_ran defaults to False
+    out = format_human(issues)
+    assert "Advisory (not a finding)" not in out
 
 
 def test_a2_advisory_absent_from_json_output():
     # A2 is human-only; the JSON schema is frozen. The advisory text must
     # not appear anywhere in the serialised JSON payload.
     issues = Issues()
+    issues.pdf_layer_ran = True
     json_str = json.dumps(format_json(issues), sort_keys=True)
     assert A2_ADVISORY not in json_str
 
     issues2 = _populated_issues()
+    issues2.pdf_layer_ran = True
     json_str2 = json.dumps(format_json(issues2), sort_keys=True)
     assert A2_ADVISORY not in json_str2
 
@@ -227,6 +253,7 @@ def test_a2_advisory_does_not_affect_counts_or_exit_code():
     # Emitting A2 is additive only; it must not change must_fix_count,
     # review_count, or exit_code on either a clean or a findings-bearing run.
     clean = Issues()
+    clean.pdf_layer_ran = True
     assert clean.must_fix_count() == 0
     assert clean.review_count() == 0
     assert exit_code(clean) == 0
@@ -237,6 +264,7 @@ def test_a2_advisory_does_not_affect_counts_or_exit_code():
     assert exit_code(clean) == 0
 
     populated = _populated_issues()
+    populated.pdf_layer_ran = True
     before_must = populated.must_fix_count()
     before_review = populated.review_count()
     before_exit = exit_code(populated)
@@ -244,3 +272,213 @@ def test_a2_advisory_does_not_affect_counts_or_exit_code():
     assert populated.must_fix_count() == before_must
     assert populated.review_count() == before_review
     assert exit_code(populated) == before_exit
+
+
+# --- FIX #4: pdf_layer_ran flag set by run_pdf_checks ---
+
+
+def test_pdf_layer_ran_false_by_default():
+    issues = Issues()
+    assert issues.pdf_layer_ran is False
+
+
+def test_pdf_layer_ran_set_by_run_pdf_checks(tmp_path):
+    """run_pdf_checks must set pdf_layer_ran=True at entry, before any
+    later check runs.  Monkeypatching _extract_pages to raise verifies
+    the flag is set even when a subsequent step fails.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
+    from latex2ufdissertation.pipeline.types import UnreadableInput
+
+    dummy_pdf = tmp_path / "x.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        side_effect=UnreadableInput("mocked"),
+    ):
+        try:
+            run_pdf_checks(dummy_pdf, issues)
+        except UnreadableInput:
+            pass
+
+    assert issues.pdf_layer_ran is True
+
+
+# --- FIX #FRAME: report framing (severity meaning + scope honesty) ---
+
+
+def test_framing_severity_present_in_clean_run():
+    issues = Issues()
+    out = format_human(issues)
+    assert _FRAMING_SEVERITY in out
+
+
+def test_framing_scope_present_in_clean_run():
+    issues = Issues()
+    out = format_human(issues)
+    assert _FRAMING_SCOPE in out
+
+
+def test_framing_severity_present_with_findings():
+    issues = _populated_issues()
+    out = format_human(issues)
+    assert _FRAMING_SEVERITY in out
+
+
+def test_framing_scope_present_with_findings():
+    issues = _populated_issues()
+    out = format_human(issues)
+    assert _FRAMING_SCOPE in out
+
+
+def test_framing_no_pdf_note_present_when_pdf_layer_not_ran():
+    issues = Issues()
+    # pdf_layer_ran=False by default → dry-run note must appear
+    out = format_human(issues)
+    assert _FRAMING_NO_PDF in out
+
+
+def test_framing_no_pdf_note_absent_when_pdf_layer_ran():
+    issues = Issues()
+    issues.pdf_layer_ran = True
+    out = format_human(issues)
+    assert _FRAMING_NO_PDF not in out
+
+
+def test_framing_no_pdf_note_absent_when_pdf_layer_ran_with_findings():
+    issues = _populated_issues()
+    issues.pdf_layer_ran = True
+    out = format_human(issues)
+    assert _FRAMING_NO_PDF not in out
+
+
+# --- FIX #2: UF-F2 / UF-F3 consolidation in human report ---
+
+
+def _make_f2_finding(location: str, observed: str = "LMRoman12-Regular") -> Finding:
+    """Build a synthetic UF-F2 Finding for testing consolidation."""
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF, RULES
+
+    rule = RULES["UF-F2"]
+    return Finding(
+        severity=MUST_FIX,
+        rule_id="UF-F2",
+        layer=PDF,
+        location=location,
+        observed=observed,
+        required="Times New Roman or Arial body font",
+        fix_hint=rule.fix_hint,
+        source_url=rule.source_url,
+    )
+
+
+def _make_f3_finding(location: str, observed: str = "20.0pt body text") -> Finding:
+    """Build a synthetic UF-F3 Finding for testing consolidation."""
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF, RULES
+
+    rule = RULES["UF-F3"]
+    return Finding(
+        severity=MUST_FIX,
+        rule_id="UF-F3",
+        layer=PDF,
+        location=location,
+        observed=observed,
+        required="12-point body text",
+        fix_hint=rule.fix_hint,
+        source_url=rule.source_url,
+    )
+
+
+def _count_finding_lines(out: str, rule_id: str) -> int:
+    """Count rendered finding lines for a given rule_id (lines starting with
+    '    [' that contain the rule_id). Excludes framing/advisory text."""
+    return sum(1 for line in out.splitlines() if line.startswith("    [") and rule_id in line)
+
+
+def test_f2_multiple_pages_same_observed_consolidated():
+    """N>1 UF-F2 findings with the same observed value → one line with 'pp.'
+    and '(N pages)'.
+    """
+    issues = Issues()
+    for page in [12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26]:
+        issues.findings.append(_make_f2_finding(f"p.{page}"))
+    out = format_human(issues)
+    # Exactly one grouped finding line (not 13 separate lines)
+    assert _count_finding_lines(out, "UF-F2") == 1
+    assert "pp." in out
+    assert "(13 pages)" in out
+    assert "LMRoman12-Regular" in out
+
+
+def test_f2_single_page_no_count_suffix():
+    """A single-page UF-F2 renders 'p.12' with NO '(1 pages)' suffix."""
+    issues = Issues()
+    issues.findings.append(_make_f2_finding("p.12"))
+    out = format_human(issues)
+    assert "p.12" in out
+    assert "(1 pages)" not in out
+    # Should be one finding line only
+    assert _count_finding_lines(out, "UF-F2") == 1
+
+
+def test_f2_two_different_observed_fonts_two_lines():
+    """Two different observed fonts → two separate grouped lines."""
+    issues = Issues()
+    for page in [1, 2, 3]:
+        issues.findings.append(_make_f2_finding(f"p.{page}", observed="LMRoman12-Regular"))
+    for page in [4, 5, 6]:
+        issues.findings.append(_make_f2_finding(f"p.{page}", observed="ComicSansMS"))
+    out = format_human(issues)
+    assert _count_finding_lines(out, "UF-F2") == 2
+    assert "LMRoman12-Regular" in out
+    assert "ComicSansMS" in out
+
+
+def test_f3_consolidation_same_treatment():
+    """UF-F3 findings with same observed collapse the same way as UF-F2."""
+    issues = Issues()
+    for page in [3, 4, 5]:
+        issues.findings.append(_make_f3_finding(f"p.{page}"))
+    out = format_human(issues)
+    assert _count_finding_lines(out, "UF-F3") == 1
+    assert "pp." in out
+    assert "(3 pages)" in out
+
+
+def test_f2_json_still_one_finding_per_page():
+    """format_json must still emit one finding per page (consolidation is
+    human-only; JSON schema is frozen).
+    """
+    issues = Issues()
+    for page in [1, 2, 3, 4, 5]:
+        issues.findings.append(_make_f2_finding(f"p.{page}"))
+    payload = format_json(issues)
+    f2_findings = [f for f in payload["findings"] if f["rule_id"] == "UF-F2"]
+    assert len(f2_findings) == 5, f"Expected 5 per-page F2 findings in JSON, got {len(f2_findings)}"
+
+
+def test_f2_page_range_consecutive_runs():
+    """Pages 12-16 and 19-26 collapse to 'pp.12-16,19-26'."""
+    issues = Issues()
+    for page in [12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26]:
+        issues.findings.append(_make_f2_finding(f"p.{page}"))
+    out = format_human(issues)
+    assert "pp.12-16,19-26" in out
+
+
+def test_f2_non_pn_location_renders_individually():
+    """A UF-F2 finding whose location does NOT match 'p.N' falls back to
+    individual rendering (no consolidation).
+    """
+    issues = Issues()
+    # Two F2 findings with non-"p.N" location — must render as two lines.
+    for loc in ["section:intro", "appendix"]:
+        issues.findings.append(_make_f2_finding(loc))
+    out = format_human(issues)
+    # Two individual UF-F2 finding lines (no consolidation because no "p.N" locations)
+    assert _count_finding_lines(out, "UF-F2") == 2
+    assert "pp." not in out
