@@ -5,12 +5,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from latex2ufdissertation.pipeline.report import (
     _FRAMING_NO_PDF,
     _FRAMING_SCOPE,
     _FRAMING_SEVERITY,
     A2_ADVISORY,
     SCHEMA_VERSION,
+    _page_range_str,
+    _parse_page_num,
     exit_code,
     format_human,
     format_json,
@@ -21,6 +25,38 @@ from latex2ufdissertation.pipeline.types import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+@pytest.mark.parametrize(
+    "pages,expected",
+    [
+        ([1], "p.1"),  # single page → singular "p.", no range
+        ([1, 2, 3, 4, 5], "pp.1-5"),  # one contiguous run
+        ([1, 3, 5], "pp.1,3,5"),  # all gaps → no collapsing
+        ([12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26], "pp.12-16,19-26"),  # canonical
+        ([1, 2, 3, 5, 6, 9], "pp.1-3,5-6,9"),  # mixed runs + singleton tail
+        ([2, 4], "pp.2,4"),  # two non-adjacent
+        ([7, 8], "pp.7-8"),  # two adjacent → run
+    ],
+)
+def test_page_range_str(pages, expected):
+    assert _page_range_str(pages) == expected
+
+
+@pytest.mark.parametrize(
+    "location,expected",
+    [
+        ("p.1", 1),
+        ("p.12", 12),
+        ("p.0", 0),
+        ("", None),
+        ("page 3", None),  # not the p.N form
+        ("p.1a", None),  # trailing junk
+        ("1", None),  # missing "p." prefix
+    ],
+)
+def test_parse_page_num(location, expected):
+    assert _parse_page_num(location) == expected
 
 
 def _populated_issues() -> Issues:
