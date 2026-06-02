@@ -41,6 +41,24 @@ def test_issues_add_appends_finding_and_writes_stderr(capsys):
     assert "must-fix" in captured.err
 
 
+def test_emit_progress_false_suppresses_diagnostic_line(capsys):
+    # Under --json the cli sets emit_progress=False; add() must not print the
+    # live per-finding diagnostic (the final report carries it instead).
+    issues = Issues(emit_progress=False)
+    issues.add("UF-F13", observed="bad class")
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""  # no live diagnostic line
+    assert len(issues.findings) == 1  # finding still recorded
+
+
+def test_emit_progress_default_true_still_prints(capsys):
+    # Default (normal CLI run) keeps the live diagnostic stream.
+    issues = Issues()
+    issues.add("UF-F13", observed="bad class")
+    assert "UF-F13" in capsys.readouterr().err
+
+
 def test_issues_counts_split_by_severity():
     issues = Issues()
     issues.add("UF-F13", observed="bad class")

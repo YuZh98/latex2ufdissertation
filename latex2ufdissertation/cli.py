@@ -259,6 +259,10 @@ def _print_demo_location() -> int:
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     issues = Issues()
+    # Under --json the final report already prints to stderr; silence the live
+    # per-finding diagnostic stream so it does not duplicate (and so a 13-page
+    # F2 violation does not emit 13 lines that the consolidated report shows once).
+    issues.emit_progress = not args.json_out
 
     if args.demo:
         return _print_demo_location()

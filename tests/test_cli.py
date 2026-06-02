@@ -981,3 +981,40 @@ def test_nonexistent_tex_falls_through_to_resolve_error(
     err = capsys.readouterr().err
     assert rc == 2
     assert "Error:" in err
+
+
+def _minimal_master_with_findings(tmp_path: Path) -> Path:
+    # A bare ufdissertation master with no \set*File macros → required-section
+    # must-fix findings fire on --dry-run (source layer).
+    (tmp_path / "main.tex").write_text(
+        r"\documentclass{ufdissertation}" + "\n\\begin{document}\n\\end{document}\n",
+        encoding="utf-8",
+    )
+    return tmp_path
+
+
+def test_json_mode_suppresses_live_diagnostic_lines(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Q1 follow-up: under --json the live per-finding diagnostic stream (2-space
+    "  [severity] RULE" lines from Issues.add) is suppressed so it does not
+    duplicate the consolidated report on stderr; JSON stdout stays valid and the
+    final report still prints."""
+    proj = _minimal_master_with_findings(tmp_path)
+    rc = main(["--json", "--dry-run", str(proj)])
+    cap = capsys.readouterr()
+    json.loads(cap.out)  # stdout still a valid single JSON document
+    assert rc == 1  # missing required sections → must-fix findings
+    # No live 2-space-indented diagnostic lines ("\n  [..."); the report's own
+    # finding lines are 4-space-indented and still present.
+    assert "\n  [" not in cap.err
+    assert "[must-fix]" in cap.err
+
+
+def test_non_json_mode_still_emits_live_diagnostic_lines(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Without --json the live per-finding stream is retained (2-space lines)."""
+    proj = _minimal_master_with_findings(tmp_path)
+    main(["--dry-run", str(proj)])
+    assert "\n  [" in capsys.readouterr().err
