@@ -10,6 +10,16 @@
       "rule_id": "UF-F8",
       "severity": "must-fix",
       "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f8--required-page-order--presence"
+    },
+    {
+      "fix_hint": "Acknowledgements section absent \u2014 missing required sections (Acknowledgements/Abstract/References/Biographical) is among the most common UF rejection reasons.",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "Acknowledgements section absent",
+      "required": "\\setAcknowledgementsFile{<acknowledgements-file-stem>} must be set",
+      "rule_id": "UF-S2",
+      "severity": "must-fix",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-s2--required-sections-present-rejection-driver-subset-of-f8"
     }
   ],
   "input": "<INPUT>",
@@ -17,7 +27,7 @@
   "summary": {
     "exit_code": 1,
     "exit_reason": "must_fix_present",
-    "must_fix_count": 1,
+    "must_fix_count": 2,
     "review_count": 0
   },
   "template_version": "unknown"

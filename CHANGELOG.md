@@ -6,6 +6,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+### Added
+- `UF-S2` now emits: an absent required rejection-driver section (Acknowledgements/Abstract/References/Biographical) raises a `must-fix` finding alongside `UF-F8`, framing the omission as a top UF rejection driver. Previously `UF-S2` was a catalog entry with no detector (#79)
+
+### Tests
+- Pinned security and crash-safety contracts as regression tests: corrupt-zip/bad-PDF exit codes, the `--json`-always-parseable property across every error path, `\set*File` path-traversal (absolute and `..`), flag-injection filenames, LuaLaTeX env hardening, and byte-identical `--json` determinism (#79)
+- Added mutation-testing-derived killer tests closing 25 surviving-mutant gaps in `resolve.py` (git-URL allowlist edge cases, zip-slip skip-not-break, `git clone` non-zero exit, temp-dir cleanup), `pdf_checks.py` (per-page check loops, allowed-font prefixes), and `cli.py` (exact exit codes and `--json` emission on all error branches) (#79)
+
 ## [0.3.2] - 2026-06-01
 
 Hardening release addressing a multi-agent adversarial review (security, crash-safety, validation soundness, and documentation honesty).
