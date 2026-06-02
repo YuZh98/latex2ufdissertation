@@ -263,3 +263,150 @@ def test_safe_extract_allows_valid_members(tmp_path):
     with zipfile.ZipFile(buf) as zf:
         _safe_extract(zf, tmp_path)
     assert (tmp_path / "subdir" / "file.tex").read_text() == "content"
+
+
+# ---------------------------------------------------------------------------
+# Mutant killers — GROUP 1 (resolve.py)
+# ---------------------------------------------------------------------------
+
+
+def test_git_url_scp_form_no_colon_is_false():
+    """G1a: 'git@hostname-only' (scp form, no colon) must be False.
+
+    Kills mutant: `if colon == -1: return False` -> `return True`.
+    The allowlist check never executes when the colon is absent — so a
+    SSRF-style bare hostname would pass straight through with the mutant.
+    """
+    assert _looks_like_git_url("git@hostname-only") is False
+    # Extra: a valid scp host without the repo path separator must also fail.
+    assert _looks_like_git_url("git@github.com") is False
+
+
+def test_git_url_empty_host_https_is_false():
+    """G1b: https:///path and https:// (empty host) must be False.
+
+    Kills mutant: `if not host: return False` -> `return True`.
+    urlparse("https:///path").hostname is None; without the None-check
+    the code would fall through to the allowlist membership test and
+    `None in _HTTPS_ALLOWED_HOSTS` evaluates to False by accident — but
+    the mutant (`return True`) bypasses the allowlist entirely.
+    """
+    assert _looks_like_git_url("https:///path") is False
+    assert _looks_like_git_url("https://") is False
+
+
+def test_git_url_valueerror_input_is_false():
+    """G1c: A URL that makes urlparse() raise ValueError must return False.
+
+    'https://[::1' (unterminated IPv6 bracket) raises ValueError in urlparse.
+    Kills mutant: `except ValueError: return False` -> `return True`.
+    Verified empirically: urlparse('https://[::1') raises ValueError.
+    """
+    assert _looks_like_git_url("https://[::1") is False
+
+
+def test_safe_extract_skips_macosx_but_still_extracts_later_members(tmp_path):
+    """G1d: A zip whose FIRST member is __MACOSX/foo must still extract main.tex.
+
+    Kills two mutants:
+    - `continue` -> `break` (ID?): break on __MACOSX drops all subsequent members.
+    - `or` -> `and` in the filter predicate: __MACOSX member would NOT be skipped.
+
+    Assertion 1 (continue->break killer): main.tex is extracted.
+    Assertion 2 (or->and killer): __MACOSX directory is NOT extracted.
+    """
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        # __MACOSX member FIRST, then a legitimate member.
+        zf.writestr("__MACOSX/foo", "mac metadata")
+        zf.writestr("main.tex", r"\documentclass{ufdissertation}")
+    buf.seek(0)
+    dest = tmp_path / "out"
+    dest.mkdir()
+    with zipfile.ZipFile(buf) as zf:
+        _safe_extract(zf, dest)
+
+    # continue->break killer: the member after the skip must still be extracted.
+    assert (dest / "main.tex").exists(), "main.tex was not extracted after __MACOSX skip"
+    # or->and killer: the __MACOSX directory must NOT be present in the output.
+    assert not (dest / "__MACOSX").exists(), "__MACOSX was incorrectly extracted"
+
+
+def test_safe_extract_skips_ds_store_but_still_extracts(tmp_path):
+    """G1d (extra): a zip with a .DS_Store member followed by main.tex
+    must still extract main.tex and must NOT produce a .DS_Store file.
+    """
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("subdir/.DS_Store", "mac store")
+        zf.writestr("main.tex", r"\documentclass{ufdissertation}")
+    buf.seek(0)
+    dest = tmp_path / "out2"
+    dest.mkdir()
+    with zipfile.ZipFile(buf) as zf:
+        _safe_extract(zf, dest)
+
+    assert (dest / "main.tex").exists()
+    assert not (dest / "subdir" / ".DS_Store").exists()
+
+
+def test_clone_git_check_false_mutant_raises_unreadable_input():
+    """G1e: _clone_git must raise UnreadableInput when git exits non-zero.
+
+    The existing test patches with side_effect=CalledProcessError (always raises)
+    which does NOT distinguish check=True vs check=False — it kills nothing.
+
+    This test uses a side_effect function that ONLY raises CalledProcessError
+    when `check=True` is passed, exactly mirroring the real subprocess.run
+    contract.  On real code (check=True), it raises → UnreadableInput.
+    Under the mutant (check=False), it returns CompletedProcess(128) → no
+    UnreadableInput → the assertion fails.
+    """
+
+    def fake_run(cmd, *args, check=False, **kwargs):
+        if check:
+            raise subprocess.CalledProcessError(returncode=128, cmd=cmd, stderr=b"fatal")
+        return subprocess.CompletedProcess(args=cmd, returncode=128)
+
+    with patch(
+        "latex2ufdissertation.pipeline.resolve.subprocess.run",
+        side_effect=fake_run,
+    ):
+        with pytest.raises(UnreadableInput):
+            resolve("https://github.com/fake/repo.git")
+
+
+def test_resolve_zip_cleanup_removes_temp_dir(tmp_path):
+    """G1f: resolve() cleanup() must actually remove the temp extraction dir.
+
+    Kills mutant: cleanup lambda -> `lambda: None` (leaks the temp dir).
+    We spy on mkdtemp to record the created temp dir, then call cleanup()
+    and assert the dir is gone.
+    """
+    import tempfile as _tempfile
+
+    src_zip = tmp_path / "legit.zip"
+    with zipfile.ZipFile(src_zip, "w") as zf:
+        # Flat zip (no single top wrapper dir) so root IS the temp dir.
+        zf.writestr("main.tex", r"\documentclass{ufdissertation}")
+
+    created_dirs: list[str] = []
+    real_mkdtemp = _tempfile.mkdtemp
+
+    def spy_mkdtemp(**kwargs):
+        d = real_mkdtemp(**kwargs)
+        created_dirs.append(d)
+        return d
+
+    with patch("latex2ufdissertation.pipeline.resolve.tempfile.mkdtemp", side_effect=spy_mkdtemp):
+        root, cleanup = resolve(str(src_zip))
+
+    assert len(created_dirs) == 1, "expected exactly one temp dir to be created"
+    temp_dir = Path(created_dirs[0])
+    assert temp_dir.exists(), "temp dir must exist before cleanup()"
+
+    cleanup()
+
+    assert not temp_dir.exists(), (
+        f"cleanup() did not remove temp dir: {temp_dir} — likely lambda: None mutant"
+    )

@@ -427,3 +427,336 @@ def test_git_input_mode_end_to_end(tmp_path: Path, capsys: pytest.CaptureFixture
     # Temp clone dir must be cleaned up (finally: cleanup() in cli.main).
     for d in recorded_dirs:
         assert not Path(d).exists(), f"git clone temp dir was not cleaned up: {d}"
+
+
+# ---------------------------------------------------------------------------
+# A1: Corrupt/non-zip .zip input through CLI → exit 2 + valid JSON
+# ---------------------------------------------------------------------------
+
+
+def test_corrupt_zip_cli_exits_2_with_valid_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A corrupt (non-zip) .zip file passed to the CLI must exit 2 and emit
+    a single valid JSON document on stdout when --json is used.
+
+    Regression: resolve() raises UnreadableInput on BadZipFile; cli.main()
+    must catch it, set exit_reason=unreadable_input, and emit valid JSON.
+    Distinct from the existing 'nonexistent.zip' test which hits the
+    FileNotFoundError branch — this exercises the BadZipFile branch.
+    """
+    corrupt = tmp_path / "corrupt.zip"
+    corrupt.write_bytes(b"this is not a zip file at all")
+    rc = main(["--json", str(corrupt)])
+    assert rc == 2
+    out = capsys.readouterr().out
+    payload = json.loads(out)  # must not raise — exactly one JSON document
+    assert payload["summary"]["exit_reason"] == "unreadable_input"
+
+
+def test_corrupt_zip_cli_no_traceback_on_stderr(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A corrupt .zip must produce a friendly error on stderr, no raw traceback."""
+    corrupt = tmp_path / "corrupt.zip"
+    corrupt.write_bytes(b"garbage")
+    main([str(corrupt)])
+    err = capsys.readouterr().err
+    assert "Error:" in err
+    assert "Traceback" not in err
+    assert "BadZipFile" not in err
+
+
+# ---------------------------------------------------------------------------
+# A4: Non-PDF binary file with .pdf suffix → exit 2 + valid JSON, no traceback
+# ---------------------------------------------------------------------------
+
+
+def test_binary_non_pdf_file_exits_2_with_valid_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A file with a .pdf extension that contains binary garbage (no PDF header)
+    must exit 2 and emit valid JSON with exit_reason=unreadable_input under --json.
+
+    Distinct from the existing %PDF-1.7 stub test: that file has a PDF header
+    and fails at /Root parsing; this file has no PDF structure at all.
+    """
+    fake_pdf = tmp_path / "garbage.pdf"
+    fake_pdf.write_bytes(b"\x00\x01\x02\x03 binary garbage not a pdf")
+    rc = main(["--json", str(fake_pdf)])
+    assert rc == 2
+    out = capsys.readouterr().out
+    payload = json.loads(out)  # must not raise
+    assert payload["summary"]["exit_reason"] == "unreadable_input"
+
+
+def test_binary_non_pdf_file_no_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A non-PDF binary .pdf input must produce a friendly error on stderr, no traceback."""
+    fake_pdf = tmp_path / "garbage.pdf"
+    fake_pdf.write_bytes(b"\x00\x01\x02\x03 binary garbage not a pdf")
+    main([str(fake_pdf)])
+    err = capsys.readouterr().err
+    assert "Error:" in err
+    assert "Traceback" not in err
+
+
+# ---------------------------------------------------------------------------
+# A6: Parametrized --json property test: every validation-flow error path
+#     must emit exactly one parseable JSON document on stdout
+# ---------------------------------------------------------------------------
+
+
+def _make_corrupt_zip(tmp_path: Path) -> Path:
+    p = tmp_path / "a1_corrupt.zip"
+    p.write_bytes(b"not a zip")
+    return p
+
+
+def _make_no_master_dir(tmp_path: Path) -> Path:
+    d = tmp_path / "a6_empty_dir"
+    d.mkdir()
+    (d / "README.txt").write_text("no tex here", encoding="utf-8")
+    return d
+
+
+def _make_garbage_pdf(tmp_path: Path) -> Path:
+    p = tmp_path / "a6_garbage.pdf"
+    p.write_bytes(b"\x00\x01 not a pdf")
+    return p
+
+
+def _make_thesis_dir(tmp_path: Path) -> Path:
+    d = tmp_path / "a6_thesis_dir"
+    d.mkdir()
+    (d / "main.tex").write_text(
+        r"\documentclass{ufdissertation}" + "\n" + r"\thesisType{Thesis}" + "\n",
+        encoding="utf-8",
+    )
+    return d
+
+
+def _make_missing_toolchain_dir(tmp_path: Path) -> Path:
+    d = tmp_path / "a6_missing_toolchain"
+    d.mkdir()
+    (d / "main.tex").write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
+    return d
+
+
+def _make_compile_failure_dir(tmp_path: Path) -> Path:
+    d = tmp_path / "a6_compile_fail"
+    d.mkdir()
+    (d / "main.tex").write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
+    return d
+
+
+@pytest.mark.parametrize(
+    "label,make_input,extra_args,mock_lualatex,mock_compile",
+    [
+        # Resolve-layer error: corrupt zip → UnreadableInput
+        ("corrupt_zip", _make_corrupt_zip, [], False, False),
+        # Detect-layer error: directory with no .tex master
+        ("no_tex_master", _make_no_master_dir, ["--dry-run"], False, False),
+        # Thesis input path
+        ("thesis_input", _make_thesis_dir, ["--dry-run"], False, False),
+        # --main outside root
+        ("main_outside_root", None, ["--dry-run", "--main", "/etc/passwd"], False, False),
+        # Missing toolchain
+        ("missing_toolchain", _make_missing_toolchain_dir, [], True, False),
+        # Compile failure
+        ("compile_failure", _make_compile_failure_dir, [], False, True),
+    ],
+)
+def test_json_stdout_is_single_parseable_document_on_all_error_paths(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    label: str,
+    make_input,
+    extra_args: list[str],
+    mock_lualatex: bool,
+    mock_compile: bool,
+) -> None:
+    """--json MUST emit exactly one parseable JSON document on stdout for every
+    validation-flow error path. json.loads raises on trailing data or empty
+    output, so a single successful parse is the correctness gate.
+
+    Note: --init and bare (no input) paths deliberately emit empty stdout
+    (scoped outside the validation flow) and are excluded from this suite.
+    """
+    from latex2ufdissertation.pipeline.types import ConverterError
+
+    # Build the input path (or reuse tmp_path for --main-outside-root case).
+    if make_input is None:
+        # --main outside root: we need a valid dir so resolve() succeeds
+        d = tmp_path / "a6_main_escape"
+        d.mkdir()
+        (d / "main.tex").write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
+        input_path = str(d)
+    else:
+        input_path = str(make_input(tmp_path))
+
+    if mock_lualatex:
+        monkeypatch.setattr("latex2ufdissertation.cli.lualatex_available", lambda: False)
+    if mock_compile:
+        monkeypatch.setattr("latex2ufdissertation.cli.lualatex_available", lambda: True)
+        monkeypatch.setattr(
+            "latex2ufdissertation.cli.compile_pdf",
+            lambda *a, **k: (_ for _ in ()).throw(ConverterError("boom")),
+        )
+
+    argv = ["--json", input_path] + extra_args
+    rc = main(argv)
+
+    out = capsys.readouterr().out
+    try:
+        payload = json.loads(out)
+    except json.JSONDecodeError as exc:
+        pytest.fail(f"[{label}] --json stdout is not valid JSON: {exc!r}\nstdout was: {out!r}")
+
+    assert isinstance(payload, dict), f"[{label}] JSON payload must be a dict, got {type(payload)}"
+    assert "summary" in payload, f"[{label}] JSON payload must contain 'summary' key"
+    assert rc in (2, 3), f"[{label}] expected error exit code (2 or 3), got {rc}"
+
+
+# ---------------------------------------------------------------------------
+# Mutant killers — GROUP 3 (cli.py exit codes + --json contracts)
+# ---------------------------------------------------------------------------
+
+
+def test_init_success_exits_exactly_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """G3a: --init SUCCESS must return exit code exactly 0.
+
+    Kills mutant: `return 0` -> `return 1` in the --init success branch.
+    We mock init_project to avoid the 30s network fetch.
+    """
+    with patch("latex2ufdissertation.cli.init_project", return_value=None):
+        rc = main(["--init", str(tmp_path / "newproject")])
+    assert rc == 0, f"--init success must exit 0, got {rc}"
+
+
+def test_init_converter_error_exits_exactly_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """G3b: --init on ConverterError must return exit code exactly 2.
+
+    init_project raises ConverterError when the target is non-empty.
+    Kills mutant: `return 2` -> `return 3` in the ConverterError branch.
+    """
+    non_empty = tmp_path / "existing"
+    non_empty.mkdir()
+    (non_empty / "something.tex").write_text("content", encoding="utf-8")
+
+    # init_project raises ConverterError on a non-empty target; no mock needed.
+    rc = main(["--init", str(non_empty)])
+    assert rc == 2, f"--init ConverterError must exit 2, got {rc}"
+    err = capsys.readouterr().err
+    assert "Error:" in err
+
+
+def test_corrupt_zip_exits_exactly_2_with_valid_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """G3c: resolve() UnreadableInput must return exit code EXACTLY 2 + valid JSON.
+
+    Strengthens test_corrupt_zip_cli_exits_2_with_valid_json by explicitly
+    asserting exit_code == 2 (not 3), killing mutant ID328: `return 2` -> `return 3`.
+    """
+    corrupt = tmp_path / "g3c_corrupt.zip"
+    corrupt.write_bytes(b"this is not a zip file at all")
+    rc = main(["--json", str(corrupt)])
+    assert rc == 2, f"corrupt zip must exit EXACTLY 2, not {rc} (mutant ID328: return 2->3)"
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload["summary"]["exit_reason"] == "unreadable_input"
+
+
+def test_pdf_mode_missing_toolchain_exits_exactly_3_with_valid_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """G3d: PDF-mode MissingToolchain must exit exactly 3 + valid --json payload.
+
+    Kills mutant ID318: `return 3` -> `return 4` in the pdf-mode MissingToolchain
+    branch (cli.py ~line 219).
+    Also kills _emit_json(None) mutant ID317: if _emit_json received None, it
+    would crash before printing, so json.loads would fail.
+    """
+    from latex2ufdissertation.pipeline.types import MissingToolchain
+
+    fake_pdf = tmp_path / "paper.pdf"
+    fake_pdf.write_bytes(b"%PDF-1.7\n")
+
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks.run_pdf_checks",
+        side_effect=MissingToolchain("pdfminer.six not installed"),
+    ):
+        rc = main(["--json", str(fake_pdf)])
+
+    assert rc == 3, f"PDF-mode MissingToolchain must exit EXACTLY 3, not {rc} (mutant ID318)"
+    out = capsys.readouterr().out
+    payload = json.loads(out)  # fails if _emit_json(None) was called
+    assert isinstance(payload, dict), "JSON payload must be a dict"
+    assert "summary" in payload
+    assert payload["summary"]["exit_reason"] == "missing_toolchain"
+
+
+def test_build_phase_missing_toolchain_exits_exactly_3_with_valid_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """G3e (MissingToolchain): run_pdf_checks raises MissingToolchain during
+    the build phase (after bundled PDF is found) → must exit exactly 3 + valid JSON.
+
+    Kills mutant ID348: `return 3` -> `return 4` (or similar) in lines ~295-299.
+    Kills mutant ID347: _emit_json(None) would crash before print.
+    """
+    from latex2ufdissertation.pipeline.types import MissingToolchain
+
+    # Place a bundled PDF so _find_bundled_pdf returns it; skips lualatex/compile.
+    project = tmp_path / "g3e_proj"
+    project.mkdir()
+    (project / "main.tex").write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
+    (project / "main.pdf").write_bytes(b"%PDF-1.7\n")
+
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks.run_pdf_checks",
+        side_effect=MissingToolchain("pdfminer.six not installed"),
+    ):
+        rc = main(["--json", str(project)])
+
+    assert rc == 3, f"build-phase MissingToolchain must exit EXACTLY 3, not {rc} (mutant ID348)"
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert isinstance(payload, dict)
+    assert "summary" in payload
+    assert payload["summary"]["exit_reason"] == "missing_toolchain"
+
+
+def test_build_phase_unreadable_input_exits_exactly_2_with_valid_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """G3e (UnreadableInput): run_pdf_checks raises UnreadableInput during
+    the build phase → must exit exactly 2 + valid JSON.
+
+    Kills mutant ID351: `return 2` -> `return 3` in lines ~301-305.
+    Kills mutant ID350: _emit_json(None) crash.
+    """
+    from latex2ufdissertation.pipeline.types import UnreadableInput
+
+    project = tmp_path / "g3e_proj2"
+    project.mkdir()
+    (project / "main.tex").write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
+    (project / "main.pdf").write_bytes(b"%PDF-1.7\n")
+
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks.run_pdf_checks",
+        side_effect=UnreadableInput("cannot parse PDF"),
+    ):
+        rc = main(["--json", str(project)])
+
+    assert rc == 2, f"build-phase UnreadableInput must exit EXACTLY 2, not {rc} (mutant ID351)"
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert isinstance(payload, dict)
+    assert "summary" in payload
+    assert payload["summary"]["exit_reason"] == "unreadable_input"

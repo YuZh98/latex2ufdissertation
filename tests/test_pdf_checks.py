@@ -1264,3 +1264,125 @@ def test_cli_directory_named_pdf_exits_2(
     assert rc == 2, f"Expected exit 2 for directory-as-pdf input, got {rc}"
     # Error message should mention the path or indicate unreadable input
     assert "Error" in captured.err or rc == 2
+
+
+# ---------------------------------------------------------------------------
+# Mutant killers — GROUP 2 (pdf_checks.py _check_f2 / _check_f3)
+# ---------------------------------------------------------------------------
+
+
+def test_check_f2_fires_on_second_page_when_first_has_none_body(tmp_path: Path) -> None:
+    """G2a: _check_f2 must check ALL pages, not stop at the first body-less page.
+
+    Kills mutant ID?: `continue` -> `break` on None body_font — break skips
+    all remaining pages so a non-conforming font on page 2 is never caught.
+
+    Page 1: body_font=None (image-only; must be skipped gracefully).
+    Page 2: body_font="ComicSansMS" (non-allowed; UF-F2 MUST fire here).
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, _check_f2
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    pages = [
+        PageData(page_num=1, body_font=None, body_size=None),
+        PageData(page_num=2, body_font="ComicSansMS", body_size=12.0),
+    ]
+    issues = Issues()
+    _check_f2(pages, issues)
+
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert len(f2) == 1, (
+        f"expected 1 UF-F2 finding from page 2 "
+        f"(mutant: continue->break drops page 2); got {len(f2)}"
+    )
+    assert f2[0].severity == MUST_FIX
+    assert f2[0].layer == PDF
+    assert f2[0].location == "p.2"
+    assert f2[0].observed == "ComicSansMS"
+
+
+def test_check_f3_fires_on_second_page_when_first_has_none_body(tmp_path: Path) -> None:
+    """G2b: _check_f3 must check ALL pages, not stop at the first body-less page.
+
+    Kills mutant ID162: `continue` -> `break` on None body_size — break skips
+    all remaining pages so a wrong size on page 2 is never caught.
+
+    Page 1: body_size=None (no body text; must be skipped gracefully).
+    Page 2: body_size=10.0 (deviates from 12pt by 2.0 > 0.5 tolerance; UF-F3 MUST fire).
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, _check_f3
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    pages = [
+        PageData(page_num=1, body_font=None, body_size=None),
+        PageData(page_num=2, body_font="TeXGyreTermes-Regular", body_size=10.0),
+    ]
+    issues = Issues()
+    _check_f3(pages, issues)
+
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert len(f3) == 1, (
+        f"expected 1 UF-F3 finding from page 2 (mutant ID162: continue->break drops page 2); "
+        f"got {len(f3)}"
+    )
+    assert f3[0].severity == MUST_FIX
+    assert f3[0].layer == PDF
+    assert f3[0].location == "p.2"
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    [
+        "Arial",
+        "Helvetica",
+        "NimbusSans",
+        "txsys",
+        "txexs",
+    ],
+)
+def test_check_f2_allowed_prefix_does_not_fire(prefix: str, tmp_path: Path) -> None:
+    """G2c: Each under-tested prefix in _F2_ALLOWED_PREFIXES must NOT emit UF-F2.
+
+    Kills prefix-string mutants that replace e.g. "Arial" with "XXXial":
+    if a test exercises the prefix, the mutation renders the font non-allowed
+    and fires UF-F2 unexpectedly — the assertion 'f2 == []' catches it.
+
+    Tested prefixes (under-tested by existing suite): Arial, Helvetica,
+    NimbusSans, txsys, txexs.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, _check_f2
+    from latex2ufdissertation.pipeline.types import Issues
+
+    # Font name that starts with the prefix (simulate a real font name).
+    font_name = f"{prefix}MT"
+    pages = [PageData(page_num=1, body_font=font_name, body_size=12.0)]
+    issues = Issues()
+    _check_f2(pages, issues)
+
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert f2 == [], (
+        f"prefix {prefix!r} (font={font_name!r}) must NOT fire UF-F2; got {len(f2)} findings. "
+        "Likely a prefix-string mutant is active."
+    )
+
+
+def test_check_f2_disallowed_font_fires(tmp_path: Path) -> None:
+    """G2c companion: a clearly non-allowed font (ComicSansMS) MUST fire UF-F2.
+
+    This paired assertion ensures the parametrized allowed-prefix test above
+    is not vacuously satisfied by a broken _check_f2 that never emits.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, _check_f2
+    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF
+    from latex2ufdissertation.pipeline.types import Issues
+
+    pages = [PageData(page_num=1, body_font="ComicSansMS", body_size=12.0)]
+    issues = Issues()
+    _check_f2(pages, issues)
+
+    f2 = [f for f in issues.findings if f.rule_id == "UF-F2"]
+    assert len(f2) == 1, f"ComicSansMS must fire UF-F2; got {len(f2)}"
+    assert f2[0].severity == MUST_FIX
+    assert f2[0].layer == PDF
