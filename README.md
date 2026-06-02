@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 
-A safety-net validator for UF doctoral dissertations using the Fall 2025+ University of Florida LaTeX template. Given a project archive, project directory, git URL, or compiled PDF, it produces a severity-tiered report citing the originating UF rule for each finding — one more pair of eyes before clicking submit.
+A safety-net validator for UF doctoral dissertations using the Fall 2025+ University of Florida LaTeX template. Given a project archive, project directory, `.tex` master file, git URL, or compiled PDF, it produces a severity-tiered report citing the originating UF rule for each finding — one more pair of eyes before clicking submit.
 
 > **The validator is advisory.** It is not a substitute for review by the UF Graduate Editorial Office. A clean report means none of the documented mechanical formatting rules in [`docs/uf-rules.md`](./docs/uf-rules.md) were violated; it does not guarantee UF will accept the dissertation. The student remains responsible.
 
@@ -44,6 +44,7 @@ The default command validates the project and compiles to PDF with LuaLaTeX. If 
 | Project directory | yes | yes (after compile or on bundled PDF) | yes (unless `--dry-run`) |
 | `*.zip` archive | yes | yes (after compile or on bundled PDF) | yes (unless `--dry-run`) |
 | Git URL (https or ssh) | yes | yes (after compile) | yes (unless `--dry-run`) |
+| `*.tex` master file | yes (treats parent dir as root) | yes (after compile or on bundled PDF) | yes (unless `--dry-run`) |
 | `*.pdf` (compiled PDF) | skipped | yes | no |
 
 PDF-layer checks currently implemented: F2 (font family), F3 (font size), S1 (PDF present/readable), S5 (hyperlink annotations). Additional PDF backups (F1, F4, F6, F12) are deferred to later releases.
@@ -97,7 +98,7 @@ Every finding carries a `UF-*` rule ID and a link back to the rule's catalog ent
 
 ## Scope
 
-**Current (v0.3.x, pre-1.0).** Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+). Source-layer and PDF-layer validation. Four input modes: zip, directory, git URL, compiled PDF. CLI as the engine. LuaLaTeX compile driver.
+**Current (v0.3.x, pre-1.0).** Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+). Source-layer and PDF-layer validation. Five input modes: zip, directory, `.tex` master file, git URL, compiled PDF. CLI as the engine. LuaLaTeX compile driver.
 
 **Planned for v1.0.** ETD-upload walkthrough (`--guide`). Template-version detection and old-template refusal. Full PDF-layer coverage (F1, F4, F6, F12 backups). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full v1.0 specification and gate status.
 

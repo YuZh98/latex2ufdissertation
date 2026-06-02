@@ -1,7 +1,27 @@
 import pytest
 
-from latex2ufdissertation.pipeline.main_tex import detect_main_tex
+from latex2ufdissertation.pipeline.main_tex import detect_main_tex, first_documentclass
 from latex2ufdissertation.pipeline.types import ConverterError
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        (r"\documentclass{ufdissertation}", "ufdissertation"),
+        (r"\documentclass[oneside,12pt]{ufdissertation}", "ufdissertation"),
+        (r"\documentclass[oneside]{ufdissertation}", "ufdissertation"),
+        (r"\documentclass{ ufdissertation }", "ufdissertation"),  # inner whitespace
+        ("  \\documentclass{ufdissertation}", "ufdissertation"),  # leading indent
+        (r"\documentclass{article}", "article"),
+        ("% \\documentclass{ufdissertation}\n\\section{x}", None),  # commented out
+        ("\\section{intro}\nsome ufdissertation prose", None),  # no documentclass
+        ("foo\n\\documentclass{ufdissertation}", "ufdissertation"),  # not first line
+    ],
+)
+def test_first_documentclass(text, expected):
+    # Single source of truth shared by master auto-detection (_score) and the
+    # bare-.tex input gate in cli.main — they must never drift on class detection.
+    assert first_documentclass(text) == expected
 
 
 def _write(d, name, content):

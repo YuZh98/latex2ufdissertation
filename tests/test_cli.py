@@ -760,3 +760,224 @@ def test_build_phase_unreadable_input_exits_exactly_2_with_valid_json(
     assert isinstance(payload, dict)
     assert "summary" in payload
     assert payload["summary"]["exit_reason"] == "unreadable_input"
+
+
+# ---------------------------------------------------------------------------
+# FIX #5: --help input string mentions .tex and .pdf
+# ---------------------------------------------------------------------------
+
+
+def test_help_input_arg_mentions_tex_and_pdf() -> None:
+    """FIX #5: parser help for the positional 'input' arg must list .tex and .pdf."""
+    parser = _build_parser()
+    # Find the 'input' action and check its help string.
+    for action in parser._actions:
+        if action.dest == "input":
+            assert ".tex" in (action.help or ""), (
+                f"help for 'input' must mention '.tex'; got: {action.help!r}"
+            )
+            assert ".pdf" in (action.help or ""), (
+                f"help for 'input' must mention '.pdf'; got: {action.help!r}"
+            )
+            return
+    pytest.fail("'input' positional argument not found in parser")
+
+
+# ---------------------------------------------------------------------------
+# FIX #3: bundled-PDF message shows resolved path + stale-source caveat
+# ---------------------------------------------------------------------------
+
+
+def test_bundled_pdf_message_shows_resolved_path_and_caveat(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """FIX #3: when a bundled PDF is found, stderr must include its resolved path
+    and the stale-source caveat substring 'may not reflect'/'force recompile'.
+    """
+    project = tmp_path / "proj"
+    project.mkdir()
+    (project / "main.tex").write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
+    pdf = project / "main.pdf"
+    pdf.write_bytes(b"%PDF-1.7\n")
+
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks.run_pdf_checks",
+        return_value=None,
+    ):
+        rc = main(["--dry-run", str(project)])
+
+    # --dry-run skips the bundled-PDF path; re-run without --dry-run.
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks.run_pdf_checks",
+        return_value=None,
+    ):
+        rc = main([str(project)])
+
+    err = capsys.readouterr().err
+    resolved = str(pdf.resolve())
+    assert resolved in err, f"stderr should contain the resolved PDF path {resolved!r}; got:\n{err}"
+    assert "may not reflect" in err or "force recompile" in err, (
+        f"stderr should contain the stale-source caveat; got:\n{err}"
+    )
+    assert rc in (0, 1, 2)
+
+
+# ---------------------------------------------------------------------------
+# FIX #11: --dry-run + .pdf input → warning emitted, PDF checks still run
+# ---------------------------------------------------------------------------
+
+
+def test_dry_run_with_pdf_input_warns_and_continues(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """FIX #11: --dry-run with a .pdf input must emit the no-effect warning
+    on stderr AND still run PDF checks (exit 2 when PDF is garbage).
+    """
+    garbage_pdf = tmp_path / "paper.pdf"
+    garbage_pdf.write_bytes(b"%PDF-1.7\n")  # minimal PDF header, no /Root → fails parse
+
+    rc = main(["--dry-run", str(garbage_pdf)])
+    err = capsys.readouterr().err
+
+    assert "Warning" in err and "--dry-run" in err and ".pdf input" in err, (
+        f"warning line not found in stderr; got:\n{err}"
+    )
+    # PDF checks still ran (garbage PDF → exit 2, unreadable_input).
+    assert rc == 2
+
+
+def test_dry_run_with_pdf_json_warning_present(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """FIX #11: --json --dry-run with .pdf input emits warning on stderr
+    and still a valid JSON payload on stdout.
+    """
+    garbage_pdf = tmp_path / "paper2.pdf"
+    garbage_pdf.write_bytes(b"%PDF-1.7\n")
+
+    rc = main(["--dry-run", "--json", str(garbage_pdf)])
+    captured = capsys.readouterr()
+    err = captured.err
+
+    assert "Warning" in err, f"warning not in stderr; got:\n{err}"
+    # JSON payload must still be valid.
+    payload = json.loads(captured.out)
+    assert "summary" in payload
+    assert rc == 2
+
+
+# ---------------------------------------------------------------------------
+# FIX #1: accept a .tex file as input
+# ---------------------------------------------------------------------------
+
+_MASTER_TEX = r"\documentclass{ufdissertation}" + "\n\\begin{document}\n\\end{document}\n"
+_CHAPTER_TEX = r"\section{Introduction}" + "\nSome text.\n"
+
+
+def test_tex_master_input_validates_and_detects_mode_dir(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """FIX #1a: passing a valid UF dissertation master .tex directly must
+    validate (rc in 0/1), set detected_mode='dir' in JSON, and show the .tex
+    filename in the 'validating' stderr line.
+    """
+    tex = tmp_path / "main.tex"
+    tex.write_text(_MASTER_TEX, encoding="utf-8")
+
+    rc = main(["--json", "--dry-run", str(tex)])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert rc in (0, 1), f"expected exit 0 or 1 for valid master .tex, got {rc}"
+    assert payload["detected_mode"] == "dir", (
+        f"expected detected_mode='dir' for .tex input, got {payload['detected_mode']!r}"
+    )
+    assert "validating" in captured.err and "main.tex" in captured.err, (
+        f"expected 'validating main.tex' in stderr; got:\n{captured.err}"
+    )
+
+
+def test_tex_master_with_documentclass_options_is_accepted(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """FIX #1: a master whose \\documentclass carries an [options] bracket
+    (e.g. \\documentclass[oneside]{ufdissertation}) must be accepted, not
+    rejected as 'not a UF dissertation master'. Pins the canonical-regex
+    detection against a literal-substring regression.
+    """
+    tex = tmp_path / "main.tex"
+    tex.write_text(
+        _MASTER_TEX.replace(
+            r"\documentclass{ufdissertation}",
+            r"\documentclass[oneside,12pt]{ufdissertation}",
+        ),
+        encoding="utf-8",
+    )
+
+    rc = main(["--json", "--dry-run", str(tex)])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert rc in (0, 1), f"options-bracket master must be accepted, got rc={rc}"
+    assert payload["detected_mode"] == "dir"
+
+
+def test_tex_chapter_input_exits_2_with_message(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """FIX #1b: a .tex file without \\documentclass{ufdissertation} must exit 2
+    with the 'not a UF dissertation master' targeted message.
+    """
+    tex = tmp_path / "chapter1.tex"
+    tex.write_text(_CHAPTER_TEX, encoding="utf-8")
+
+    rc = main([str(tex)])
+    err = capsys.readouterr().err
+
+    assert rc == 2
+    assert "not a UF dissertation master" in err, (
+        f"expected targeted error message in stderr; got:\n{err}"
+    )
+    assert r"\documentclass{ufdissertation}" in err or "documentclass" in err
+
+
+def test_tex_chapter_input_json_exit_reason(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """FIX #1b (--json): chapter .tex must emit valid JSON with exit_reason=unreadable_input."""
+    tex = tmp_path / "chapter2.tex"
+    tex.write_text(_CHAPTER_TEX, encoding="utf-8")
+
+    rc = main(["--json", str(tex)])
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+
+    assert rc == 2
+    assert payload["summary"]["exit_reason"] == "unreadable_input"
+
+
+def test_tex_input_json_detects_dir_mode(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """FIX #1c: master .tex input with --json must report detected_mode='dir'."""
+    tex = tmp_path / "dissertation.tex"
+    tex.write_text(_MASTER_TEX, encoding="utf-8")
+
+    rc = main(["--json", "--dry-run", str(tex)])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["detected_mode"] == "dir"
+    assert rc in (0, 1)
+
+
+def test_nonexistent_tex_falls_through_to_resolve_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """FIX #1: a non-existent .tex path must NOT be intercepted by the .tex branch
+    (p.is_file() is False); it falls through to resolve() → UnreadableInput → exit 2.
+    """
+    fake = tmp_path / "ghost.tex"
+    # Do NOT create the file.
+    rc = main([str(fake)])
+    err = capsys.readouterr().err
+    assert rc == 2
+    assert "Error:" in err
