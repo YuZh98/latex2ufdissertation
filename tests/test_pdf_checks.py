@@ -836,6 +836,39 @@ def test_check_f3_global_override_is_must_fix(tmp_path: Path) -> None:
     assert issues.must_fix_count() == 3
 
 
+def test_check_f3_global_undersize_is_must_fix(tmp_path: Path) -> None:
+    """A document whose body text is shrunk document-wide (every page at 10pt)
+    is a global override = certain rejection: every page emits must-fix, never
+    review. Pins the lower end of the deviation spectrum.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import MUST_FIX
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    mock_pages = [
+        PageData(page_num=n, body_font="TeXGyreTermesX-Regular", body_size=10.0)
+        for n in range(1, 6)
+    ]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert len(f3) == 5, f"expected 5 must-fix findings, got {len(f3)}"
+    for finding in f3:
+        assert finding.severity == MUST_FIX
+    assert issues.must_fix_count() == 5
+
+
 def test_check_f3_tie_breaks_toward_12pt_review(tmp_path: Path) -> None:
     """When 12pt and a smaller size tie for the document-wide mode, the
     smaller size is treated as the uncertain case: doc-wide size resolves to
