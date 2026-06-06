@@ -11,6 +11,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - Accept a bare `.tex` master file as input: `latex2ufdissertation path/to/main.tex` is now valid when the file contains `\documentclass{ufdissertation}`; the parent directory is used as the project root and the file is forced as the master (#80)
 
 ### Changed
+- `UF-F3` (PDF layer) severity is now calibrated so `must-fix` means certain rejection: a deviating page is `must-fix` only when the document-wide modal body size is itself off 12pt (a global override) or the page's body text is larger than 12pt (never a float); an undersized page on an otherwise-12pt document (a `\footnotesize` table or `\small` figure sub-caption) is demoted to `review`. Previously every per-page deviation was `must-fix`, false-failing real submissions the Graduate School accepts (#82)
 - Bundled-PDF progress message now shows the fully-resolved path (not just the filename) and a stale-source caveat: "may not reflect source edits since it was last compiled; delete it to force recompile" (#80)
 - UF-A2 accessibility advisory is now suppressed on source-only (`--dry-run`) runs; it appears only when the PDF layer ran, avoiding a misleading note when no PDF was checked (#80)
 - Human report now includes a severity guide ("must-fix = will cause UF Graduate School rejection; review = discretionary") and a scope disclaimer after the Summary line on every run; a "PDF layer did not run" note is appended on `--dry-run` or source-only runs (#80)

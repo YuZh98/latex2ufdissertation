@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from latex2ufdissertation.pipeline.rules import PDF
+from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF, REVIEW
 from latex2ufdissertation.pipeline.types import Issues, MissingToolchain, UnreadableInput
 
 # Random 6-uppercase-letter subset prefix added by the PDF engine per compile;
@@ -199,35 +199,77 @@ def _check_f2(pages: list[PageData], issues: Issues) -> None:
             )
 
 
+def _document_body_size(pages: list[PageData]) -> float | None:
+    """Return the document-wide modal body size across *pages*.
+
+    Counts each page's body_size (ignoring None pages) and returns the most
+    common value. Ties resolve toward the compliant 12pt side, then toward the
+    smaller size, so an ambiguous document is treated as conforming and its
+    deviating pages route to review rather than must-fix. Returns None when no
+    page has a body size (an all-image / empty document).
+    """
+    from collections import Counter
+
+    counter: Counter[float] = Counter(p.body_size for p in pages if p.body_size is not None)
+    if not counter:
+        return None
+    # Most common first; tie-break toward 12pt (compliant), then smaller size.
+    return min(
+        counter,
+        key=lambda size: (-counter[size], abs(size - _F3_REQUIRED_BODY_PT), size),
+    )
+
+
 def _check_f3(pages: list[PageData], issues: Issues) -> None:
     r"""UF-F3: body-mode size must be 12pt throughout (PDF layer).
 
-    For each page whose body_size is not None: if the size deviates from
-    _F3_REQUIRED_BODY_PT by more than _F3_SIZE_TOLERANCE_PT, emit a must-fix
-    finding with layer=PDF. The registry severity for UF-F3 is must-fix so
-    no per-call severity override is needed; pass layer=PDF to mark this as
-    the PDF-authoritative half.
+    Severity is calibrated so that must-fix means *certain* rejection and any
+    uncertain case is a gentler review (3+4 hybrid):
 
-    The source-layer half (checks.py UF-F3 emit sites) emits at severity
-    REVIEW so that localized legal sizing (a one-off ``\fontsize`` on a
-    title/caption) does not produce a false must-fix in the absence of a
+    * If the **document-wide** modal body size deviates from 12pt, the
+      template's 12-point default was overridden globally — a certain
+      rejection — so every deviating page emits **must-fix**.
+    * If a page's modal body text is *larger* than 12pt, it cannot be a
+      tolerated float (sub-captions and tables only ever shrink text), so an
+      oversized page is a certain override and emits **must-fix** regardless of
+      the document-wide size.
+    * If the document-wide modal size *is* 12pt but an individual page renders
+      *smaller*, that page is almost always a float (a ``\footnotesize`` table
+      or a ``\small`` figure sub-caption), which UF tolerates in practice. The
+      per-page modal glyph size cannot distinguish such float text from running
+      body text, so the deviation is uncertain and emits **review**.
+
+    The source-layer half (checks.py UF-F3 emit sites) likewise emits REVIEW so
+    that localized legal sizing does not produce a false must-fix without a
     compiled PDF.
     """
+    doc_size = _document_body_size(pages)
+    if doc_size is None:
+        return
+    doc_deviates = abs(doc_size - _F3_REQUIRED_BODY_PT) > _F3_SIZE_TOLERANCE_PT
     for page in pages:
         if page.body_size is None:
             continue
-        if abs(page.body_size - _F3_REQUIRED_BODY_PT) > _F3_SIZE_TOLERANCE_PT:
-            issues.add(
-                "UF-F3",
-                layer=PDF,
-                location=f"p.{page.page_num}",
-                observed=f"{page.body_size}pt body text",
-                required="12-point body text",
-                fix_hint=(
-                    "Rendered body text is not 12 pt; "
-                    "check for a \\fontsize{...}{...}\\selectfont override affecting the body."
-                ),
-            )
+        if abs(page.body_size - _F3_REQUIRED_BODY_PT) <= _F3_SIZE_TOLERANCE_PT:
+            continue
+        # Certain rejection: a global override (doc-wide size off 12pt) or an
+        # oversized page (text larger than 12pt is never a caption/table float).
+        # An undersized page on an otherwise-12pt document is an uncertain
+        # float artifact and is demoted to review.
+        oversized = page.body_size - _F3_REQUIRED_BODY_PT > _F3_SIZE_TOLERANCE_PT
+        severity = MUST_FIX if (doc_deviates or oversized) else REVIEW
+        issues.add(
+            "UF-F3",
+            layer=PDF,
+            severity=severity,
+            location=f"p.{page.page_num}",
+            observed=f"{page.body_size}pt body text",
+            required="12-point body text",
+            fix_hint=(
+                "Rendered body text is not 12 pt; "
+                "check for a \\fontsize{...}{...}\\selectfont override affecting the body."
+            ),
+        )
 
 
 def _check_s1(pages: list[PageData], issues: Issues) -> None:

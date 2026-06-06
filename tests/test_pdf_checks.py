@@ -752,6 +752,187 @@ def test_check_f3_violation_fixture_fires_must_fix() -> None:
 
 
 # ---------------------------------------------------------------------------
+# F3 severity calibration (3+4 hybrid): a deviation is must-fix ONLY when the
+# document-wide body size is itself non-12pt (a global override = certain
+# rejection). A localized deviation on an otherwise-12pt document (a
+# \footnotesize table or \small figure sub-caption) is uncertain and routes
+# to review, not must-fix.
+# ---------------------------------------------------------------------------
+
+
+def test_check_f3_localized_deviation_is_review(tmp_path: Path) -> None:
+    """When the document-wide body size is 12pt but a few float pages render
+    smaller (e.g. a \\footnotesize table at 10pt, a \\small sub-caption at
+    10.9pt), UF-F3 must emit REVIEW on those pages and zero must-fix.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import REVIEW
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    # Majority of pages are genuine 12pt body text; two float pages deviate.
+    mock_pages = [
+        PageData(page_num=1, body_font="TeXGyreTermesX-Regular", body_size=12.0),
+        PageData(page_num=2, body_font="TeXGyreTermesX-Regular", body_size=12.0),
+        PageData(page_num=3, body_font="TeXGyreTermesX-Regular", body_size=12.0),
+        PageData(page_num=4, body_font="TeXGyreTermesX-Regular", body_size=10.9),
+        PageData(page_num=5, body_font="TeXGyreTermesX-Regular", body_size=10.0),
+    ]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert len(f3) == 2, f"expected 2 UF-F3 findings (p.4, p.5), got {len(f3)}"
+    assert {f.location for f in f3} == {"p.4", "p.5"}
+    for finding in f3:
+        assert finding.severity == REVIEW, (
+            f"localized deviation must be review, got {finding.severity} at {finding.location}"
+        )
+    assert issues.must_fix_count() == 0, "no must-fix expected on an otherwise-12pt document"
+
+
+def test_check_f3_global_override_is_must_fix(tmp_path: Path) -> None:
+    """When the document-wide body size is itself non-12pt (a global
+    \\fontsize override), every deviating page must emit must-fix.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import MUST_FIX
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    # Body text shrunk document-wide to 11pt; one 12pt outlier page.
+    mock_pages = [
+        PageData(page_num=1, body_font="TeXGyreTermesX-Regular", body_size=11.0),
+        PageData(page_num=2, body_font="TeXGyreTermesX-Regular", body_size=11.0),
+        PageData(page_num=3, body_font="TeXGyreTermesX-Regular", body_size=11.0),
+        PageData(page_num=4, body_font="TeXGyreTermesX-Regular", body_size=12.0),
+    ]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert len(f3) == 3, f"expected 3 must-fix UF-F3 findings, got {len(f3)}"
+    assert {f.location for f in f3} == {"p.1", "p.2", "p.3"}
+    for finding in f3:
+        assert finding.severity == MUST_FIX
+    assert issues.must_fix_count() == 3
+
+
+def test_check_f3_tie_breaks_toward_12pt_review(tmp_path: Path) -> None:
+    """When 12pt and a smaller size tie for the document-wide mode, the
+    smaller size is treated as the uncertain case: doc-wide size resolves to
+    12pt and the deviating pages route to review, never must-fix.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import REVIEW
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    # Equal counts of 12.0 and 10.0 — a tie that must resolve toward 12pt.
+    mock_pages = [
+        PageData(page_num=1, body_font="TeXGyreTermesX-Regular", body_size=12.0),
+        PageData(page_num=2, body_font="TeXGyreTermesX-Regular", body_size=10.0),
+    ]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert len(f3) == 1 and f3[0].location == "p.2"
+    assert f3[0].severity == REVIEW
+    assert issues.must_fix_count() == 0
+
+
+def test_check_f3_oversized_page_is_must_fix_even_if_doc_is_12pt(tmp_path: Path) -> None:
+    """A page whose body text is LARGER than 12pt is a certain override (no
+    float makes text bigger), so it emits must-fix even when the document-wide
+    modal size is 12pt. Mirrors the \\fontsize{20} violation fixture at unit
+    speed.
+    """
+    from unittest.mock import patch
+
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, run_pdf_checks
+    from latex2ufdissertation.pipeline.rules import MUST_FIX
+    from latex2ufdissertation.pipeline.types import Issues
+
+    dummy_pdf = tmp_path / "test.pdf"
+    dummy_pdf.write_bytes(b"")
+
+    # Majority 12pt; a few pages render body text at ~20pt (a real override).
+    mock_pages = [
+        PageData(page_num=1, body_font="TeXGyreTermesX-Regular", body_size=12.0),
+        PageData(page_num=2, body_font="TeXGyreTermesX-Regular", body_size=12.0),
+        PageData(page_num=3, body_font="TeXGyreTermesX-Regular", body_size=12.0),
+        PageData(page_num=4, body_font="TeXGyreTermesX-Regular", body_size=19.9),
+        PageData(page_num=5, body_font="TeXGyreTermesX-Regular", body_size=19.9),
+    ]
+
+    issues = Issues()
+    with patch(
+        "latex2ufdissertation.pipeline.pdf_checks._extract_pages",
+        return_value=mock_pages,
+    ):
+        run_pdf_checks(dummy_pdf, issues)
+
+    f3 = [f for f in issues.findings if f.rule_id == "UF-F3"]
+    assert {f.location for f in f3} == {"p.4", "p.5"}
+    for finding in f3:
+        assert finding.severity == MUST_FIX, "oversized body text must be must-fix"
+
+
+def test_document_body_size_helper() -> None:
+    """_document_body_size returns the glyph-page modal body size, ignoring
+    None pages, with ties resolving toward 12pt; None on an empty document.
+    """
+    from latex2ufdissertation.pipeline.pdf_checks import PageData, _document_body_size
+
+    assert _document_body_size([]) is None
+    assert _document_body_size([PageData(1, None, None)]) is None
+    # Clear majority at 12.0.
+    assert (
+        _document_body_size(
+            [PageData(1, "F", 12.0), PageData(2, "F", 12.0), PageData(3, "F", 10.0)]
+        )
+        == 12.0
+    )
+    # Global shrink: 11.0 dominates.
+    assert (
+        _document_body_size(
+            [PageData(1, "F", 11.0), PageData(2, "F", 11.0), PageData(3, "F", 12.0)]
+        )
+        == 11.0
+    )
+    # Tie between 12.0 and 10.0 resolves toward 12.0 (compliant side).
+    assert _document_body_size([PageData(1, "F", 12.0), PageData(2, "F", 10.0)]) == 12.0
+
+
+# ---------------------------------------------------------------------------
 # S5 PDF-layer check (UF-S5, hyperlink annotations / outline present)
 # ---------------------------------------------------------------------------
 
