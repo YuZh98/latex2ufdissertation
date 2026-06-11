@@ -6,22 +6,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-11
+
+`.tex` direct input mode; UF-S2 rejection-driver detector; consolidated per-page findings; report framing with severity guide and scope disclaimer. Test suite hardened with security regression pinning and mutation-derived killers.
+
 ### Added
-- `UF-S2` now emits: an absent required rejection-driver section (Acknowledgements/Abstract/References/Biographical) raises a `must-fix` finding alongside `UF-F8`, framing the omission as a top UF rejection driver. Previously `UF-S2` was a catalog entry with no detector (#79)
-- Accept a bare `.tex` master file as input: `latex2ufdissertation path/to/main.tex` is now valid when the file contains `\documentclass{ufdissertation}`; the parent directory is used as the project root and the file is forced as the master (#80)
+- `UF-S2` detector: absent required rejection-driver section (Acknowledgements/Abstract/References/Biographical) raises `must-fix` alongside `UF-F8` (#79)
+- `.tex` input mode: `latex2ufdissertation main.tex` treats the parent directory as project root when the file contains `\documentclass{ufdissertation}`; the named file is forced as the master (no auto-detect) (#80)
+- Report framing: severity guide ("must-fix = rejection; review = discretionary") and scope disclaimer appended after the Summary line on every run (#80)
+- "PDF layer did not run" note: appended on `--dry-run` or source-only runs (#80)
+- Security/crash regression suite: corrupt-zip/bad-PDF exit codes, `--json`-always-parseable property, `\set*File` path-traversal, flag-injection filenames, LuaLaTeX env hardening, byte-identical `--json` determinism (#79)
+- Mutation-killer tests: 25 surviving-mutant gaps closed across `resolve.py`, `pdf_checks.py`, and `cli.py` (#79)
 
 ### Changed
-- Bundled-PDF progress message now shows the fully-resolved path (not just the filename) and a stale-source caveat: "may not reflect source edits since it was last compiled; delete it to force recompile" (#80)
-- UF-A2 accessibility advisory is now suppressed on source-only (`--dry-run`) runs; it appears only when the PDF layer ran, avoiding a misleading note when no PDF was checked (#80)
-- Human report now includes a severity guide ("must-fix = will cause UF Graduate School rejection; review = discretionary") and a scope disclaimer after the Summary line on every run; a "PDF layer did not run" note is appended on `--dry-run` or source-only runs (#80)
-- UF-F2/UF-F3 per-page findings are consolidated into a single page-range line in the human report (e.g. `pp.3-12,14 (10 pages)`); JSON output is not affected (#80)
-- `--dry-run` with a `.pdf` input now emits a warning that the flag has no effect (no source layer to skip) and continues to run PDF checks (#80)
-- `--help` input description updated to list `.tex` and `.pdf` alongside `.zip`, directory, and git URL (#80)
-- Under `--json` the live per-finding diagnostic stream on stderr is suppressed (the consolidated report still prints), so a multi-page UF-F2/UF-F3 violation no longer emits a line per page that the report already shows once (#81)
-
-### Tests
-- Pinned security and crash-safety contracts as regression tests: corrupt-zip/bad-PDF exit codes, the `--json`-always-parseable property across every error path, `\set*File` path-traversal (absolute and `..`), flag-injection filenames, LuaLaTeX env hardening, and byte-identical `--json` determinism (#79)
-- Added mutation-testing-derived killer tests closing 25 surviving-mutant gaps in `resolve.py` (git-URL allowlist edge cases, zip-slip skip-not-break, `git clone` non-zero exit, temp-dir cleanup), `pdf_checks.py` (per-page check loops, allowed-font prefixes), and `cli.py` (exact exit codes and `--json` emission on all error branches) (#79)
+- Bundled-PDF message: shows the fully-resolved path and a stale-source caveat (#80)
+- UF-A2 advisory: suppressed on `--dry-run` runs; appears only when the PDF layer ran (#80)
+- UF-F2/UF-F3 human report: per-page findings consolidated into a single page-range line (e.g. `pp.3-12,14 (10 pages)`); JSON output unaffected (#80)
+- `--dry-run` + `.pdf` input: emits a warning that the flag has no effect, then runs PDF checks (#80)
+- `--help` input description: lists `.tex` and `.pdf` alongside `.zip`, directory, and git URL (#80)
+- `--json` stderr: per-finding diagnostic stream suppressed; consolidated report still prints (#81)
 
 ## [0.3.2] - 2026-06-01
 
@@ -140,6 +143,10 @@ Initial release. One command validates and compiles UF dissertation / thesis pro
 - `--init` flag: scaffolds project from UF IT site; falls back to bundled template on network failure
 - Input modes: `.zip` archive, project directory, git URL
 
-[Unreleased]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.3.2...v0.4.0
+[0.3.2]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/YuZh98/latex2ufdissertation/releases/tag/v0.1.0
