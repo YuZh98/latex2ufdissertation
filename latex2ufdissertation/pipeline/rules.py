@@ -230,6 +230,18 @@ RULES: dict[str, Rule] = {
         "Subsection pairing",
         _anchor("UF-F16", "subsection-pairing"),
     ),
+    "UF-F17": Rule(
+        "UF-F17",
+        REVIEW,
+        SOURCE,
+        "Subheading title case (1st/2nd level)",
+        _anchor("UF-F17", "subheading-title-case-1st2nd-level"),
+        fix_hint=(
+            "Use title case for `\\section` / `\\subsection` headings: capitalize "
+            "principal words, lowercase articles / conjunctions / short prepositions "
+            "and `to` / `as` (unless first or last word)."
+        ),
+    ),
     # Submission + structural (S)
     "UF-S1": Rule(
         "UF-S1", MUST_FIX, PDF, "PDF output present", _anchor("UF-S1", "pdf-output-present")

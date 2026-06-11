@@ -1,0 +1,17 @@
+
+[source layer]
+  (F-series)
+    [review] UF-F17 appx.tex — \section title not in title case: "checklist before you submit" (required: Capitalize for title case: "checklist", "before", "you", "submit")
+      fix: Use title case for `\section` / `\subsection` headings: capitalize principal words, lowercase articles / conjunctions / short prepositions and `to` / `as` (unless first or last word).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f17--subheading-title-case-1st2nd-level
+    [review] UF-F17 main.tex — \section title not in title case: "introduction to causal inference" (required: Capitalize for title case: "introduction", "causal", "inference")
+      fix: Use title case for `\section` / `\subsection` headings: capitalize principal words, lowercase articles / conjunctions / short prepositions and `to` / `as` (unless first or last word).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f17--subheading-title-case-1st2nd-level
+    [review] UF-F17 main.tex — \subsection title not in title case: "from theory to practice" (required: Capitalize for title case: "from", "theory", "practice")
+      fix: Use title case for `\section` / `\subsection` headings: capitalize principal words, lowercase articles / conjunctions / short prepositions and `to` / `as` (unless first or last word).
+      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f17--subheading-title-case-1st2nd-level
+
+Summary: 0 must-fix, 3 review.
+Severity guide: must-fix = will cause UF Graduate School rejection; review = discretionary, verify manually.
+Scope: clean means no violations of the rules this tool checks (targeting the Fall-2025+ UF ufdissertation template). It does NOT guarantee Graduate School acceptance — the editorial office checks requirements beyond this tool's scope.
+PDF layer did not run (--dry-run or source-only mode). UF-F2, UF-F3, and other PDF-authoritative rules were not verified. Re-run without --dry-run for full coverage.

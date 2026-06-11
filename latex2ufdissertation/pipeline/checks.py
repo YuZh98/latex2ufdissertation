@@ -9,6 +9,7 @@ registry's job.
 from __future__ import annotations
 
 import re
+import string
 from pathlib import Path
 
 from latex2ufdissertation.pipeline.rules import REVIEW, SOURCE
@@ -153,7 +154,8 @@ def _collect_include_texts(nc: str, base: Path, root: Path, master: Path) -> lis
     The master's own text is NOT included here — callers scan the master via
     `nc` directly so its location stays the display-relative master name.
     \\set*File companion targets are intentionally excluded (they are content
-    files, not override-scan territory).
+    files, not override-scan territory); content rules that need them scan
+    `_setfile_companion_texts` in addition.
     """
     results: list[tuple[str, str]] = []
     visited: set[Path] = {master.resolve()}
@@ -181,6 +183,36 @@ def _collect_include_texts(nc: str, base: Path, root: Path, master: Path) -> lis
     return results
 
 
+def _setfile_companion_texts(nc: str, base: Path, root: Path) -> list[tuple[str, str]]:
+    """Resolve the `.tex` \\set*File companion targets named in *nc*, returning
+    (location, cleaned_text) pairs shaped like `_collect_include_texts`.
+
+    The cls auto-\\inputs these files, so content rules that inspect what the
+    document renders (UF-F17 headings — appendices in particular carry real
+    \\section headings) must scan them. The `.bib` reference companion is not
+    a TeX content file and is skipped.
+    """
+    results: list[tuple[str, str]] = []
+    for macro, suffixes, _label, _required in _SETFILE_RULES:
+        if ".tex" not in suffixes:
+            continue
+        arg = _setfile_arg(nc, macro)
+        if not arg:
+            continue
+        for raw_arg in (arg, f"{arg}.tex"):
+            candidate = _resolve_within(base, root, raw_arg)
+            if candidate is None or not (candidate.exists() and candidate.is_file()):
+                continue
+            loc = (
+                str(candidate.relative_to(root))
+                if candidate.is_relative_to(root)
+                else candidate.name
+            )
+            results.append((loc, _clean(candidate.read_text(encoding="utf-8", errors="replace"))))
+            break
+    return results
+
+
 def _has_command(nc: str, cmd: str) -> bool:
     # Allow LaTeX's optional bracketed argument between the command name and
     # the required braces (e.g. `\chair[Co-chair]{Chair}` per the UF
@@ -196,6 +228,138 @@ def _setfile_arg(nc: str, cmd: str) -> str | None:
     pat = re.escape(cmd) + r"\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}"
     m = re.search(pat, nc)
     return m.group(1) if m else None
+
+
+# Catalog § UF-F17: minor words left lowercase in title case unless they fall
+# in the first/last position. Articles + coordinating conjunctions + the short
+# prepositions UF's title-case convention lowercases, plus `to` / `as`.
+_F17_MINOR_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "and",
+        "but",
+        "or",
+        "nor",
+        "for",
+        "so",
+        "yet",
+        "as",
+        "at",
+        "by",
+        "down",
+        "from",
+        "in",
+        "into",
+        "like",
+        "near",
+        "of",
+        "off",
+        "on",
+        "onto",
+        "over",
+        "past",
+        "per",
+        "than",
+        "to",
+        "up",
+        "upon",
+        "via",
+        "with",
+    }
+)
+# \section / \subsection (the two title-case tiers) up to the opening brace of
+# the title argument. The (?![a-zA-Z]) boundary keeps \sectionmark and the
+# 3rd-level \subsubsection (sentence case — out of scope) from matching; the
+# braced title is extracted by balanced-brace scan so nested macros survive.
+_F17_HEAD_RE = re.compile(r"\\(section|subsection)(?![a-zA-Z])\*?\s*(?:\[[^\]]*\])?\s*\{")
+
+# Inline math in a heading: $..$, $$..$$, \(..\). The (?<!\\) guards keep a
+# literal `\$` (currency) from being read as a math delimiter and silently
+# deleting the words between two of them.
+_F17_MATH_RE = re.compile(
+    r"(?<!\\)\$\$.*?(?<!\\)\$\$|(?<!\\)\$[^$]*(?<!\\)\$|\\\(.*?\\\)",
+    flags=re.DOTALL,
+)
+# Strip `\cmd*[opt]` control sequences keeping their brace-arg content
+# (`\textbf{word}` -> `word`). Single shared pattern for the UF-F15 abstract
+# word count and the UF-F17 title tokenizer so the two cannot drift.
+_LATEX_CMD_RE = re.compile(r"\\[a-zA-Z]+\*?(?:\[[^\]]*\])?")
+
+
+def _balanced_brace(text: str, open_idx: int) -> str | None:
+    """Return the content between the brace at *open_idx* and its match, or
+    None if unbalanced. Lets a heading carry nested `\\textbf{...}` groups
+    without the title being truncated at the first inner `}`. Escaped braces
+    (`\\{` / `\\}` — odd run of preceding backslashes) are literal characters,
+    not group delimiters.
+    """
+    depth = 0
+    for i in range(open_idx, len(text)):
+        c = text[i]
+        if c not in "{}":
+            continue
+        backslashes = 0
+        j = i - 1
+        while j >= 0 and text[j] == "\\":
+            backslashes += 1
+            j -= 1
+        if backslashes % 2 == 1:
+            continue
+        if c == "{":
+            depth += 1
+        else:
+            depth -= 1
+            if depth == 0:
+                return text[open_idx + 1 : i]
+    return None
+
+
+def _f17_normalize(arg: str) -> str:
+    """Reduce a raw heading argument to plain words for case analysis.
+
+    Inline math becomes the uppercase sentinel `X` so a math expression — and
+    any compound glued to it (`$n$-body`, `\\(k\\)-th`) — reads as intentional
+    casing rather than an under-capitalized word. Control sequences are
+    stripped keeping their brace content, and braces collapse to nothing so a
+    macro-wrapped letter stays glued to its compound (`\\textit{p}-value` ->
+    `p-value`, one token).
+    """
+    s = _F17_MATH_RE.sub("X", arg)
+    s = _LATEX_CMD_RE.sub(" ", s)
+    s = re.sub(r"[{}]", "", s)
+    s = s.replace("\\", " ")
+    return " ".join(s.split())
+
+
+def _f17_undercapitalized(tokens: list[str]) -> list[str]:
+    """Return the tokens that title case requires be capitalized but aren't.
+
+    A token is flagged when its letters are all lowercase AND it is either an
+    edge word (first/last — always capitalized) or a principal (non-minor)
+    word. Never flagged (assumed intentional, so the detector only catches
+    under-capitalization):
+    - tokens carrying any uppercase letter (acronym `DNA`, proper noun, `iOS`)
+    - digit-leading tokens (`2nd`, `10x`) — no valid capitalization exists
+    - single-letter heads (`p`, `p-value`, `k-means`) — math-symbol idiom
+    """
+    flagged: list[str] = []
+    last = len(tokens) - 1
+    for i, tok in enumerate(tokens):
+        core = tok.strip(string.punctuation)
+        if not any(c.isalpha() for c in core):
+            continue
+        if any(c.isupper() for c in core):
+            continue
+        if core[0].isdigit():
+            continue
+        if len(core.split("-", 1)[0]) == 1:
+            continue
+        is_edge = i == 0 or i == last
+        if (is_edge or core not in _F17_MINOR_WORDS) and core not in flagged:
+            flagged.append(core)
+    return flagged
 
 
 def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
@@ -483,6 +647,40 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                 required="omit \\paragraph; use \\subsubsection or restructure",
             )
 
+    # UF-F17: subheading title case. UF requires \section (1st-level) and
+    # \subsection (2nd-level) titles in title case; \subsubsection / \paragraph
+    # are sentence case (out of scope) and \chapter is uppercased by the
+    # template. Flag a heading carrying an under-capitalized principal/edge
+    # word. Review tier: one-directional (under-capitalization only) and blind
+    # to proper-noun / acronym intent, so the student adjudicates. Scanned over
+    # the master, every \input / \include'd file, AND the .tex \set*File
+    # companions — the cls auto-\inputs the latter, and appendices carry real
+    # \section headings.
+    f17_files = list(override_files)
+    f17_seen = {loc for loc, _ in f17_files}
+    for loc, text in _setfile_companion_texts(nc, base, root):
+        if loc not in f17_seen:
+            f17_seen.add(loc)
+            f17_files.append((loc, text))
+    for loc, text in f17_files:
+        for m17 in _F17_HEAD_RE.finditer(text):
+            arg = _balanced_brace(text, m17.end() - 1)
+            if arg is None:
+                continue
+            title = _f17_normalize(arg)
+            if not title:
+                continue
+            flagged = _f17_undercapitalized(title.split())
+            if flagged:
+                tier = m17.group(1)
+                display = " ".join(arg.split())
+                issues.add(
+                    "UF-F17",
+                    location=loc,
+                    observed=f'\\{tier} title not in title case: "{display}"',
+                    required="Capitalize for title case: " + ", ".join(f'"{w}"' for w in flagged),
+                )
+
     # UF-F15: abstract word count <= 350. Locate the file referenced by
     # \setAbstractFile{name}, strip LaTeX commands, count words. Flag if > 350.
     # PDF-layer backup deferred to v1.0 PDF layer.
@@ -498,7 +696,7 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
                 text = _clean(candidate.read_text(encoding="utf-8", errors="replace"))
                 # Strip backslash-commands with optional bracket + brace args;
                 # the brace-arg content stays (so \textbf{word} → word).
-                text = re.sub(r"\\[a-zA-Z]+\*?(?:\[[^\]]*\])?", " ", text)
+                text = _LATEX_CMD_RE.sub(" ", text)
                 # Strip leftover structural braces / brackets so word-splitting
                 # treats them as boundaries.
                 text = re.sub(r"[{}\[\]\\]", " ", text)
