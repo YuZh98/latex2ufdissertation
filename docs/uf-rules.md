@@ -25,7 +25,7 @@ Severity tiers:
 
 - [Part 0 — What the template enforces vs what the student can break](#part-0--what-the-template-enforces-vs-what-the-student-can-break)
 - [Sources](#sources)
-- [Formatting rules (UF-F1 … UF-F16)](#formatting-rules)
+- [Formatting rules (UF-F1 … UF-F17)](#formatting-rules)
 - [Submission + structural rules (UF-S1 … UF-S5)](#submission--structural-rules)
 - [Document-class option hygiene (UF-D1 … UF-D3)](#document-class-option-hygiene)
 - [Required file presence + macro argument hygiene (UF-P1)](#required-file-presence--macro-argument-hygiene)
@@ -278,6 +278,15 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Note:** Review not must-fix — orphan subsection is style, not formal rejection per UF web docs.
 - **Status: no automated check.** The subsection-pairing structural parser is not yet implemented; F16 has no emit site in the current build.
 
+### UF-F17 — Subheading title case (1st/2nd level)
+
+- **Severity:** review
+- **Source:** S1 (*"First-level subheadings are centered and in title case."* / *"Second-level subheadings are flush-left and in title case."*) — reported by a UF student (issue #84)
+- **Layer:** source
+- **Strategy:** for each `\section{...}` / `\subsection{...}` (the two title-case tiers) extract the braced title (balanced-brace scan so nested macros survive; escaped `\{` / `\}` are literal, not delimiters), replace inline math (`$…$`, `$$…$$`, `\(…\)`; a literal `\$` is not a delimiter) with an uppercase sentinel so math-glued compounds (`$n$-body`) read as intentional, strip `\cmd[..]{}` keeping brace content (shared with the UF-F15 normalization; braces collapse so `\textit{p}-value` stays one token), then tokenize on whitespace. A token is **under-capitalized** when its letters are all-lowercase AND it is an edge word (first/last — always capitalized) OR a principal (non-minor) word; digit-leading tokens (`2nd`, `10x`) and single-letter heads (`p`, `p-value`, `k-means` — math-symbol idiom) are exempt. Minor words: articles (`a`, `an`, `the`), coordinating conjunctions (`and`, `but`, `or`, `nor`, `for`, `so`, `yet`), the short prepositions, and `to`/`as`. Any flagged token emits one finding whose `required` **lists the offending words** (e.g. `Capitalize for title case: "introduction", "causal", "inference"`) — it does not propose a full rewrite, which would mangle hyphenated compounds. The scan covers the master, every `\input` / `\include`d file, **and the `.tex` `\set*File` companions** — the class auto-inputs the latter, and appendices carry real `\section` headings.
+- **Note (scope):** Only 1st- and 2nd-level subheadings are title case. `\subsubsection` (3rd-level) and `\paragraph` are **sentence case** per S1 and must **not** be flagged by this rule. Major division headings (`\chapter`) are uppercased by the template and owned by the auto-capitalization area (UF-D3 `overrideTitles`/`overrideChapters`), not F17.
+- **Note (review, not must-fix):** the lowercase minor-word list is standard title-case convention, **not** published verbatim by UF. The detector is **one-directional** — it flags under-capitalization only. A token containing any uppercase letter is assumed intentional (acronym `DNA`, proper noun, mixed-case `iOS`) and is never flagged, so an over-capitalized minor word (`Theory Of Mind`) is a deliberate, accepted blind spot; so is a heading whose only violation is a single-letter word (`a Big Study` — the math-symbol exemption swallows `a`). Edge cases — a lowercase first word after a colon subtitle, deliberately-lowercase product names — may mis-flag. The tool flags; the student decides.
+
 ---
 
 ## Submission + structural rules
@@ -425,6 +434,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 | F14 metadata macros | must-fix | source | presence check |
 | F15 abstract ≤ 350 words | must-fix | source+pdf | word count |
 | F16 subsection pairing | review | source | structural parse (**no automated check — deferred**) |
+| F17 subheading title case | review | source | `\section`/`\subsection` under-capitalization scan |
 | S1 PDF present | must-fix | pdf | trivial |
 | S2 rejection-driver sections | must-fix | source | F8 subset (report grouping) |
 | S3 broken internal refs | must-fix | source | label/cite resolver |

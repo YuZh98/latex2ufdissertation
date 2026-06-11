@@ -54,6 +54,164 @@ def test_valid_project_no_findings(tmp_path):
     assert issues.review_count() == 0
 
 
+def _f17_run(tmp_path: Path, body: str) -> Issues:
+    """Run checks on a valid project whose document body is *body* and return
+    the collected Issues (UF-F17 lives on the source layer)."""
+    master_text = _VALID.replace(
+        r"\begin{document}\chapter{Introduction}\chapter{Main Body}"
+        r"\chapter{Closing Summary}\end{document}",
+        r"\begin{document}\chapter{Introduction}"
+        + body
+        + r"\chapter{Main Body}\chapter{Closing Summary}\end{document}",
+    )
+    master = _project(tmp_path, master_text, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    return issues
+
+
+def _f17_findings(issues: Issues) -> list:
+    return [f for f in issues.findings if f.rule_id == "UF-F17"]
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [
+        r"\section{introduction to causal inference}",  # all-lowercase
+        r"\section{A two-layer validator architecture}",  # sentence case
+        r"\subsection{from theory to practice}",  # sentence case, 2nd-level
+        r"\section{Organization of this Dissertation}",  # 'this' under-capitalized
+        r"\section{Things only you can check}",  # 'only', 'you', 'can' lowercase
+    ],
+)
+def test_f17_flags_non_title_case(tmp_path, heading):
+    issues = _f17_run(tmp_path, heading)
+    f17 = _f17_findings(issues)
+    assert len(f17) == 1
+    assert f17[0].severity == REVIEW
+    assert f17[0].layer == SOURCE
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [
+        r"\section{Background and Motivation}",  # 'and' correctly lowercase
+        r"\subsection{From Theory to Practice}",  # correct title case
+        r"\section{Source-Layer Checks}",  # hyphenated, already capitalized
+        r"\section{Organization of This Dissertation}",  # the corrected form
+        r"\section{A Study of iOS and DNA}",  # acronym / mixed-case preserved
+    ],
+)
+def test_f17_silent_on_title_case(tmp_path, heading):
+    assert _f17_findings(_f17_run(tmp_path, heading)) == []
+
+
+def test_f17_ignores_subsubsection_and_paragraph(tmp_path):
+    # 3rd-level + paragraph are sentence case per UF — out of F17 scope.
+    body = r"\section{Valid Title}\subsubsection{a lowercase deeper heading}"
+    body += r"\paragraph{another lowercase heading}"
+    assert _f17_findings(_f17_run(tmp_path, body)) == []
+
+
+def test_f17_strips_macros_keeping_brace_content(tmp_path):
+    # \textbf{...} must not truncate the title nor itself be read as a word.
+    issues = _f17_run(tmp_path, r"\section{the \textbf{quick} brown fox}")
+    f17 = _f17_findings(issues)
+    assert len(f17) == 1
+    assert "quick" in f17[0].observed  # brace content survived the strip
+    assert "title not in title case" in f17[0].observed
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        r"\section{}",  # empty title
+        r"\section{   }",  # whitespace-only
+        r"\subsection{$x = y$}",  # math-only, stripped to nothing
+        r"\section{unterminated title",  # unbalanced brace → skipped, no crash
+    ],
+)
+def test_f17_handles_degenerate_titles_without_firing(tmp_path, body):
+    assert _f17_findings(_f17_run(tmp_path, body)) == []
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [
+        r"\section{Adjusting the \textit{p}-value Threshold}",  # macro-wrapped symbol compound
+        r"\section{Estimating \(k\) via Sampling}",  # \(..\) inline math
+        r"\section{The $n$-body Problem}",  # math-glued compound
+        r"\section{Results of the 2nd Experiment}",  # digit-leading ordinal
+        r"\section{A 10x Speedup over Baselines}",  # digit-leading multiplier
+        r"\section{Sets via \{ Notation}",  # escaped open brace, correct title
+    ],
+)
+def test_f17_silent_on_math_symbol_and_digit_compounds(tmp_path, heading):
+    assert _f17_findings(_f17_run(tmp_path, heading)) == []
+
+
+def test_f17_escaped_dollar_is_literal_not_math_delimiter(tmp_path):
+    # Two literal \$ must not pair up as math and delete the words between
+    # them — 'overpriced' sits in that span and must still be caught.
+    issues = _f17_run(tmp_path, r"\section{Costs from \$5 to overpriced \$80 Units}")
+    f17 = _f17_findings(issues)
+    assert len(f17) == 1
+    assert '"overpriced"' in f17[0].required
+
+
+def test_f17_escaped_close_brace_does_not_truncate_title(tmp_path):
+    issues = _f17_run(tmp_path, r"\section{The Brace \} in question here}")
+    f17 = _f17_findings(issues)
+    assert len(f17) == 1
+    assert '"question"' in f17[0].required
+    assert '"here"' in f17[0].required
+
+
+def test_f17_escaped_open_brace_does_not_swallow_body_text(tmp_path):
+    # An unpaired escaped \{ in the title must not pull following body prose
+    # into the heading scan.
+    body = r"\section{Sets via \{ Notation} lowercase body prose follows here."
+    assert _f17_findings(_f17_run(tmp_path, body)) == []
+
+
+def test_f17_scans_setfile_companions(tmp_path):
+    # The cls auto-\inputs \set*File targets; appendices carry real \section
+    # headings, so the F17 scan must cover them (regression: previously only
+    # the master and \input / \include files were scanned).
+    master_text = _VALID.replace(
+        r"\setBiographicalFile{bio}",
+        r"\setBiographicalFile{bio}" + "\n" + r"\setAppendixFile{appx}",
+    )
+    files = dict(_VALID_FILES)
+    files["appx.tex"] = "\\section{things only you can check}\n"
+    master = _project(tmp_path, master_text, files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f17 = _f17_findings(issues)
+    assert len(f17) == 1
+    assert f17[0].location == "appx.tex"
+
+
+def test_f17_observed_shows_raw_title(tmp_path):
+    # observed quotes the heading as written in the source (whitespace
+    # collapsed), not the normalized token stream, so the student can find it.
+    issues = _f17_run(tmp_path, r"\section{the \textbf{quick} brown fox}")
+    obs = _f17_findings(issues)[0].observed
+    assert r"the \textbf{quick} brown fox" in obs
+
+
+def test_f17_lists_offending_words_not_a_full_rewrite(tmp_path):
+    # required must enumerate the under-capitalized tokens (no canonical
+    # rewrite — that mangles hyphenated compounds).
+    issues = _f17_run(tmp_path, r"\section{introduction to causal inference}")
+    required = _f17_findings(issues)[0].required
+    assert required.startswith("Capitalize for title case:")
+    assert '"introduction"' in required
+    assert '"causal"' in required
+    assert '"inference"' in required
+    assert '"to"' not in required  # minor word, mid-heading — left lowercase
+
+
 def test_companions_resolve_next_to_master_in_subdir(tmp_path):
     """Regression: a master in a subdirectory resolves its \\set*File companions
     relative to its own directory (LaTeX semantics), not the workspace root."""

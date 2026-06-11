@@ -1,0 +1,44 @@
+{
+  "detected_mode": "unknown",
+  "findings": [
+    {
+      "fix_hint": "Use title case for `\\section` / `\\subsection` headings: capitalize principal words, lowercase articles / conjunctions / short prepositions and `to` / `as` (unless first or last word).",
+      "layer": "source",
+      "location": "appx.tex",
+      "observed": "\\section title not in title case: \"checklist before you submit\"",
+      "required": "Capitalize for title case: \"checklist\", \"before\", \"you\", \"submit\"",
+      "rule_id": "UF-F17",
+      "severity": "review",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f17--subheading-title-case-1st2nd-level"
+    },
+    {
+      "fix_hint": "Use title case for `\\section` / `\\subsection` headings: capitalize principal words, lowercase articles / conjunctions / short prepositions and `to` / `as` (unless first or last word).",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\section title not in title case: \"introduction to causal inference\"",
+      "required": "Capitalize for title case: \"introduction\", \"causal\", \"inference\"",
+      "rule_id": "UF-F17",
+      "severity": "review",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f17--subheading-title-case-1st2nd-level"
+    },
+    {
+      "fix_hint": "Use title case for `\\section` / `\\subsection` headings: capitalize principal words, lowercase articles / conjunctions / short prepositions and `to` / `as` (unless first or last word).",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\subsection title not in title case: \"from theory to practice\"",
+      "required": "Capitalize for title case: \"from\", \"theory\", \"practice\"",
+      "rule_id": "UF-F17",
+      "severity": "review",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f17--subheading-title-case-1st2nd-level"
+    }
+  ],
+  "input": "<INPUT>",
+  "schema_version": "1.0",
+  "summary": {
+    "exit_code": 0,
+    "exit_reason": "clean",
+    "must_fix_count": 0,
+    "review_count": 3
+  },
+  "template_version": "unknown"
+}

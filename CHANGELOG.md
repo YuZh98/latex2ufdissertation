@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+### Added
+- `UF-F17` detector: flags `\section` / `\subsection` titles with under-capitalized words (sentence case where UF requires title case); review tier, source layer. Scans the master, every `\input` / `\include`, and the `.tex` `\set*File` companions (the class auto-inputs them; appendix headings live there). One-directional — words carrying an uppercase letter (acronyms, proper nouns), inline math (`$…$`, `\(…\)`), math-symbol compounds (`p-value`), and digit-leading tokens (`2nd`) are assumed intentional. `\subsubsection` / `\paragraph` (sentence case) are out of scope (#84)
+
+### Changed
+- Demo dissertation: six subheadings corrected to title case so the reference project stays clean under the new `UF-F17` check; a regression test now enforces zero source-layer findings on the demo (#84)
+
 ## [0.4.0] - 2026-06-11
 
 `.tex` direct input mode; UF-S2 rejection-driver detector; consolidated per-page findings; report framing with severity guide and scope disclaimer. Test suite hardened with security regression pinning and mutation-derived killers.

@@ -429,6 +429,23 @@ def test_git_input_mode_end_to_end(tmp_path: Path, capsys: pytest.CaptureFixture
         assert not Path(d).exists(), f"git clone temp dir was not cleaned up: {d}"
 
 
+@_DEMO_AVAILABLE_FOR_GIT
+def test_demo_is_clean_under_source_layer(capsys: pytest.CaptureFixture[str]) -> None:
+    """Spec gate: the demo is the known-good reference and must report zero
+    findings on the source layer (--dry-run). Enforces the otherwise-documented
+    "demo produces zero findings" gate so a regression — e.g. a sentence-case
+    \\section / \\subsection tripping UF-F17 — fails CI instead of silently
+    eroding the reference project.
+    """
+    rc = main(["--json", "--dry-run", str(_DEMO_DIR)])
+    payload = json.loads(capsys.readouterr().out)
+    assert rc == 0, f"demo not clean under --dry-run: {payload['findings']}"
+    assert payload["findings"] == [], (
+        f"demo expected zero source-layer findings, got: "
+        f"{[(f['rule_id'], f['observed']) for f in payload['findings']]}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # A1: Corrupt/non-zip .zip input through CLI → exit 2 + valid JSON
 # ---------------------------------------------------------------------------
