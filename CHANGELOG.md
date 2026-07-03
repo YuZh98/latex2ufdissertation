@@ -20,7 +20,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - PDF-only input: the report relabels the "clean" verdict and adds a "source layer did not run" note so a skipped source layer is not mistaken for a passed one (#91)
 
 ### Removed
-- Remove the vestigial `UnsupportedTemplate` exception (public API) and the `unsupported_template` `exit_reason` (JSON schema enum): both had no raise site and became dead when old-template refusal was dropped (#92). Neither was ever emitted, so no run output changes; the public export list and fatal-reason enum are now pinned by `tests/test_public_api.py` (#PR)
+- Remove the vestigial `UnsupportedTemplate` exception (public API) and the `unsupported_template` `exit_reason` (JSON schema enum): both had no raise site and became dead when old-template refusal was dropped (#92). Neither was ever emitted, so no run output changes; the public export list and fatal-reason enum are now pinned by `tests/test_public_api.py` (#93)
 
 ### Security
 - Zip extraction now caps total declared uncompressed size (200 MB) and member count (10,000) before writing any byte, closing a zip-bomb gap on both `.zip` inputs and the `--init` template extraction; a breach raises a fatal-input error (exit code 2) (#90)
