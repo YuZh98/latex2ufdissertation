@@ -13,6 +13,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - Compile-tool failure surfacing: non-zero `lualatex` (per pass) and `biber` exits now print a stderr warning instead of being swallowed (#91)
 
 ### Changed
+- `UF-F3` (PDF layer) severity is now calibrated so `must-fix` means certain rejection: a deviating page is `must-fix` only when the document-wide modal body size is itself off 12pt (a global override) or the page's body text is larger than 12pt (never a float); an undersized page on an otherwise-12pt document (a `\footnotesize` table or `\small` figure sub-caption) is demoted to `review` and reported as figure/table-dominated text rather than "body text" (#82)
 - UF-F10 and UF-S3 now walk the `\input`/`\include` graph through the same transitive corpus as the override scan, fixing a false-negative (chapters nested under a `\part` wrapper file went uncounted) and aligning all three rule families to one depth (#91)
 - UF-F4 allowlist extended with `algorithm`, `algorithmic`, `lstlisting`, `quote`, `quotation` so single-spacing inside those environments no longer raises a false must-fix (#91)
 - PDF-only input: the report relabels the "clean" verdict and adds a "source layer did not run" note so a skipped source layer is not mistaken for a passed one (#91)
