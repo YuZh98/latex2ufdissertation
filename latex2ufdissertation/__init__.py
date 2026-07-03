@@ -18,7 +18,6 @@ from latex2ufdissertation.pipeline.types import (
     MissingToolchain,
     ThesisInput,
     UnreadableInput,
-    UnsupportedTemplate,
 )
 
 try:
@@ -35,7 +34,6 @@ __all__ = [
     "Rule",
     "ThesisInput",
     "UnreadableInput",
-    "UnsupportedTemplate",
     "__version__",
     "run_checks",
     "run_pdf_checks",
