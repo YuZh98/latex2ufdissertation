@@ -111,7 +111,6 @@ The reason an exit code was chosen. The mapping is closed within a pinned `schem
 | `review_present` | `0` | Zero must-fix findings but at least one review finding. Exit code stays `0` (review is discretionary); the reason stops labelling the run bare `clean` while review items remain. |
 | `must_fix_present` | `1` | At least one must-fix finding |
 | `compile_failure` | `2` | LuaLaTeX compile failed; PDF layer cannot proceed |
-| `unsupported_template` | `2` | **Reserved — never emitted.** Old-template refusal was dropped (spec hard-rule 9): the supported template revisions are student-equivalent, so old templates are validated, not refused. The name is retained to keep the enum stable; a genuinely unrelated document class is caught by UF-F13 (exit 1), not this reason. |
 | `unreadable_input` | `2` | Input path, zip, or git URL could not be read |
 | `thesis_input` | `2` | Input is a master's thesis (`\thesisType{thesis}`); out of scope for v1.0 |
 | `missing_toolchain` | `3` | Required external tool not on `PATH` (e.g. no LuaLaTeX) |

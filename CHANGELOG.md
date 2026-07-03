@@ -13,11 +13,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 - Compile-tool failure surfacing: non-zero `lualatex` (per pass) and `biber` exits now print a stderr warning instead of being swallowed (#91)
 
 ### Changed
-- Spec: drop the planned old-template refusal (hard-rule 9). A class-file diff shows the Fall-2025+ template and the immediately-prior revision share an identical student-facing macro surface — only maintainer formatting internals differ — so both are supported and validated rather than refused; `template_version` stays `"unknown"` by design (the class carries no version marker), and `UnsupportedTemplate` / `unsupported_template` are retained as reserved names (#PR)
+- Spec: drop the planned old-template refusal (hard-rule 9). A class-file diff shows the Fall-2025+ template and the immediately-prior revision share an identical student-facing macro surface — only maintainer formatting internals differ — so both are supported and validated rather than refused; `template_version` stays `"unknown"` by design (the class carries no version marker) (#92)
 - `UF-F3` (PDF layer) severity is now calibrated so `must-fix` means certain rejection: a deviating page is `must-fix` only when the document-wide modal body size is itself off 12pt (a global override) or the page's body text is larger than 12pt (never a float); an undersized page on an otherwise-12pt document (a `\footnotesize` table or `\small` figure sub-caption) is demoted to `review` and reported as figure/table-dominated text rather than "body text" (#82)
 - UF-F10 and UF-S3 now walk the `\input`/`\include` graph through the same transitive corpus as the override scan, fixing a false-negative (chapters nested under a `\part` wrapper file went uncounted) and aligning all three rule families to one depth (#91)
 - UF-F4 allowlist extended with `algorithm`, `algorithmic`, `lstlisting`, `quote`, `quotation` so single-spacing inside those environments no longer raises a false must-fix (#91)
 - PDF-only input: the report relabels the "clean" verdict and adds a "source layer did not run" note so a skipped source layer is not mistaken for a passed one (#91)
+
+### Removed
+- Remove the vestigial `UnsupportedTemplate` exception (public API) and the `unsupported_template` `exit_reason` (JSON schema enum): both had no raise site and became dead when old-template refusal was dropped (#92). Neither was ever emitted, so no run output changes; the public export list and fatal-reason enum are now pinned by `tests/test_public_api.py` (#93)
 
 ### Security
 - Zip extraction now caps total declared uncompressed size (200 MB) and member count (10,000) before writing any byte, closing a zip-bomb gap on both `.zip` inputs and the `--init` template extraction; a breach raises a fatal-input error (exit code 2) (#90)

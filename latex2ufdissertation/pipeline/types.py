@@ -27,10 +27,6 @@ class UnreadableInput(ConverterError):
     exit_reason = "unreadable_input"
 
 
-class UnsupportedTemplate(ConverterError):
-    exit_reason = "unsupported_template"
-
-
 class ThesisInput(ConverterError):
     exit_reason = "thesis_input"
 
