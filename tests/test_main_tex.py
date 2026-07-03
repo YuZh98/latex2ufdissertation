@@ -162,3 +162,45 @@ def test_detect_autodiscovered_dash_prefix_skipped(tmp_path):
     # Only the dash-prefixed file exists; no safe master → ConverterError
     with pytest.raises(ConverterError):
         detect_main_tex(tmp_path)
+
+
+def test_detect_autodiscover_skips_symlink_escaping_root(tmp_path):
+    """Auto-detect must apply the same is_relative_to containment guard the
+    explicit --main path enforces: a .tex symlink pointing OUT of the project
+    root must not be read/returned as the master."""
+    from latex2ufdissertation.pipeline.types import ConverterError
+
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    secret = outside / "secret.tex"
+    secret.write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
+
+    root = tmp_path / "project"
+    root.mkdir()
+    link = root / "master.tex"
+    try:
+        link.symlink_to(secret)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks unsupported on this platform")
+
+    # The only \documentclass file inside root is a symlink escaping root, so
+    # no in-root master remains → ConverterError (out-of-root file not read).
+    with pytest.raises(ConverterError):
+        detect_main_tex(root)
+
+
+def test_detect_autodiscover_keeps_in_root_symlink(tmp_path):
+    """A symlink that stays WITHIN root must still be a valid candidate — the
+    containment guard must not over-reject legitimate in-project links."""
+    root = tmp_path / "project"
+    root.mkdir()
+    real = root / "real.tex"
+    real.write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
+    link = root / "master.tex"
+    try:
+        link.symlink_to(real)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks unsupported on this platform")
+
+    result = detect_main_tex(root)
+    assert result.resolve() == real.resolve()

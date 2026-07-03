@@ -7,6 +7,8 @@ from unittest.mock import patch
 import pytest
 
 from latex2ufdissertation.pipeline.resolve import (
+    MAX_MEMBER_COUNT,
+    MAX_TOTAL_UNCOMPRESSED,
     RESOLVE_GIT_TIMEOUT,
     _looks_like_git_url,
     _safe_extract,
@@ -374,6 +376,126 @@ def test_clone_git_check_false_mutant_raises_unreadable_input():
     ):
         with pytest.raises(UnreadableInput):
             resolve("https://github.com/fake/repo.git")
+
+
+# ---------------------------------------------------------------------------
+# Security: zip-bomb caps (uncompressed size + member count)
+# ---------------------------------------------------------------------------
+
+
+class _StubZip:
+    """Duck-typed stand-in for zipfile.ZipFile exposing only the surface
+    _safe_extract touches. `extract` asserts it is never called so a test can
+    prove the cap trips on INSPECTION, before any member is written."""
+
+    def __init__(self, infos: list[zipfile.ZipInfo]):
+        self._infos = infos
+
+    def infolist(self) -> list[zipfile.ZipInfo]:
+        return self._infos
+
+    def namelist(self) -> list[str]:
+        return [i.filename for i in self._infos]
+
+    def extract(self, member, path=None):  # pragma: no cover - must not run
+        raise AssertionError("extract() called despite cap breach")
+
+
+def test_safe_extract_rejects_oversized_uncompressed(tmp_path):
+    """A zip whose declared total uncompressed size exceeds the cap must be
+    refused on inspection — no 50 MB payload is written to disk."""
+    info = zipfile.ZipInfo("bomb.tex")
+    info.file_size = MAX_TOTAL_UNCOMPRESSED + 1
+    with pytest.raises(UnreadableInput, match="uncompressed"):
+        _safe_extract(_StubZip([info]), tmp_path)
+
+
+def test_safe_extract_rejects_too_many_members(tmp_path):
+    """A zip declaring more than MAX_MEMBER_COUNT members must be refused."""
+    infos = [zipfile.ZipInfo(f"f{i}.tex") for i in range(MAX_MEMBER_COUNT + 1)]
+    with pytest.raises(UnreadableInput, match="member"):
+        _safe_extract(_StubZip(infos), tmp_path)
+
+
+def test_safe_extract_oversized_maps_to_exit_code_2(tmp_path):
+    """The breach must surface as unreadable_input (fatal-input exit code 2),
+    not a crash/traceback."""
+    info = zipfile.ZipInfo("bomb.tex")
+    info.file_size = MAX_TOTAL_UNCOMPRESSED + 1
+    with pytest.raises(UnreadableInput) as exc:
+        _safe_extract(_StubZip([info]), tmp_path)
+    assert exc.value.exit_reason == "unreadable_input"
+
+
+def test_safe_extract_allows_at_cap_boundary(tmp_path):
+    """A zip exactly at the caps must still extract — the guard must not be
+    off-by-one and reject legitimate dissertations."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("proj/main.tex", r"\documentclass{ufdissertation}")
+    buf.seek(0)
+    dest = tmp_path / "out"
+    dest.mkdir()
+    with zipfile.ZipFile(buf) as zf:
+        _safe_extract(zf, dest)
+    assert (dest / "proj" / "main.tex").exists()
+
+
+def test_zip_bomb_caps_are_named_constants():
+    """Caps must be named constants in the config layer, not magic numbers."""
+    assert MAX_TOTAL_UNCOMPRESSED == 200 * 1024 * 1024
+    assert MAX_MEMBER_COUNT == 10_000
+
+
+def test_resolve_zip_bomb_refused_end_to_end(tmp_path):
+    """resolve() must refuse a many-member zip via the shared cap and not
+    leave the extraction dir populated with the payload."""
+    import tempfile as _tempfile
+
+    src_zip = tmp_path / "bomb.zip"
+    with zipfile.ZipFile(src_zip, "w") as zf:
+        for i in range(MAX_MEMBER_COUNT + 1):
+            zf.writestr(f"f{i}", "")
+
+    created_dirs: list[str] = []
+    real_mkdtemp = _tempfile.mkdtemp
+
+    def spy_mkdtemp(**kwargs):
+        d = real_mkdtemp(**kwargs)
+        created_dirs.append(d)
+        return d
+
+    with patch("latex2ufdissertation.pipeline.resolve.tempfile.mkdtemp", side_effect=spy_mkdtemp):
+        with pytest.raises(UnreadableInput, match="member"):
+            resolve(str(src_zip))
+
+    for d in created_dirs:
+        assert not Path(d).exists(), f"temp dir leaked after cap breach: {d}"
+
+
+# ---------------------------------------------------------------------------
+# Security: git clone credential-prompt hang (Finding 44)
+# ---------------------------------------------------------------------------
+
+
+def test_clone_git_disables_credential_prompt(tmp_path):
+    """_clone_git must close stdin and export GIT_TERMINAL_PROMPT=0 so a
+    private/typo'd URL fails fast instead of blocking on a credential prompt.
+    PATH must be preserved (env merged, not clobbered)."""
+    captured: dict = {}
+
+    def fake_run(cmd, *args, **kwargs):
+        captured.update(kwargs)
+        return subprocess.CompletedProcess(args=cmd, returncode=0)
+
+    with patch("latex2ufdissertation.pipeline.resolve.subprocess.run", side_effect=fake_run):
+        resolve("https://github.com/fake/repo.git")
+
+    assert captured.get("stdin") is subprocess.DEVNULL
+    env = captured.get("env")
+    assert env is not None, "clone must pass an explicit env"
+    assert env.get("GIT_TERMINAL_PROMPT") == "0"
+    assert "PATH" in env, "PATH must be preserved, not clobbered"
 
 
 def test_resolve_zip_cleanup_removes_temp_dir(tmp_path):
