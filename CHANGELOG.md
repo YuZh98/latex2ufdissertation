@@ -7,9 +7,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 ## [Unreleased]
 
 ### Security
-- Zip extraction now caps total declared uncompressed size (200 MB) and member count (10,000) before writing any byte, closing a zip-bomb gap on both `.zip` inputs and the `--init` template extraction; a breach raises a fatal-input error (exit code 2) (#PR)
-- Master `.tex` auto-detection applies the same out-of-root containment guard as `--main`, so a symlink escaping the project root is no longer read (#PR)
-- `git clone` runs with stdin closed and `GIT_TERMINAL_PROMPT=0`, so a private or typo'd URL fails fast instead of hanging on a credential prompt (#PR)
+- Zip extraction now caps total declared uncompressed size (200 MB) and member count (10,000) before writing any byte, closing a zip-bomb gap on both `.zip` inputs and the `--init` template extraction; a breach raises a fatal-input error (exit code 2) (#90)
+- Master `.tex` auto-detection applies the same out-of-root containment guard as `--main`, so a symlink escaping the project root is no longer read (#90)
+- `git clone` runs with stdin closed and `GIT_TERMINAL_PROMPT=0`, so a private or typo'd URL fails fast instead of hanging on a credential prompt (#90)
 
 ## [0.4.0] - 2026-06-11
 
