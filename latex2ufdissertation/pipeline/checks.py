@@ -552,6 +552,9 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     # \set*File companions, so labels declared there must resolve; those content
     # files are excluded from the shared walk, so pull them in explicitly (one
     # level, plus their own transitive \include / \input).
+    # A file reachable from both the master \include graph and a \set*File
+    # target's graph can appear twice in all_nc; harmless because labels/keys
+    # are accumulated into sets. Dedup deferred.
     all_nc = [nc]
     all_nc.extend(text for _loc, text in included_texts)
     bib_keys: set[str] = set()

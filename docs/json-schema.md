@@ -103,7 +103,7 @@ The human-readable report uses a different ordering (category-rank tiebreaker fo
 
 ### `exit_reason` enumeration
 
-The reason an exit code was chosen. The mapping is closed: any unknown reason indicates a schema violation.
+The reason an exit code was chosen. The mapping is closed within a pinned `schema_version`. New enum values may still be added within the 1.x series (additive), so consumers should treat an unrecognized `exit_reason` as non-fatal and fall back to `exit_code`.
 
 | `exit_reason` | `exit_code` | Meaning |
 |---|---|---|
