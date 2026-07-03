@@ -684,6 +684,11 @@ def test_check_f3_fires_just_outside_tolerance(tmp_path: Path) -> None:
     assert len(f3) == 1, f"expected UF-F3 at 12.6pt, got {len(f3)}"
     assert f3[0].severity == MUST_FIX
     assert f3[0].layer == PDF
+    # The must-fix branch describes a genuine body-text override; keep that
+    # wording (only the demoted review branch is relabeled as figure/table text).
+    assert "body text" in f3[0].observed, (
+        f"must-fix finding should read as body text, got {f3[0].observed!r}"
+    )
 
 
 def test_check_f3_skips_none_body_size(tmp_path: Path) -> None:
