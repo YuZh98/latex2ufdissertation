@@ -26,9 +26,9 @@ This tool compiles LaTeX and clones git repos. **Only run it on dissertation sou
 
 This is a local-only CLI tool with no network calls in its default code path. The realistic security surface is narrow but non-empty:
 
-- **Path traversal or unsafe extraction.** Zip inputs are extracted to a working directory; a crafted zip with absolute paths or `../` entries should not escape the workspace.
-- **Subprocess injection.** The compile path invokes LuaLaTeX via `subprocess`. A crafted project filename or argument should not lead to shell injection.
-- **Resource exhaustion.** Pathological inputs (deeply nested directories, enormous `.tex` files, zip bombs) should fail cleanly rather than wedge the host.
+- **Path traversal or unsafe extraction.** Zip inputs are extracted to a working directory; a crafted zip with absolute paths or `../` entries does not escape the workspace. Auto-detection of the master `.tex` also skips any candidate that resolves outside the project root (e.g. an escaping symlink).
+- **Subprocess injection.** The compile path invokes LuaLaTeX via `subprocess`. A crafted project filename or argument should not lead to shell injection. `git clone` runs with stdin closed and `GIT_TERMINAL_PROMPT=0`, so a private or typo'd URL fails fast rather than hanging on a credential prompt.
+- **Resource exhaustion.** Zip extraction (both `.zip` inputs and the `--init` remote template) is capped before any byte is written: at most 10,000 members and 200 MB total declared uncompressed size. A zip bomb that exceeds either cap is refused with a fatal-input error (exit code 2) rather than expanding onto disk. Remote template downloads are additionally capped at 50 MB. Other pathological inputs (deeply nested directories, enormous `.tex` files) should fail cleanly rather than wedge the host.
 - **Information leakage.** JSON output should not embed system-dependent paths or other host metadata.
 
 Bugs in formatting-rule detection are not security issues — open a regular issue for those.

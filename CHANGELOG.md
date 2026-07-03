@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+### Security
+- Zip extraction now caps total declared uncompressed size (200 MB) and member count (10,000) before writing any byte, closing a zip-bomb gap on both `.zip` inputs and the `--init` template extraction; a breach raises a fatal-input error (exit code 2) (#PR)
+- Master `.tex` auto-detection applies the same out-of-root containment guard as `--main`, so a symlink escaping the project root is no longer read (#PR)
+- `git clone` runs with stdin closed and `GIT_TERMINAL_PROMPT=0`, so a private or typo'd URL fails fast instead of hanging on a credential prompt (#PR)
+
 ## [0.4.0] - 2026-06-11
 
 `.tex` direct input mode; UF-S2 rejection-driver detector; consolidated per-page findings; report framing with severity guide and scope disclaimer. Test suite hardened with security regression pinning and mutation-derived killers.
