@@ -421,6 +421,33 @@ def test_chapters_counted_across_includes_for_uf_f10(tmp_path):
     assert "UF-F10" not in _rule_ids(issues)
 
 
+def test_chapters_nested_two_levels_counted_for_uf_f10(tmp_path):
+    # Chapters reached only via a second level of \input (e.g. chapters under a
+    # \part wrapper file) must count. A one-level walk falsely fires F10 here.
+    files = dict(_VALID_FILES)
+    files["part1.tex"] = "\\part{Part One}\n\\input{ch1}\n\\input{ch2}\n\\input{ch3}\n"
+    for i in range(1, 4):
+        files[f"ch{i}.tex"] = f"\\chapter{{Chapter {i}}}\n"
+    master = _project(tmp_path, _with_body("\\input{part1}"), files)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    assert "UF-F10" not in _rule_ids(issues)
+
+
+def test_includeonly_emits_review_uf_f10(tmp_path):
+    # \includeonly left in the preamble silently drops chapters from the output
+    # PDF (a common cause of the <3-chapter UF rejection). Static counting can't
+    # see the suppression, so warn at review tier without a must-fix.
+    src = _VALID.replace("\\begin{document}", "\\includeonly{intro}\n\\begin{document}")
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f10 = [f for f in issues.findings if f.rule_id == "UF-F10"]
+    assert len(f10) == 1
+    assert f10[0].severity == REVIEW
+    assert "includeonly" in (f10[0].observed or "").lower()
+
+
 def test_chapters_in_comments_do_not_count_for_uf_f10(tmp_path):
     # Commented-out \chapter lines must not count toward the requirement.
     body = "% \\chapter{Commented one}\n% \\chapter{Commented two}\n\\chapter{Real one}"
@@ -713,6 +740,26 @@ def test_linespacing_override_fires_uf_f4(tmp_path, override):
     f4 = [f for f in issues.findings if f.rule_id == "UF-F4"]
     assert f4
     assert f4[0].severity == MUST_FIX
+
+
+@pytest.mark.parametrize(
+    "env",
+    ["algorithm", "algorithmic", "lstlisting", "quote", "quotation"],
+)
+def test_singlespacing_in_allowed_env_does_not_fire_uf_f4(tmp_path, env):
+    # Legitimate single-spacing inside algorithm/listing/quote environments is
+    # UF-conformant and must not trip the body-level \doublespacing override scan.
+    body = (
+        "\\chapter{Intro}"
+        f"\\begin{{{env}}}\n\\singlespacing\nscoped content\n\\end{{{env}}}"
+        "\\chapter{Body}\\chapter{Summary}"
+    )
+    src = _VALID.replace(_VALID_BODY, body)
+    master = _project(tmp_path, src, _VALID_FILES)
+    issues = Issues()
+    run_checks(master, tmp_path, issues)
+    f4 = [f for f in issues.findings if f.rule_id == "UF-F4"]
+    assert not f4, f"UF-F4 false-positive on \\singlespacing inside {env}: {f4}"
 
 
 @pytest.mark.parametrize(

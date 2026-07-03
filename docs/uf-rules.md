@@ -134,8 +134,9 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Source:** S1 (*"Double-space paragraph text; single-space headings, table titles, figure captions; refs single-spaced with blank line between"*) + C1:198 (`\doublespacing`) + exceptions at C1:58 (captions), C1:199 (longtable), C1:201 (itemize), C1:774 (abstract block), C1:982 (bibliography)
 - **Layer:** source primary, pdf backup
 - **Strategy:** template-enforced. Source: scan for override patterns:
-  - `\singlespacing`, `\onehalfspacing`, `\setstretch{...}` outside allowed scopes (within `longtable`, `itemize`, caption, abstract, bib — fine)
+  - `\singlespacing`, `\onehalfspacing`, `\setstretch{...}` outside allowed scopes
   - `\renewcommand{\baselinestretch}{...}`
+- **Allowed scopes (allowlist):** single-spacing inside these environments is a documented exception and is stripped before the override scan, so a scoped `\singlespacing` does not fire: `longtable`, `itemize`, `table`, `tabular`, `caption`, `figure`, `thebibliography`, `algorithm`, `algorithmic`, `lstlisting`, `quote`, `quotation`. The last five match UF practice — algorithm floats, code listings, and block quotations are conventionally single-spaced.
 - **PDF backup:** measure the **gap/font-size ratio** per page (≈2.0 double-spaced, ≈1.2 single), *not* the absolute line gap — verified this conflates spacing with font size (`\singlespacing`+`\fontsize{20}{24}` still measures ~24 pt absolute gap because `\fontsize` resets `\baselineskip`). Exclude the legitimately single-spaced bibliography page-range, identified via the `/Names/Dests` `REFERENCES` destination (degrade to page-global if hyperref destinations are absent, e.g. under `\hypersetup{draft}`).
 
 ### UF-F5 — Text alignment (ragged-right)

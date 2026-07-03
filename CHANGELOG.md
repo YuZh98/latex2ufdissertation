@@ -8,6 +8,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ### Added
 - Add version-sync guard (`tests/test_version_sync.py`): asserts installed package metadata, `pyproject.toml` `[project].version`, and the CLI `--version` output all agree, so a stale editable install or an unrebuilt release can no longer silently ship a runtime version that diverges from source (#89)
+- `review_present` exit reason: review-only runs report `exit_reason: "review_present"` instead of bare `clean` (exit code stays `0`) so the JSON verdict stops implying nothing needs attention (#91)
+- UF-F10 `\includeonly` scan: a leftover `\includeonly` in the preamble raises a review finding warning it can silently drop chapters from the compiled PDF (#91)
+- Compile-tool failure surfacing: non-zero `lualatex` (per pass) and `biber` exits now print a stderr warning instead of being swallowed (#91)
+
+### Changed
+- UF-F10 and UF-S3 now walk the `\input`/`\include` graph through the same transitive corpus as the override scan, fixing a false-negative (chapters nested under a `\part` wrapper file went uncounted) and aligning all three rule families to one depth (#91)
+- UF-F4 allowlist extended with `algorithm`, `algorithmic`, `lstlisting`, `quote`, `quotation` so single-spacing inside those environments no longer raises a false must-fix (#91)
+- PDF-only input: the report relabels the "clean" verdict and adds a "source layer did not run" note so a skipped source layer is not mistaken for a passed one (#91)
 
 ### Security
 - Zip extraction now caps total declared uncompressed size (200 MB) and member count (10,000) before writing any byte, closing a zip-bomb gap on both `.zip` inputs and the `--init` template extraction; a breach raises a fatal-input error (exit code 2) (#90)
