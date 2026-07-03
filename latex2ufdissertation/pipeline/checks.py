@@ -127,6 +127,11 @@ _F4_ALLOWED_ENVS = (
     "caption",
     "figure",
     "thebibliography",
+    "algorithm",
+    "algorithmic",
+    "lstlisting",
+    "quote",
+    "quotation",
 )
 _F4_SCOPE_RE = re.compile(
     r"\\begin\{(" + "|".join(_F4_ALLOWED_ENVS) + r")\*?\}.*?\\end\{\1\*?\}",
@@ -222,9 +227,11 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     # overrides (F1, F2, F3, F4, F5, F6, F7, F11) are scanned over ALL of these,
     # since students normally place them in preamble / chapter files. Preamble /
     # metadata checks (F13, F14, F8/P1, F9, D1/D2/D3) scan the master only.
-    override_files: list[tuple[str, str]] = [(rel, nc)] + _collect_include_texts(
-        nc, base, root, main_tex
-    )
+    # Single transitive walk of the \input / \include graph, shared by the
+    # override-scan (F1-F7, F11), UF-F10 chapter counting, and UF-S3 reference
+    # resolution so all three see exactly the same set of files at the same depth.
+    included_texts: list[tuple[str, str]] = _collect_include_texts(nc, base, root, main_tex)
+    override_files: list[tuple[str, str]] = [(rel, nc)] + included_texts
 
     # UF-F13: documentclass must be ufdissertation
     m = _DOCCLASS_RE.search(nc)
@@ -383,17 +390,35 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
 
     # UF-F10: chapter scaffold. Catalog § F10 requires >=3 chapters per UF
     # S1 + S3 (introductory + main body + closing summary). Count \chapter{...}
-    # calls in main.tex AND in any \include / \input target one level deep.
-    # Deeper nesting deferred.
+    # calls across the master AND every transitively \include / \input'd file
+    # (same corpus as the override-scan), so chapters nested under a \part
+    # wrapper file are not missed (a shallower walk false-fired on them).
     _chapter_pat = re.compile(r"\\chapter\*?\s*\{[^}]+\}")
     chapter_count = len(_chapter_pat.findall(nc))
-    for included in re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", nc):
-        for raw_arg in (included, f"{included}.tex"):
-            candidate = _resolve_within(base, root, raw_arg)
-            if candidate is not None and candidate.exists() and candidate.is_file():
-                included_nc = _clean(candidate.read_text(encoding="utf-8", errors="replace"))
-                chapter_count += len(_chapter_pat.findall(included_nc))
-                break
+    for _loc, included_nc in included_texts:
+        chapter_count += len(_chapter_pat.findall(included_nc))
+    # \includeonly suppresses every \include not in its list from the compiled
+    # PDF. The static count above still sees all chapters, so a project can pass
+    # the must-fix check yet ship <3 chapters. We cannot know the author's final
+    # intent, so warn at review tier rather than must-fix.
+    if re.search(r"\\includeonly\s*\{", nc):
+        issues.add(
+            "UF-F10",
+            severity=REVIEW,
+            location=rel,
+            observed=(
+                "\\includeonly{...} present — chapters not listed are suppressed "
+                "from the compiled PDF"
+            ),
+            required=(
+                "remove \\includeonly before submitting so every chapter is included in the output"
+            ),
+            fix_hint=(
+                "\\includeonly limits which \\include'd files compile; a leftover "
+                "\\includeonly can silently drop chapters and trigger the <3-chapter "
+                "UF rejection even though the source defines enough."
+            ),
+        )
     if chapter_count < 3:
         chapters_word = "chapter" if chapter_count == 1 else "chapters"
         issues.add(
@@ -522,28 +547,24 @@ def run_checks(main_tex: Path, root: Path, issues: Issues) -> None:
     # \cref{a,b} is valid cleveref multi-key syntax, so every ref command's
     # captured argument is comma-split (harmless for the single-key commands).
     _ref_cmds = (r"\ref", r"\eqref", r"\pageref", r"\cref", r"\Cref", r"\autoref", r"\nameref")
+    # Corpus = master + the shared transitive \include / \input walk (same files
+    # F10 and the override-scan see) + \set*File targets. The cls auto-\inputs the
+    # \set*File companions, so labels declared there must resolve; those content
+    # files are excluded from the shared walk, so pull them in explicitly (one
+    # level, plus their own transitive \include / \input).
     all_nc = [nc]
+    all_nc.extend(text for _loc, text in included_texts)
     bib_keys: set[str] = set()
-    # Collect content from one-level includes / inputs / \set*File targets,
-    # then one additional level of \input/\include from those files.
-    included_names = set(re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", nc))
-    included_names.update(
-        re.findall(r"\\set[A-Z][a-zA-Z]*File\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}", nc)
-    )
-    second_level: set[str] = set()
-    for included in included_names:
-        for raw_arg in (included, f"{included}.tex"):
+    setfile_targets = re.findall(r"\\set[A-Z][a-zA-Z]*File\s*(?:\[[^\]]*\])?\s*\{([^}]+)\}", nc)
+    for target in setfile_targets:
+        for raw_arg in (target, f"{target}.tex"):
             candidate = _resolve_within(base, root, raw_arg)
             if candidate is not None and candidate.exists() and candidate.is_file():
-                lvl1_nc = _clean(candidate.read_text(encoding="utf-8", errors="replace"))
-                all_nc.append(lvl1_nc)
-                second_level.update(re.findall(r"\\(?:include|input)\s*\{([^}]+)\}", lvl1_nc))
-                break
-    for included in second_level - included_names:
-        for raw_arg in (included, f"{included}.tex"):
-            candidate = _resolve_within(base, root, raw_arg)
-            if candidate is not None and candidate.exists() and candidate.is_file():
-                all_nc.append(_clean(candidate.read_text(encoding="utf-8", errors="replace")))
+                target_nc = _clean(candidate.read_text(encoding="utf-8", errors="replace"))
+                all_nc.append(target_nc)
+                all_nc.extend(
+                    text for _loc, text in _collect_include_texts(target_nc, base, root, main_tex)
+                )
                 break
     bib_name = _setfile_arg(nc, r"\setReferenceFile")
     if bib_name:
