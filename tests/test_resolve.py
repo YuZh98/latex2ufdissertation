@@ -427,9 +427,8 @@ def test_safe_extract_oversized_maps_to_exit_code_2(tmp_path):
     assert exc.value.exit_reason == "unreadable_input"
 
 
-def test_safe_extract_allows_at_cap_boundary(tmp_path):
-    """A zip exactly at the caps must still extract — the guard must not be
-    off-by-one and reject legitimate dissertations."""
+def test_safe_extract_allows_legitimate_small_zip(tmp_path):
+    """A normal small dissertation zip must still extract after the caps."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
         zf.writestr("proj/main.tex", r"\documentclass{ufdissertation}")
@@ -439,6 +438,35 @@ def test_safe_extract_allows_at_cap_boundary(tmp_path):
     with zipfile.ZipFile(buf) as zf:
         _safe_extract(zf, dest)
     assert (dest / "proj" / "main.tex").exists()
+
+
+def test_safe_extract_allows_exactly_at_size_cap(tmp_path):
+    """A zip whose declared uncompressed total is EXACTLY the cap must be
+    allowed — the guard rejects on strict `>`, so at-cap must pass."""
+    info = zipfile.ZipInfo("edge.tex")
+    info.file_size = MAX_TOTAL_UNCOMPRESSED  # exactly at the cap, not over
+    extracted: list[str] = []
+
+    class _AtCapZip(_StubZip):
+        def extract(self, member, path=None):
+            extracted.append(member)
+
+    _safe_extract(_AtCapZip([info]), tmp_path)
+    assert extracted == ["edge.tex"], "at-cap member must be extracted, not rejected"
+
+
+def test_safe_extract_allows_exactly_max_member_count(tmp_path):
+    """A zip with EXACTLY MAX_MEMBER_COUNT members must be allowed — the
+    guard rejects on strict `>`, so at-count must pass."""
+    infos = [zipfile.ZipInfo(f"f{i}.tex") for i in range(MAX_MEMBER_COUNT)]
+    extracted: list[str] = []
+
+    class _AtCountZip(_StubZip):
+        def extract(self, member, path=None):
+            extracted.append(member)
+
+    _safe_extract(_AtCountZip(infos), tmp_path)
+    assert len(extracted) == MAX_MEMBER_COUNT, "at-count members must all extract"
 
 
 def test_zip_bomb_caps_are_named_constants():
