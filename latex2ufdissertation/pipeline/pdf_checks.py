@@ -257,18 +257,29 @@ def _check_f3(pages: list[PageData], issues: Issues) -> None:
         # An undersized page on an otherwise-12pt document is an uncertain
         # float artifact and is demoted to review.
         oversized = page.body_size - _F3_REQUIRED_BODY_PT > _F3_SIZE_TOLERANCE_PT
-        severity = MUST_FIX if (doc_deviates or oversized) else REVIEW
+        if doc_deviates or oversized:
+            severity = MUST_FIX
+            observed = f"{page.body_size}pt body text"
+            fix_hint = (
+                "Rendered body text is not 12 pt; "
+                "check for a \\fontsize{...}{...}\\selectfont override affecting the body."
+            )
+        else:
+            severity = REVIEW
+            observed = f"{page.body_size}pt text on a figure/table-dominated page"
+            fix_hint = (
+                "This page's dominant text is under 12 pt while the document body is 12 pt "
+                "— usually a figure sub-caption or table font, which UF tolerates. "
+                "Confirm this page has no running body text below 12 pt."
+            )
         issues.add(
             "UF-F3",
             layer=PDF,
             severity=severity,
             location=f"p.{page.page_num}",
-            observed=f"{page.body_size}pt body text",
+            observed=observed,
             required="12-point body text",
-            fix_hint=(
-                "Rendered body text is not 12 pt; "
-                "check for a \\fontsize{...}{...}\\selectfont override affecting the body."
-            ),
+            fix_hint=fix_hint,
         )
 
 

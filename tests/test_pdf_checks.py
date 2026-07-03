@@ -797,6 +797,14 @@ def test_check_f3_localized_deviation_is_review(tmp_path: Path) -> None:
         assert finding.severity == REVIEW, (
             f"localized deviation must be review, got {finding.severity} at {finding.location}"
         )
+        # The demoted finding is a figure/table float, not running body text:
+        # its message must not mislabel caption/table text as "body text".
+        assert "body text" not in finding.observed, (
+            f"localized float must not be called body text, got {finding.observed!r}"
+        )
+        assert "figure/table-dominated" in finding.observed, (
+            f"localized float should read as figure/table-dominated, got {finding.observed!r}"
+        )
     assert issues.must_fix_count() == 0, "no must-fix expected on an otherwise-12pt document"
 
 
