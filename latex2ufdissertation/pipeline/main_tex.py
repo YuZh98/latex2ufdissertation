@@ -69,8 +69,14 @@ def detect_main_tex(root: Path, hint: str | None = None) -> Path:
         _reject_dash_name(p, hint)
         return p
 
+    root_resolved = root.resolve()
     candidates: list[tuple[Path, int]] = []
     for p in root.rglob("*.tex"):
+        # Containment guard: skip candidates that resolve outside root (e.g. a
+        # symlink escaping the project), mirroring the explicit --main check so
+        # an out-of-root file is never read.
+        if not p.resolve().is_relative_to(root_resolved):
+            continue
         # Skip files whose names start with '-' to avoid flag-injection in
         # downstream subprocess calls.
         if p.name.startswith("-"):
