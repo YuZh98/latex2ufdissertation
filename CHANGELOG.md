@@ -6,6 +6,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+### Added
+- Add version-sync guard (`tests/test_version_sync.py`): asserts installed package metadata, `pyproject.toml` `[project].version`, and the CLI `--version` output all agree, so a stale editable install or an unrebuilt release can no longer silently ship a runtime version that diverges from source (#89)
+
 ### Security
 - Zip extraction now caps total declared uncompressed size (200 MB) and member count (10,000) before writing any byte, closing a zip-bomb gap on both `.zip` inputs and the `--init` template extraction; a breach raises a fatal-input error (exit code 2) (#90)
 - Master `.tex` auto-detection applies the same out-of-root containment guard as `--main`, so a symlink escaping the project root is no longer read (#90)
