@@ -105,12 +105,24 @@ def compile_pdf(
         except subprocess.TimeoutExpired as exc:
             raise ConverterError(f"lualatex timed out after {COMPILE_TIMEOUT}s") from exc
 
+        # -halt-on-error governs fatal stops (and the "did not produce a PDF"
+        # raise below covers the no-output case). LaTeX routinely returns
+        # non-zero on mere warnings, so surface it without aborting the 3-pass
+        # loop — a silently-swallowed non-zero can otherwise let a stale pass-1
+        # PDF from a prior run pass as a successful build.
+        if r.returncode != 0:
+            print(
+                f"Warning: lualatex pass {pass_n} exited {r.returncode} "
+                "(continuing; check the .log for details)",
+                file=sys.stderr,
+            )
+
         if pass_n == 1 and biber_available():
             stem = main_tex.stem
             bcf = work_dir / f"{stem}.bcf"
             if bcf.exists():
                 try:
-                    subprocess.run(
+                    biber_r = subprocess.run(
                         ["biber", stem],
                         cwd=work_dir,
                         capture_output=True,
@@ -120,6 +132,14 @@ def compile_pdf(
                     )
                 except subprocess.TimeoutExpired as exc:
                     raise ConverterError(f"biber timed out after {COMPILE_TIMEOUT}s") from exc
+                # A swallowed non-zero biber exit ships a PDF with unresolved
+                # [?]/[0] citation placeholders and no signal to the user.
+                if biber_r.returncode != 0:
+                    print(
+                        f"Warning: biber exited {biber_r.returncode}; "
+                        "citations may render as [?]/[0] placeholders in the PDF",
+                        file=sys.stderr,
+                    )
 
     produced = work_dir / f"{main_tex.stem}.pdf"
     if not produced.exists():
