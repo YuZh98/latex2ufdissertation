@@ -100,9 +100,9 @@ Every finding carries a `UF-*` rule ID and a link back to the rule's catalog ent
 
 **Current (v0.3.x, pre-1.0).** Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+). Source-layer and PDF-layer validation. Five input modes: zip, directory, `.tex` master file, git URL, compiled PDF. CLI as the engine. LuaLaTeX compile driver.
 
-**Planned for v1.0.** ETD-upload walkthrough (`--guide`). Template-version detection and old-template refusal. Full PDF-layer coverage (F1, F4, F6, F12 backups). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full v1.0 specification and gate status.
+**Planned for v1.0.** ETD-upload walkthrough (`--guide`). Full PDF-layer coverage (F1, F4, F6, F12 backups). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full v1.0 specification and gate status.
 
-**Out of scope for v1.0.** Master's theses (deferred, same template, different `\thesisType`). The pre-Fall-2025 UF template (refused with a migration message). Source cleanup or Overleaf-export normalization. External URL liveness (reserved for `--check-links` in a future release). MCP server, browser extensions, editor extensions (separate artifacts that wrap the CLI). Hosted web service or GUI.
+**Out of scope for v1.0.** Master's theses (deferred, same template, different `\thesisType`). Source cleanup or Overleaf-export normalization. External URL liveness (reserved for `--check-links` in a future release). MCP server, browser extensions, editor extensions (separate artifacts that wrap the CLI). Hosted web service or GUI.
 
 ## Security
 
