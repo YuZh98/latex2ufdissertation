@@ -16,7 +16,7 @@
   "schema_version": "1.0",
   "summary": {
     "exit_code": 0,
-    "exit_reason": "clean",
+    "exit_reason": "review_present",
     "must_fix_count": 0,
     "review_count": 1
   },

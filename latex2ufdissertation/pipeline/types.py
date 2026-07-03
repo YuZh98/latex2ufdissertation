@@ -70,6 +70,9 @@ class Issues:
     template_version: str | None = None
     exit_reason: str = EXIT_REASON_CLEAN
     pdf_layer_ran: bool = False
+    # False when the source layer was skipped (bare .pdf input). Lets the report
+    # stop labelling a run "clean" when the source-layer rules never ran.
+    source_layer_ran: bool = True
     # When False, add() does not print its per-finding diagnostic line. cli.main
     # sets this False under --json so the live per-finding stream does not double
     # up with the final report on stderr (the consolidated report still prints).

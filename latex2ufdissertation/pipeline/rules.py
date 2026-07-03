@@ -27,6 +27,7 @@ BOTH = "both"
 # Stable enumeration of fatal-failure reasons. Mirrored in
 # Issues.exit_reason and the JSON `summary.exit_reason` field.
 EXIT_REASON_CLEAN = "clean"
+EXIT_REASON_REVIEW_PRESENT = "review_present"
 EXIT_REASON_MUST_FIX_PRESENT = "must_fix_present"
 EXIT_REASON_COMPILE_FAILURE = "compile_failure"
 EXIT_REASON_UNSUPPORTED_TEMPLATE = "unsupported_template"
@@ -37,6 +38,7 @@ EXIT_REASON_MISSING_TOOLCHAIN = "missing_toolchain"
 EXIT_REASONS = frozenset(
     {
         EXIT_REASON_CLEAN,
+        EXIT_REASON_REVIEW_PRESENT,
         EXIT_REASON_MUST_FIX_PRESENT,
         EXIT_REASON_COMPILE_FAILURE,
         EXIT_REASON_UNSUPPORTED_TEMPLATE,

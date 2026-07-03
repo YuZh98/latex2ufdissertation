@@ -6,6 +6,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+### Added
+- `review_present` exit reason: review-only runs report `exit_reason: "review_present"` instead of bare `clean` (exit code stays `0`) so the JSON verdict stops implying nothing needs attention (#PR)
+- UF-F10 `\includeonly` scan: a leftover `\includeonly` in the preamble raises a review finding warning it can silently drop chapters from the compiled PDF (#PR)
+- Compile-tool failure surfacing: non-zero `lualatex` (per pass) and `biber` exits now print a stderr warning instead of being swallowed (#PR)
+
+### Changed
+- UF-F10 and UF-S3 now walk the `\input`/`\include` graph through the same transitive corpus as the override scan, fixing a false-negative (chapters nested under a `\part` wrapper file went uncounted) and aligning all three rule families to one depth (#PR)
+- UF-F4 allowlist extended with `algorithm`, `algorithmic`, `lstlisting`, `quote`, `quotation` so single-spacing inside those environments no longer raises a false must-fix (#PR)
+- PDF-only input: the report relabels the "clean" verdict and adds a "source layer did not run" note so a skipped source layer is not mistaken for a passed one (#PR)
+
 ## [0.4.0] - 2026-06-11
 
 `.tex` direct input mode; UF-S2 rejection-driver detector; consolidated per-page findings; report framing with severity guide and scope disclaimer. Test suite hardened with security regression pinning and mutation-derived killers.

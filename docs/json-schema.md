@@ -107,7 +107,8 @@ The reason an exit code was chosen. The mapping is closed: any unknown reason in
 
 | `exit_reason` | `exit_code` | Meaning |
 |---|---|---|
-| `clean` | `0` | Zero must-fix findings. Review-only findings still report `clean`. |
+| `clean` | `0` | Zero must-fix and zero review findings, with all layers run. |
+| `review_present` | `0` | Zero must-fix findings but at least one review finding. Exit code stays `0` (review is discretionary); the reason stops labelling the run bare `clean` while review items remain. |
 | `must_fix_present` | `1` | At least one must-fix finding |
 | `compile_failure` | `2` | LuaLaTeX compile failed; PDF layer cannot proceed |
 | `unsupported_template` | `2` | Detected template predates Fall 2025 or is not the UF dissertation class (**not yet reachable — no raise site; old-template detection is deferred**) |

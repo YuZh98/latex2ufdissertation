@@ -312,6 +312,7 @@ def main(argv: list[str] | None = None) -> int:
                 "(no source layer); running PDF checks."
             )
         _err("  source layer skipped (PDF-only input)")
+        issues.source_layer_ran = False
         try:
             from latex2ufdissertation.pipeline.pdf_checks import run_pdf_checks
 
