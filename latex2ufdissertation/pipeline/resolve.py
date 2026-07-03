@@ -1,5 +1,6 @@
 """Resolve an input (.zip / directory / git URL) to a working directory."""
 
+import os
 import re
 import shutil
 import subprocess
@@ -12,6 +13,14 @@ from urllib.parse import urlparse
 from latex2ufdissertation.pipeline.types import ConverterError, UnreadableInput
 
 RESOLVE_GIT_TIMEOUT = 300  # seconds
+
+# Zip-bomb caps enforced before extraction (single source of truth; the --init
+# template extraction in init.py inherits these via _safe_extract). The 200 MB
+# uncompressed ceiling is 4x the 50 MB download cap in init.py — generous
+# headroom for any real dissertation, which is a few MB, while stopping a small
+# archive from expanding without bound.
+MAX_TOTAL_UNCOMPRESSED = 200 * 1024 * 1024  # 200 MB total declared uncompressed size
+MAX_MEMBER_COUNT = 10_000
 
 # Hosts allowed for git clone via https:// URLs.
 _HTTPS_ALLOWED_HOSTS: frozenset[str] = frozenset({"github.com", "www.github.com", "gitlab.com"})
@@ -66,11 +75,26 @@ def _looks_like_git_url(s: str) -> bool:
 
 
 def _safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
-    """Extract all members of *zf* into *dest*, rejecting any path that
-    escapes *dest* (zip-slip).  Uses ``Path.is_relative_to`` (Python 3.9+)
-    for a correct containment check — the old ``startswith(str(dest))``
-    missed sibling-prefix paths such as ``../destextra/evil``.
+    """Extract all members of *zf* into *dest* under two guards, both applied
+    before any byte is written:
+
+    - Zip-slip: reject any member whose resolved path escapes *dest*, using
+      ``Path.is_relative_to`` (Python 3.9+). The old ``startswith(str(dest))``
+      missed sibling-prefix paths such as ``../destextra/evil``.
+    - Zip-bomb: reject archives declaring more than ``MAX_MEMBER_COUNT``
+      members or a total uncompressed size above ``MAX_TOTAL_UNCOMPRESSED``.
+      The cap reads ``ZipInfo.file_size`` from the central directory, so the
+      breach trips on inspection rather than after a 50 MB expansion.
     """
+    infos = zf.infolist()
+    if len(infos) > MAX_MEMBER_COUNT:
+        raise UnreadableInput(f"zip has too many members ({len(infos)} > {MAX_MEMBER_COUNT})")
+    total = sum(info.file_size for info in infos)
+    if total > MAX_TOTAL_UNCOMPRESSED:
+        raise UnreadableInput(
+            f"zip uncompressed size exceeds cap ({total} > {MAX_TOTAL_UNCOMPRESSED} bytes)"
+        )
+
     dest_resolved = dest.resolve()
     for member in zf.namelist():
         target = (dest / member).resolve()
@@ -95,12 +119,18 @@ def _zip_extract_unwrapping(zip_path: Path, dest: Path) -> Path:
 
 
 def _clone_git(url: str, dest: Path) -> Path:
+    # Close stdin and disable git's terminal credential prompt so a private or
+    # typo'd URL fails fast instead of blocking on a password prompt up to the
+    # timeout. Merge into os.environ so PATH (git discovery) is preserved.
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
     try:
         subprocess.run(
             ["git", "clone", "--depth", "1", url, str(dest)],
             check=True,
             timeout=RESOLVE_GIT_TIMEOUT,
             capture_output=True,
+            stdin=subprocess.DEVNULL,
+            env=env,
         )
     except subprocess.TimeoutExpired as e:
         raise UnreadableInput(f"git clone timed out after {RESOLVE_GIT_TIMEOUT}s: {url}") from e
