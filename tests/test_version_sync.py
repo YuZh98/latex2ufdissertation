@@ -6,18 +6,20 @@ three version surfaces agree:
 
   1. ``pyproject.toml`` ``[project].version`` — the declared source of truth.
   2. ``importlib.metadata.version`` — what the installed/packaged wheel reports.
-  3. ``latex2ufdissertation.__version__`` — what the CLI ``--version`` prints.
+  3. the CLI ``--version`` output — what a user actually sees at runtime.
 
-Surface 3 is derived from surface 2, and surface 2 is baked from surface 1 at
-build/install time. If they diverge, an editable install went stale (pyproject
-bumped without a reinstall) or a release was cut without rebuilding — exactly
-the drift this test exists to catch in the CI gate.
+Surface 2 is baked from surface 1 at build/install time, and the CLI prints
+surface 2. If they diverge, an editable install went stale (pyproject bumped
+without a reinstall) or a release was cut without rebuilding — exactly the
+drift this test exists to catch in the CI gate. Surface 3 is observed from a
+fresh subprocess so it is a genuinely independent read, not the same
+in-process ``importlib.metadata`` call asserted against itself.
 """
 
+import subprocess
+import sys
 from importlib.metadata import version as metadata_version
 from pathlib import Path
-
-import latex2ufdissertation
 
 DIST_NAME = "latex2ufdissertation"
 PYPROJECT = Path(__file__).resolve().parent.parent / "pyproject.toml"
@@ -27,17 +29,14 @@ def _pyproject_version() -> str:
     """Read ``[project].version`` without a hard dependency on tomllib.
 
     ``tomllib`` is stdlib only on 3.11+, and the CI matrix includes 3.10, so a
-    dependency-free fallback keeps the guard runnable on every supported
+    dependency-free regex fallback keeps the guard runnable on every supported
     runtime rather than silently skipping on the oldest one.
     """
     text = PYPROJECT.read_text(encoding="utf-8")
     try:
         import tomllib
     except ModuleNotFoundError:
-        try:
-            import tomli as tomllib  # type: ignore[no-redef]
-        except ModuleNotFoundError:
-            tomllib = None
+        tomllib = None
 
     if tomllib is not None:
         return tomllib.loads(text)["project"]["version"]
@@ -62,6 +61,16 @@ def test_metadata_matches_pyproject():
     assert metadata_version(DIST_NAME) == _pyproject_version()
 
 
-def test_dunder_version_matches_metadata():
-    """The CLI/``__version__`` surface must equal the installed metadata."""
-    assert latex2ufdissertation.__version__ == metadata_version(DIST_NAME)
+def test_cli_version_matches_metadata():
+    """The CLI ``--version`` output must report the installed metadata version.
+
+    Observed from a fresh subprocess (no ``__main__.py`` exists, so the CLI is
+    driven via its entry point) to keep this an independent third surface
+    rather than a tautological re-read of the same in-process call.
+    """
+    out = subprocess.check_output(
+        [sys.executable, "-c", "from latex2ufdissertation.cli import main; main(['--version'])"],
+        text=True,
+        stderr=subprocess.STDOUT,
+    )
+    assert metadata_version(DIST_NAME) in out

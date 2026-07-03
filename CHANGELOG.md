@@ -7,7 +7,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 ## [Unreleased]
 
 ### Added
-- Version-sync guard (`tests/test_version_sync.py`): asserts installed package metadata, `pyproject.toml` `[project].version`, and `__version__`/`--version` all agree, so a stale editable install or an unrebuilt release can no longer silently ship a runtime version that diverges from source (#89)
+- Add version-sync guard (`tests/test_version_sync.py`): asserts installed package metadata, `pyproject.toml` `[project].version`, and the CLI `--version` output all agree, so a stale editable install or an unrebuilt release can no longer silently ship a runtime version that diverges from source (#89)
 
 ## [0.4.0] - 2026-06-11
 
