@@ -68,6 +68,7 @@ def test_compile_pdf_runs_in_master_dir_with_detached_stdin(tmp_path):
         (sub / "main.pdf").write_bytes(b"%PDF-1.5\n")  # emulate lualatex output
 
         class _Result:
+            returncode = 0
             stdout = b""
             stderr = b""
 
@@ -129,6 +130,7 @@ def test_compile_pdf_lualatex_hardening_flags_and_env(tmp_path):
         (sub / "main.pdf").write_bytes(b"%PDF-1.5\n")
 
         class _Result:
+            returncode = 0
             stdout = b""
             stderr = b""
 
@@ -176,6 +178,7 @@ def test_compile_pdf_biber_timeout_raises_converter_error(tmp_path):
             raise subprocess.TimeoutExpired(cmd=cmd, timeout=600)
 
         class _Result:
+            returncode = 0
             stdout = b""
             stderr = b""
 
@@ -188,3 +191,70 @@ def test_compile_pdf_biber_timeout_raises_converter_error(tmp_path):
     ):
         with pytest.raises(ConverterError, match="biber timed out"):
             compile_pdf(master, output, open_pdf=False)
+
+
+# ---------------------------------------------------------------------------
+# Silent-failure surfacing: non-zero subprocess exits must warn to stderr
+# ---------------------------------------------------------------------------
+
+
+def _fake_result(returncode: int):
+    class _Result:
+        stdout = b""
+        stderr = b""
+
+    _Result.returncode = returncode
+    return _Result()
+
+
+def test_compile_pdf_warns_on_lualatex_nonzero_returncode(tmp_path, capsys):
+    """A non-zero lualatex exit must surface a stderr warning (a stale pass-1
+    PDF from a prior run could otherwise be silently accepted as success)."""
+    sub = tmp_path / "src"
+    sub.mkdir()
+    master = sub / "main.tex"
+    master.write_text("\\documentclass{ufdissertation}\n")
+    output = tmp_path / "out.pdf"
+
+    def fake_run(cmd, **kwargs):
+        (sub / "main.pdf").write_bytes(b"%PDF-1.5\n")
+        return _fake_result(1)
+
+    with (
+        patch("latex2ufdissertation.pipeline.build.lualatex_available", return_value=True),
+        patch("latex2ufdissertation.pipeline.build.biber_available", return_value=False),
+        patch("latex2ufdissertation.pipeline.build.subprocess.run", side_effect=fake_run),
+    ):
+        result = compile_pdf(master, output, open_pdf=False)
+
+    # Non-fatal: the 3-pass loop still completes and the PDF is produced.
+    assert result == output
+    err = capsys.readouterr().err
+    assert "lualatex" in err
+    assert "1" in err
+
+
+def test_compile_pdf_warns_on_biber_nonzero_returncode(tmp_path, capsys):
+    """A non-zero biber exit must surface a stderr warning (otherwise the PDF
+    ships with unresolved [?]/[0] citation placeholders and no signal)."""
+    sub = tmp_path / "src"
+    sub.mkdir()
+    master = sub / "main.tex"
+    master.write_text("\\documentclass{ufdissertation}\n")
+    output = tmp_path / "out.pdf"
+    (sub / "main.bcf").write_text("")  # trigger biber branch
+
+    def fake_run(cmd, **kwargs):
+        (sub / "main.pdf").write_bytes(b"%PDF-1.5\n")
+        return _fake_result(2 if cmd[0] == "biber" else 0)
+
+    with (
+        patch("latex2ufdissertation.pipeline.build.lualatex_available", return_value=True),
+        patch("latex2ufdissertation.pipeline.build.biber_available", return_value=True),
+        patch("latex2ufdissertation.pipeline.build.subprocess.run", side_effect=fake_run),
+    ):
+        result = compile_pdf(master, output, open_pdf=False)
+
+    assert result == output
+    err = capsys.readouterr().err
+    assert "biber" in err

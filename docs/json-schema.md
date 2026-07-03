@@ -103,11 +103,12 @@ The human-readable report uses a different ordering (category-rank tiebreaker fo
 
 ### `exit_reason` enumeration
 
-The reason an exit code was chosen. The mapping is closed: any unknown reason indicates a schema violation.
+The reason an exit code was chosen. The mapping is closed within a pinned `schema_version`. New enum values may still be added within the 1.x series (additive), so consumers should treat an unrecognized `exit_reason` as non-fatal and fall back to `exit_code`.
 
 | `exit_reason` | `exit_code` | Meaning |
 |---|---|---|
-| `clean` | `0` | Zero must-fix findings. Review-only findings still report `clean`. |
+| `clean` | `0` | Zero must-fix and zero review findings, with all layers run. |
+| `review_present` | `0` | Zero must-fix findings but at least one review finding. Exit code stays `0` (review is discretionary); the reason stops labelling the run bare `clean` while review items remain. |
 | `must_fix_present` | `1` | At least one must-fix finding |
 | `compile_failure` | `2` | LuaLaTeX compile failed; PDF layer cannot proceed |
 | `unsupported_template` | `2` | Detected template predates Fall 2025 or is not the UF dissertation class (**not yet reachable — no raise site; old-template detection is deferred**) |

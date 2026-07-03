@@ -20,6 +20,7 @@ from latex2ufdissertation.pipeline.rules import (
     EXIT_REASON_CLEAN,
     EXIT_REASON_MISSING_TOOLCHAIN,
     EXIT_REASON_MUST_FIX_PRESENT,
+    EXIT_REASON_REVIEW_PRESENT,
 )
 from latex2ufdissertation.pipeline.types import Finding, Issues
 
@@ -55,6 +56,11 @@ _FRAMING_NO_PDF = (
     "UF-F2, UF-F3, and other PDF-authoritative rules were not verified. "
     "Re-run without --dry-run for full coverage."
 )
+_FRAMING_NO_SOURCE = (
+    "Source layer did not run (PDF-only input). "
+    "UF-F1, UF-F4-F14, UF-S2/S3, and other source-authoritative rules were not "
+    "verified. Re-run against the project source for full coverage."
+)
 
 # Rule IDs whose per-page findings are collapsed into page-range groups in the
 # human report.  JSON output is NOT affected.
@@ -65,6 +71,7 @@ _GROUPABLE_RULES: frozenset[str] = frozenset({"UF-F2", "UF-F3"})
 # (any non-clean / non-must-fix / non-missing-toolchain reason → 2).
 _REASON_TO_CODE: dict[str, int] = {
     EXIT_REASON_CLEAN: 0,
+    EXIT_REASON_REVIEW_PRESENT: 0,
     EXIT_REASON_MUST_FIX_PRESENT: 1,
     EXIT_REASON_MISSING_TOOLCHAIN: 3,
 }
@@ -102,7 +109,14 @@ def exit_code(issues: Issues) -> int:
 
 
 def _default_exit_reason(issues: Issues) -> str:
-    return EXIT_REASON_MUST_FIX_PRESENT if issues.must_fix_count() > 0 else EXIT_REASON_CLEAN
+    # must-fix outranks review outranks clean. review_present keeps exit_code 0
+    # (review is discretionary) but stops the verdict from claiming bare "clean"
+    # while unresolved review items remain.
+    if issues.must_fix_count() > 0:
+        return EXIT_REASON_MUST_FIX_PRESENT
+    if issues.review_count() > 0:
+        return EXIT_REASON_REVIEW_PRESENT
+    return EXIT_REASON_CLEAN
 
 
 def _parse_page_num(location: str) -> int | None:
@@ -138,15 +152,18 @@ def _page_range_str(page_nums: list[int]) -> str:
     return "pp." + ",".join(runs)
 
 
-def _build_framing(pdf_layer_ran: bool) -> str:
+def _build_framing(pdf_layer_ran: bool, source_layer_ran: bool = True) -> str:
     """Return the framing block that follows the Summary line on every report.
 
     Includes severity guide + scope disclaimer on all runs.
-    Adds a "PDF layer did not run" note when pdf_layer_ran is False.
+    Adds a "PDF layer did not run" note when pdf_layer_ran is False, and a
+    "source layer did not run" note when source_layer_ran is False.
     """
     lines = [_FRAMING_SEVERITY, _FRAMING_SCOPE]
     if not pdf_layer_ran:
         lines.append(_FRAMING_NO_PDF)
+    if not source_layer_ran:
+        lines.append(_FRAMING_NO_SOURCE)
     return "\n".join(lines)
 
 
@@ -168,12 +185,17 @@ def format_human(issues: Issues) -> str:
     dry-run note) appears after the Summary line on every report.
     """
     advisory_block = f"\n---\nNote: {A2_ADVISORY}\n" if issues.pdf_layer_ran else ""
-    framing = _build_framing(issues.pdf_layer_ran)
+    framing = _build_framing(issues.pdf_layer_ran, issues.source_layer_ran)
 
     must_fix = issues.must_fix_count()
     review = issues.review_count()
     if not issues.findings:
-        return "\nSummary: 0 must-fix, 0 review — clean.\n" + framing + "\n" + advisory_block
+        verdict = (
+            "clean"
+            if issues.source_layer_ran
+            else "no violations in the checked layer — source layer skipped (PDF-only input)"
+        )
+        return f"\nSummary: 0 must-fix, 0 review — {verdict}.\n" + framing + "\n" + advisory_block
 
     # ------------------------------------------------------------------
     # Build render units: one unit per ordinary finding, one per

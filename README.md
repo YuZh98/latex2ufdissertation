@@ -10,7 +10,7 @@ A safety-net validator for UF doctoral dissertations using the Fall 2025+ Univer
 
 ## Install
 
-Not yet published to PyPI. Install from GitHub — pin a release tag, or omit `@v…` for the latest `main`:
+Not yet published to PyPI (a `pip install latex2ufdissertation` lands with the v1.0.0 release). For now, install from GitHub — pin a release tag, or omit `@v…` for the latest `main`:
 
     pip install "git+https://github.com/YuZh98/latex2ufdissertation.git@v0.2.0"
 

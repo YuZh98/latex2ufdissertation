@@ -9,6 +9,7 @@ import pytest
 
 from latex2ufdissertation.pipeline.report import (
     _FRAMING_NO_PDF,
+    _FRAMING_NO_SOURCE,
     _FRAMING_SCOPE,
     _FRAMING_SEVERITY,
     A2_ADVISORY,
@@ -135,6 +136,61 @@ def test_format_json_clean_run_has_exit_reason_clean():
     payload = format_json(issues)
     assert payload["summary"]["exit_code"] == 0
     assert payload["summary"]["exit_reason"] == "clean"
+
+
+def test_format_json_review_only_run_reports_review_present():
+    # Review-only runs must stop claiming a bare "clean" verdict, while the
+    # exit_code stays 0 (review is discretionary and never trips the code).
+    issues = Issues()
+    issues.add("UF-D1", observed="editMode left on")  # UF-D1 is review tier
+    payload = format_json(issues)
+    assert payload["summary"]["must_fix_count"] == 0
+    assert payload["summary"]["review_count"] == 1
+    assert payload["summary"]["exit_code"] == 0
+    assert payload["summary"]["exit_reason"] == "review_present"
+
+
+def test_format_json_must_fix_outranks_review_present():
+    issues = Issues()
+    issues.add("UF-D1", observed="review finding")
+    issues.add("UF-F13", observed="must-fix finding")
+    payload = format_json(issues)
+    assert payload["summary"]["exit_reason"] == "must_fix_present"
+    assert payload["summary"]["exit_code"] == 1
+
+
+def test_review_present_is_a_valid_exit_reason():
+    from latex2ufdissertation.pipeline.rules import EXIT_REASONS
+
+    assert "review_present" in EXIT_REASONS
+
+
+def test_source_layer_ran_true_by_default():
+    assert Issues().source_layer_ran is True
+
+
+def test_format_human_source_skipped_relabels_clean_verdict():
+    # PDF-only input skips the whole source layer; a "0 must-fix, 0 review"
+    # run must not be labelled bare "clean" as if source rules had passed.
+    issues = Issues()
+    issues.pdf_layer_ran = True
+    issues.source_layer_ran = False
+    out = format_human(issues)
+    assert "source layer skipped" in out.lower()
+    assert "0 must-fix, 0 review — clean." not in out
+
+
+def test_framing_no_source_note_present_when_source_layer_not_ran():
+    issues = Issues()
+    issues.source_layer_ran = False
+    out = format_human(issues)
+    assert _FRAMING_NO_SOURCE in out
+
+
+def test_framing_no_source_note_absent_when_source_layer_ran():
+    issues = Issues()  # source_layer_ran defaults True
+    out = format_human(issues)
+    assert _FRAMING_NO_SOURCE not in out
 
 
 def test_format_json_per_finding_has_all_eight_fields():

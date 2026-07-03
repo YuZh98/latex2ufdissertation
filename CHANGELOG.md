@@ -7,22 +7,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 ## [Unreleased]
 
 ### Added
-- `UF-S2` now emits: an absent required rejection-driver section (Acknowledgements/Abstract/References/Biographical) raises a `must-fix` finding alongside `UF-F8`, framing the omission as a top UF rejection driver. Previously `UF-S2` was a catalog entry with no detector (#79)
-- Accept a bare `.tex` master file as input: `latex2ufdissertation path/to/main.tex` is now valid when the file contains `\documentclass{ufdissertation}`; the parent directory is used as the project root and the file is forced as the master (#80)
+- Add version-sync guard (`tests/test_version_sync.py`): asserts installed package metadata, `pyproject.toml` `[project].version`, and the CLI `--version` output all agree, so a stale editable install or an unrebuilt release can no longer silently ship a runtime version that diverges from source (#89)
+- `review_present` exit reason: review-only runs report `exit_reason: "review_present"` instead of bare `clean` (exit code stays `0`) so the JSON verdict stops implying nothing needs attention (#91)
+- UF-F10 `\includeonly` scan: a leftover `\includeonly` in the preamble raises a review finding warning it can silently drop chapters from the compiled PDF (#91)
+- Compile-tool failure surfacing: non-zero `lualatex` (per pass) and `biber` exits now print a stderr warning instead of being swallowed (#91)
 
 ### Changed
-- `UF-F3` (PDF layer) severity is now calibrated so `must-fix` means certain rejection: a deviating page is `must-fix` only when the document-wide modal body size is itself off 12pt (a global override) or the page's body text is larger than 12pt (never a float); an undersized page on an otherwise-12pt document (a `\footnotesize` table or `\small` figure sub-caption) is demoted to `review`. Previously every per-page deviation was `must-fix`, false-failing real submissions the Graduate School accepts (#82)
-- Bundled-PDF progress message now shows the fully-resolved path (not just the filename) and a stale-source caveat: "may not reflect source edits since it was last compiled; delete it to force recompile" (#80)
-- UF-A2 accessibility advisory is now suppressed on source-only (`--dry-run`) runs; it appears only when the PDF layer ran, avoiding a misleading note when no PDF was checked (#80)
-- Human report now includes a severity guide ("must-fix = will cause UF Graduate School rejection; review = discretionary") and a scope disclaimer after the Summary line on every run; a "PDF layer did not run" note is appended on `--dry-run` or source-only runs (#80)
-- UF-F2/UF-F3 per-page findings are consolidated into a single page-range line in the human report (e.g. `pp.3-12,14 (10 pages)`); JSON output is not affected (#80)
-- `--dry-run` with a `.pdf` input now emits a warning that the flag has no effect (no source layer to skip) and continues to run PDF checks (#80)
-- `--help` input description updated to list `.tex` and `.pdf` alongside `.zip`, directory, and git URL (#80)
-- Under `--json` the live per-finding diagnostic stream on stderr is suppressed (the consolidated report still prints), so a multi-page UF-F2/UF-F3 violation no longer emits a line per page that the report already shows once (#81)
+- `UF-F3` (PDF layer) severity is now calibrated so `must-fix` means certain rejection: a deviating page is `must-fix` only when the document-wide modal body size is itself off 12pt (a global override) or the page's body text is larger than 12pt (never a float); an undersized page on an otherwise-12pt document (a `\footnotesize` table or `\small` figure sub-caption) is demoted to `review` and reported as figure/table-dominated text rather than "body text" (#82)
+- UF-F10 and UF-S3 now walk the `\input`/`\include` graph through the same transitive corpus as the override scan, fixing a false-negative (chapters nested under a `\part` wrapper file went uncounted) and aligning all three rule families to one depth (#91)
+- UF-F4 allowlist extended with `algorithm`, `algorithmic`, `lstlisting`, `quote`, `quotation` so single-spacing inside those environments no longer raises a false must-fix (#91)
+- PDF-only input: the report relabels the "clean" verdict and adds a "source layer did not run" note so a skipped source layer is not mistaken for a passed one (#91)
 
-### Tests
-- Pinned security and crash-safety contracts as regression tests: corrupt-zip/bad-PDF exit codes, the `--json`-always-parseable property across every error path, `\set*File` path-traversal (absolute and `..`), flag-injection filenames, LuaLaTeX env hardening, and byte-identical `--json` determinism (#79)
-- Added mutation-testing-derived killer tests closing 25 surviving-mutant gaps in `resolve.py` (git-URL allowlist edge cases, zip-slip skip-not-break, `git clone` non-zero exit, temp-dir cleanup), `pdf_checks.py` (per-page check loops, allowed-font prefixes), and `cli.py` (exact exit codes and `--json` emission on all error branches) (#79)
+### Security
+- Zip extraction now caps total declared uncompressed size (200 MB) and member count (10,000) before writing any byte, closing a zip-bomb gap on both `.zip` inputs and the `--init` template extraction; a breach raises a fatal-input error (exit code 2) (#90)
+- Master `.tex` auto-detection applies the same out-of-root containment guard as `--main`, so a symlink escaping the project root is no longer read (#90)
+- `git clone` runs with stdin closed and `GIT_TERMINAL_PROMPT=0`, so a private or typo'd URL fails fast instead of hanging on a credential prompt (#90)
+
+## [0.4.0] - 2026-06-11
+
+`.tex` direct input mode; UF-S2 rejection-driver detector; consolidated per-page findings; report framing with severity guide and scope disclaimer. Test suite hardened with security regression pinning and mutation-derived killers.
+
+### Added
+- `UF-S2` detector: absent required rejection-driver section (Acknowledgements/Abstract/References/Biographical) raises `must-fix` alongside `UF-F8` (#79)
+- `.tex` input mode: `latex2ufdissertation main.tex` treats the parent directory as project root when the file contains `\documentclass{ufdissertation}`; the named file is forced as the master (no auto-detect) (#80)
+- Report framing: severity guide ("must-fix = rejection; review = discretionary") and scope disclaimer appended after the Summary line on every run (#80)
+- "PDF layer did not run" note: appended on `--dry-run` or source-only runs (#80)
+- Security/crash regression suite: corrupt-zip/bad-PDF exit codes, `--json`-always-parseable property, `\set*File` path-traversal, flag-injection filenames, LuaLaTeX env hardening, byte-identical `--json` determinism (#79)
+- Mutation-killer tests: 25 surviving-mutant gaps closed across `resolve.py`, `pdf_checks.py`, and `cli.py` (#79)
+
+### Changed
+- Bundled-PDF message: shows the fully-resolved path and a stale-source caveat (#80)
+- UF-A2 advisory: suppressed on `--dry-run` runs; appears only when the PDF layer ran (#80)
+- UF-F2/UF-F3 human report: per-page findings consolidated into a single page-range line (e.g. `pp.3-12,14 (10 pages)`); JSON output unaffected (#80)
+- `--dry-run` + `.pdf` input: emits a warning that the flag has no effect, then runs PDF checks (#80)
+- `--help` input description: lists `.tex` and `.pdf` alongside `.zip`, directory, and git URL (#80)
+- `--json` stderr: per-finding diagnostic stream suppressed; consolidated report still prints (#81)
 
 ## [0.3.2] - 2026-06-01
 
@@ -141,6 +160,10 @@ Initial release. One command validates and compiles UF dissertation / thesis pro
 - `--init` flag: scaffolds project from UF IT site; falls back to bundled template on network failure
 - Input modes: `.zip` archive, project directory, git URL
 
-[Unreleased]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.3.2...v0.4.0
+[0.3.2]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/YuZh98/latex2ufdissertation/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/YuZh98/latex2ufdissertation/releases/tag/v0.1.0
