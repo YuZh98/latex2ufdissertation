@@ -110,3 +110,33 @@ def test_fetch_remote_constant_defined():
     """FETCH_MAX_BYTES must be a named constant (no magic numbers)."""
     assert isinstance(FETCH_MAX_BYTES, int)
     assert FETCH_MAX_BYTES == 50 * 1024 * 1024  # 50 MB
+
+
+# ---------------------------------------------------------------------------
+# Security: zip-bomb cap on --init template extraction (Finding 41)
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_remote_rejects_zip_bomb_member_count(tmp_path):
+    """The --init template extraction must inherit the shared extraction cap:
+    a template zip declaring more than MAX_MEMBER_COUNT members is refused."""
+    from latex2ufdissertation.pipeline.resolve import MAX_MEMBER_COUNT
+
+    bomb_zip = _make_zip_bytes({f"f{i}": "" for i in range(MAX_MEMBER_COUNT + 1)})
+
+    def fake_urlopen(req, timeout=None):
+        class _Resp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                pass
+
+            def read(self, n=-1):
+                return bomb_zip
+
+        return _Resp()
+
+    with patch("latex2ufdissertation.pipeline.init.urllib.request.urlopen", fake_urlopen):
+        with pytest.raises(UnreadableInput, match="member"):
+            _fetch_remote(tmp_path)
