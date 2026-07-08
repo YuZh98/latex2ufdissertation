@@ -2,7 +2,7 @@
   "detected_mode": "unknown",
   "findings": [
     {
-      "fix_hint": "Font override present; the UF template's newtx reload at \\begin{document} may neutralize it. The PDF layer confirms whether the rendered body is actually non-Times.",
+      "fix_hint": "Font override present (may be neutralized by the template's newtx reload); the PDF layer confirms whether the rendered body is actually non-Times.",
       "layer": "source",
       "location": "main.tex",
       "observed": "\\fontfamily{...}\\selectfont override present in source",

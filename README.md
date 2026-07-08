@@ -51,7 +51,7 @@ PDF-layer checks currently implemented: F2 (font family), F3 (font size), S1 (PD
 
 ## Outputs
 
-- **Human-readable report** (default): findings grouped by validation layer and rule category, each line tagged with severity, `UF-*` rule ID, file:line location, and a link to the rule's source documentation.
+- **Human-readable report** (default): findings grouped by severity (must-fix, then review), one line per finding showing the `UF-*` rule ID, its location (source file or PDF page), and the observed value; each rule group carries a one-line fix hint. The section-header count equals the lines shown.
 - **Machine-readable JSON** (`--json`): emits the v1 schema to stdout (single JSON document, `sort_keys=True` for byte-identical output across runs). Progress messages go to stderr so `latex2ufdissertation --json … | jq …` works without filtering.
 
 The JSON schema v1 shape:

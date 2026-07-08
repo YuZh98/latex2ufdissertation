@@ -81,7 +81,7 @@ Each finding represents one UF rule violation. The eight fields are frozen at v1
 
 Findings are sorted by `(layer, rule_id, location)` ascending. This ordering is stable across runs and contractual — downstream diffs can rely on it.
 
-The human-readable report uses a different ordering (category-rank tiebreaker for nicer headings); the JSON ordering is what consumers depend on.
+The human-readable report uses a different ordering (grouped by severity, then rule ID, then page/location); the JSON ordering is what consumers depend on.
 
 ## Summary object
 

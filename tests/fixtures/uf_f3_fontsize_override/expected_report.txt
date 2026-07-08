@@ -2,7 +2,7 @@
 Review (1)
 
   UF-F3  main.tex  \fontsize{14pt}{16pt}\selectfont overrides template's 12pt default
-    Fix: A \fontsize{...}{...}\selectfont may be legal localized sizing (e.g. on a title page or caption). The PDF layer confirms the rendered body-mode size.
+    Fix: May be legal localized sizing (e.g. a title page or caption); the PDF layer confirms the rendered body-mode size.
 
 Summary: 0 must-fix, 1 review.
 Severity guide: must-fix = will likely cause UF Graduate School rejection; review = discretionary, verify manually.

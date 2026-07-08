@@ -2,7 +2,7 @@
   "detected_mode": "unknown",
   "findings": [
     {
-      "fix_hint": "A \\fontsize{...}{...}\\selectfont may be legal localized sizing (e.g. on a title page or caption). The PDF layer confirms the rendered body-mode size.",
+      "fix_hint": "May be legal localized sizing (e.g. a title page or caption); the PDF layer confirms the rendered body-mode size.",
       "layer": "source",
       "location": "main.tex",
       "observed": "\\fontsize{14pt}{16pt}\\selectfont overrides template's 12pt default",
