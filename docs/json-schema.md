@@ -9,7 +9,7 @@ A consumer that pins `schema_version == "1.0"` can rely on every shape below rem
     latex2ufdissertation --json <input>
 
 - **stdout** — exactly one JSON document, no leading or trailing noise. `json.dumps(..., sort_keys=True)` is applied so byte-identical runs are contractual.
-- **stderr** — progress lines (`validating ...`, `compiling ...`), per-finding diagnostic lines, compile-error blocks, the `Summary:` line. Safe to discard or tee.
+- **stderr** — progress lines (`validating ...`, `compiling ...`), the consolidated human report, compile-error blocks, the `Summary:` line. Safe to discard or tee.
 
 Pipe-friendly:
 
