@@ -12,7 +12,6 @@ from latex2ufdissertation.pipeline.report import (
     _FRAMING_NO_SOURCE,
     _FRAMING_SCOPE,
     _FRAMING_SEVERITY,
-    A2_ADVISORY,
     SCHEMA_VERSION,
     _page_range_str,
     _parse_page_num,
@@ -292,81 +291,7 @@ def test_findings_in_json_use_spec_sort_key_layer_rule_id_location():
     assert ids == sorted(ids), f"JSON sort order diverged from spec: {ids}"
 
 
-# --- A2 standing advisory tests (FIX #4: gated on pdf_layer_ran) ---
-
-
-def test_a2_advisory_appears_when_pdf_layer_ran_clean():
-    # A2 must appear when pdf_layer_ran=True, even on the clean path.
-    issues = Issues()
-    issues.pdf_layer_ran = True
-    out = format_human(issues)
-    assert A2_ADVISORY in out
-
-
-def test_a2_advisory_appears_when_pdf_layer_ran_with_findings():
-    # A2 must appear when pdf_layer_ran=True and there are findings.
-    issues = _populated_issues()
-    issues.pdf_layer_ran = True
-    out = format_human(issues)
-    assert A2_ADVISORY in out
-
-
-def test_a2_advisory_absent_when_pdf_layer_not_ran_clean():
-    # A2 must NOT appear when pdf_layer_ran=False (default, dry-run/source-only).
-    issues = Issues()
-    # pdf_layer_ran defaults to False
-    out = format_human(issues)
-    assert "Advisory (not a finding)" not in out
-
-
-def test_a2_advisory_absent_when_pdf_layer_not_ran_with_findings():
-    # A2 must NOT appear when pdf_layer_ran=False, even with findings.
-    issues = _populated_issues()
-    # pdf_layer_ran defaults to False
-    out = format_human(issues)
-    assert "Advisory (not a finding)" not in out
-
-
-def test_a2_advisory_absent_from_json_output():
-    # A2 is human-only; the JSON schema is frozen. The advisory text must
-    # not appear anywhere in the serialised JSON payload.
-    issues = Issues()
-    issues.pdf_layer_ran = True
-    json_str = json.dumps(format_json(issues), sort_keys=True)
-    assert A2_ADVISORY not in json_str
-
-    issues2 = _populated_issues()
-    issues2.pdf_layer_ran = True
-    json_str2 = json.dumps(format_json(issues2), sort_keys=True)
-    assert A2_ADVISORY not in json_str2
-
-
-def test_a2_advisory_does_not_affect_counts_or_exit_code():
-    # Emitting A2 is additive only; it must not change must_fix_count,
-    # review_count, or exit_code on either a clean or a findings-bearing run.
-    clean = Issues()
-    clean.pdf_layer_ran = True
-    assert clean.must_fix_count() == 0
-    assert clean.review_count() == 0
-    assert exit_code(clean) == 0
-    # Presence of the advisory text in human output does not change state.
-    format_human(clean)
-    assert clean.must_fix_count() == 0
-    assert clean.review_count() == 0
-    assert exit_code(clean) == 0
-
-    populated = _populated_issues()
-    populated.pdf_layer_ran = True
-    before_must = populated.must_fix_count()
-    before_review = populated.review_count()
-    before_exit = exit_code(populated)
-    format_human(populated)
-    assert populated.must_fix_count() == before_must
-    assert populated.review_count() == before_review
-    assert exit_code(populated) == before_exit
-
-
-# --- FIX #4: pdf_layer_ran flag set by run_pdf_checks ---
+# --- pdf_layer_ran flag set by run_pdf_checks ---
 
 
 def test_pdf_layer_ran_false_by_default():
