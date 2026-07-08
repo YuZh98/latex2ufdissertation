@@ -1006,9 +1006,7 @@ def test_json_mode_stdout_is_json_report_on_stderr(
     assert "[must-fix]" in cap.err  # consolidated report on stderr
 
 
-def test_no_live_per_finding_stream(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_no_live_per_finding_stream(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """Findings are rendered only by the consolidated report (4-space indented
     lines). The old 2-space "  [severity] RULE" live stream is gone, so each
     finding appears exactly once and is never duplicated."""
