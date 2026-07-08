@@ -84,19 +84,19 @@ def test_main_json_pdf_input_reports_pdf_mode_and_unreadable(
     assert payload["summary"]["exit_reason"] == "unreadable_input"
 
 
-def test_issues_add_goes_to_stderr_not_stdout(
+def test_issues_add_writes_nothing_to_stdout(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     # README + spec promise --json stdout stays a single JSON document.
-    # Progress / diagnostic messages MUST land on stderr so downstream
-    # `json.loads(stdout)` does not break.
+    # add() records the finding without touching stdout (or stderr); the
+    # consolidated report is the sole rendering, emitted later to stderr.
     from latex2ufdissertation.pipeline.types import Issues
 
     issues = Issues()
     issues.add("UF-F13", observed="bad class")
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert "UF-F13" in captured.err
+    assert captured.err == ""
 
 
 # ---------------------------------------------------------------------------
@@ -993,28 +993,25 @@ def _minimal_master_with_findings(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_json_mode_suppresses_live_diagnostic_lines(
+def test_json_mode_stdout_is_json_report_on_stderr(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Q1 follow-up: under --json the live per-finding diagnostic stream (2-space
-    "  [severity] RULE" lines from Issues.add) is suppressed so it does not
-    duplicate the consolidated report on stderr; JSON stdout stays valid and the
-    final report still prints."""
+    """Under --json, stdout carries a single valid JSON document and the
+    human report still prints to stderr so `--json | jq` works unfiltered."""
     proj = _minimal_master_with_findings(tmp_path)
     rc = main(["--json", "--dry-run", str(proj)])
     cap = capsys.readouterr()
     json.loads(cap.out)  # stdout still a valid single JSON document
     assert rc == 1  # missing required sections → must-fix findings
-    # No live 2-space-indented diagnostic lines ("\n  [..."); the report's own
-    # finding lines are 4-space-indented and still present.
-    assert "\n  [" not in cap.err
-    assert "[must-fix]" in cap.err
+    assert "[must-fix]" in cap.err  # consolidated report on stderr
 
 
-def test_non_json_mode_still_emits_live_diagnostic_lines(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """Without --json the live per-finding stream is retained (2-space lines)."""
+def test_no_live_per_finding_stream(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Findings are rendered only by the consolidated report (4-space indented
+    lines). The old 2-space "  [severity] RULE" live stream is gone, so each
+    finding appears exactly once and is never duplicated."""
     proj = _minimal_master_with_findings(tmp_path)
     main(["--dry-run", str(proj)])
-    assert "\n  [" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "\n  [" not in err  # no 2-space live diagnostic lines
+    assert "\n    [" in err  # consolidated 4-space report lines present

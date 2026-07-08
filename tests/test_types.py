@@ -17,7 +17,7 @@ def test_issues_starts_empty():
     assert issues.exit_reason == "clean"
 
 
-def test_issues_add_appends_finding_and_writes_stderr(capsys):
+def test_issues_add_appends_finding_and_writes_nothing(capsys):
     issues = Issues()
     issues.add(
         "UF-F13",
@@ -33,30 +33,11 @@ def test_issues_add_appends_finding_and_writes_stderr(capsys):
     assert f.layer == SOURCE
     assert f.location == "main.tex"
     assert f.source_url.startswith("https://github.com/")
-    captured = capsys.readouterr()
-    # Progress / diagnostic output goes to stderr; stdout is reserved
-    # for the --json payload contract.
-    assert captured.out == ""
-    assert "UF-F13" in captured.err
-    assert "must-fix" in captured.err
-
-
-def test_emit_progress_false_suppresses_diagnostic_line(capsys):
-    # Under --json the cli sets emit_progress=False; add() must not print the
-    # live per-finding diagnostic (the final report carries it instead).
-    issues = Issues(emit_progress=False)
-    issues.add("UF-F13", observed="bad class")
+    # add() only records the finding; the consolidated report is the sole
+    # rendering, so nothing is written to either stream here.
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert captured.err == ""  # no live diagnostic line
-    assert len(issues.findings) == 1  # finding still recorded
-
-
-def test_emit_progress_default_true_still_prints(capsys):
-    # Default (normal CLI run) keeps the live diagnostic stream.
-    issues = Issues()
-    issues.add("UF-F13", observed="bad class")
-    assert "UF-F13" in capsys.readouterr().err
+    assert captured.err == ""
 
 
 def test_issues_counts_split_by_severity():
@@ -149,11 +130,9 @@ def test_add_override_does_not_affect_fix_hint_or_source_url():
     assert f.source_url.startswith("https://github.com/")
 
 
-def test_add_severity_override_appears_in_stderr(capsys):
-    """The stderr diagnostic line must print the *effective* severity, not always the registry's."""
+def test_add_severity_override_recorded_on_finding():
+    """A per-call severity override must be stored on the Finding, not the
+    registry default (UF-F2 defaults to must-fix)."""
     issues = Issues()
     issues.add("UF-F2", severity=REVIEW, layer=SOURCE)
-    captured = capsys.readouterr()
-    assert "review" in captured.err
-    # The registry value (must-fix) must NOT appear in its place
-    assert "must-fix" not in captured.err
+    assert issues.findings[0].severity == REVIEW

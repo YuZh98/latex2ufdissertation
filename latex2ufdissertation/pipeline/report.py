@@ -26,23 +26,11 @@ from latex2ufdissertation.pipeline.types import Finding, Issues
 
 SCHEMA_VERSION = "1.0"
 
-# UF-A2 standing advisory — emitted only when the PDF layer ran, as a clearly
-# separated note block.  It is NOT a Finding and must never appear in the
-# JSON output (JSON schema is frozen at v1.0).  Static text guarantees
-# determinism.
-A2_ADVISORY = (
-    "Advisory (not a finding): The ufdissertation template produces untagged PDFs "
-    "(no /StructTreeRoot, /MarkInfo, or /Lang entries). PDF/UA accessibility features "
-    "such as tag structure, alt-text, table-header semantics, and reading order are "
-    "therefore outside the scope of this tool's verification. This is a known "
-    "template limitation, not a violation detected in your submission."
-)
-
 # Report framing — severity meaning and scope disclaimer.  These are static
 # strings so the output is deterministic.  Emitted on BOTH the clean path and
 # the findings path, just after the Summary line.
 _FRAMING_SEVERITY = (
-    "Severity guide: must-fix = will cause UF Graduate School rejection; "
+    "Severity guide: must-fix = will likely cause UF Graduate School rejection; "
     "review = discretionary, verify manually."
 )
 _FRAMING_SCOPE = (
@@ -177,14 +165,9 @@ def format_human(issues: Issues) -> str:
     into a single line with a page-range location.  All other findings
     render one line each.
 
-    A standing UF-A2 advisory block is appended only when the PDF layer
-    ran (issues.pdf_layer_ran is True).  It is NOT a Finding and does
-    not affect counts or exit codes.
-
     A framing block (severity guide + scope disclaimer + optional
     dry-run note) appears after the Summary line on every report.
     """
-    advisory_block = f"\n---\nNote: {A2_ADVISORY}\n" if issues.pdf_layer_ran else ""
     framing = _build_framing(issues.pdf_layer_ran, issues.source_layer_ran)
 
     must_fix = issues.must_fix_count()
@@ -195,7 +178,7 @@ def format_human(issues: Issues) -> str:
             if issues.source_layer_ran
             else "no violations in the checked layer — source layer skipped (PDF-only input)"
         )
-        return f"\nSummary: 0 must-fix, 0 review — {verdict}.\n" + framing + "\n" + advisory_block
+        return f"\nSummary: 0 must-fix, 0 review — {verdict}.\n" + framing + "\n"
 
     # ------------------------------------------------------------------
     # Build render units: one unit per ordinary finding, one per
@@ -310,7 +293,7 @@ def format_human(issues: Issues) -> str:
             lines.append(f"      fix: {u['fix_hint']}")
         lines.append(f"      see: {u['source_url']}")
     lines.append(f"\nSummary: {must_fix} must-fix, {review} review.")
-    return "\n".join(lines) + "\n" + framing + "\n" + advisory_block
+    return "\n".join(lines) + "\n" + framing + "\n"
 
 
 def format_json(issues: Issues) -> dict:

@@ -117,7 +117,7 @@ Input normalization produces a workspace containing project files and (where app
 
 Two tiers only. No INFO / TIP / SUGGESTION / NIT. Adding more tiers dilutes the signal.
 
-Standing, template-wide caveats (UF-A2 — e.g. the template's known accessibility limitations) are **not per-run findings**. They are static advisory text surfaced in the report preamble and documentation, outside the two-tier findings model. They therefore do not count toward acceptance gate §8.2 (zero findings on the demo) and do not affect exit codes.
+Standing, template-wide caveats (UF-A2 — e.g. the template's known accessibility limitations) are **not per-run findings**. They are static advisory text surfaced in the documentation, outside the two-tier findings model. They therefore do not count toward acceptance gate §8.2 (zero findings on the demo) and do not affect exit codes.
 
 ### Offline by default
 
