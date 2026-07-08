@@ -42,7 +42,7 @@ A2_ADVISORY = (
 # strings so the output is deterministic.  Emitted on BOTH the clean path and
 # the findings path, just after the Summary line.
 _FRAMING_SEVERITY = (
-    "Severity guide: must-fix = will cause UF Graduate School rejection; "
+    "Severity guide: must-fix = will likely cause UF Graduate School rejection; "
     "review = discretionary, verify manually."
 )
 _FRAMING_SCOPE = (
