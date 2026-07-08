@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass, field
 
 from latex2ufdissertation.pipeline.rules import (
@@ -69,10 +68,6 @@ class Issues:
     # False when the source layer was skipped (bare .pdf input). Lets the report
     # stop labelling a run "clean" when the source-layer rules never ran.
     source_layer_ran: bool = True
-    # When False, add() does not print its per-finding diagnostic line. cli.main
-    # sets this False under --json so the live per-finding stream does not double
-    # up with the final report on stderr (the consolidated report still prints).
-    emit_progress: bool = True
 
     def add(
         self,
@@ -90,8 +85,6 @@ class Issues:
         the rule-level default. `severity` and `layer` may be overridden
         per-call so the same rule_id can emit at different tiers from
         different validation layers (e.g. source=review, pdf=must-fix).
-        Diagnostic line goes to stderr so --json stdout stays a single
-        JSON document.
         """
         rule = RULES[rule_id]  # KeyError on unknown ID is the right failure mode
         effective_severity = severity if severity is not None else rule.severity
@@ -107,10 +100,6 @@ class Issues:
             source_url=rule.source_url,
         )
         self.findings.append(finding)
-        if self.emit_progress:
-            loc = f" {location}" if location else ""
-            msg = f"  [{effective_severity}] {rule.id}{loc} — {observed or rule.title}"
-            print(msg, file=sys.stderr)
 
     def must_fix_count(self) -> int:
         return sum(1 for f in self.findings if f.severity == MUST_FIX)
