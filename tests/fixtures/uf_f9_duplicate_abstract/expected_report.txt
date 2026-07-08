@@ -1,9 +1,8 @@
 
-[source layer]
-  (F-series)
-    [must-fix] UF-F9 main.tex — \setAbstractFile called 2 times (must be singleton) (required: exactly one \setAbstractFile call)
-      fix: UF requires a singleton structure (one abstract, one ToC, one reference list). Remove the duplicate.
-      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f9--singleton-structure
+Must-fix (1)
+
+  UF-F9  main.tex  \setAbstractFile called 2 times (must be singleton)
+    Fix: UF requires a singleton structure (one abstract, one ToC, one reference list). Remove the duplicate.
 
 Summary: 1 must-fix, 0 review.
 Severity guide: must-fix = will likely cause UF Graduate School rejection; review = discretionary, verify manually.

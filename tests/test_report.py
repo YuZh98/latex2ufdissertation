@@ -13,7 +13,6 @@ from latex2ufdissertation.pipeline.report import (
     _FRAMING_SCOPE,
     _FRAMING_SEVERITY,
     SCHEMA_VERSION,
-    _page_range_str,
     _parse_page_num,
     exit_code,
     format_human,
@@ -25,22 +24,6 @@ from latex2ufdissertation.pipeline.types import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-
-
-@pytest.mark.parametrize(
-    "pages,expected",
-    [
-        ([1], "p.1"),  # single page → singular "p.", no range
-        ([1, 2, 3, 4, 5], "pp.1-5"),  # one contiguous run
-        ([1, 3, 5], "pp.1,3,5"),  # all gaps → no collapsing
-        ([12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26], "pp.12-16,19-26"),  # canonical
-        ([1, 2, 3, 5, 6, 9], "pp.1-3,5-6,9"),  # mixed runs + singleton tail
-        ([2, 4], "pp.2,4"),  # two non-adjacent
-        ([7, 8], "pp.7-8"),  # two adjacent → run
-    ],
-)
-def test_page_range_str(pages, expected):
-    assert _page_range_str(pages) == expected
 
 
 @pytest.mark.parametrize(
@@ -223,28 +206,30 @@ def test_format_human_clean_run_returns_clean_summary():
     assert "0 must-fix" in out
 
 
-def test_format_human_groups_by_layer_and_category():
+def test_format_human_groups_by_severity():
+    # _populated_issues has one must-fix (UF-F13) and one review (UF-D1).
+    # The human report groups by severity, not by layer; no [layer] or
+    # (X-series) headers appear.
     issues = _populated_issues()
     out = format_human(issues)
-    assert "[source layer]" in out
-    assert "(F-series)" in out
-    assert "(D-series)" in out
+    assert "Must-fix (1)" in out
+    assert "Review (1)" in out
     assert "UF-F13" in out
     assert "UF-D1" in out
+    assert "layer]" not in out
+    assert "-series)" not in out
 
 
-def test_human_report_groups_by_category_then_rule_id():
-    # The human view interpolates category rank between layer and
-    # rule_id so the F-series block appears before the D-series block
-    # under the source layer. The JSON sort key is different (spec-
-    # mandated lex on rule_id); see the dedicated JSON sort test.
+def test_human_report_must_fix_before_review_then_rule_id():
+    # Severity-first: the must-fix section (F13, F14 sorted by rule_id)
+    # precedes the review section (D1). Within a section, rule_id orders.
     issues = Issues()
-    issues.add("UF-D1", location="x.tex", observed="x")
-    issues.add("UF-F14", location="b.tex", observed="b")
-    issues.add("UF-F13", location="a.tex", observed="a")
+    issues.add("UF-D1", location="x.tex", observed="x")  # review
+    issues.add("UF-F14", location="b.tex", observed="b")  # must-fix
+    issues.add("UF-F13", location="a.tex", observed="a")  # must-fix
     out = format_human(issues)
-    # F13 line appears before F14 line appears before D1 line.
     assert out.index("UF-F13") < out.index("UF-F14") < out.index("UF-D1")
+    assert out.index("Must-fix") < out.index("Review")
 
 
 def test_exit_code_reflects_must_fix_only():
@@ -373,11 +358,11 @@ def test_framing_no_pdf_note_absent_when_pdf_layer_ran_with_findings():
     assert _FRAMING_NO_PDF not in out
 
 
-# --- FIX #2: UF-F2 / UF-F3 consolidation in human report ---
+# --- Per-page flat rendering + count reconciliation (report redesign) ---
 
 
 def _make_f2_finding(location: str, observed: str = "LMRoman12-Regular") -> Finding:
-    """Build a synthetic UF-F2 Finding for testing consolidation."""
+    """Build a synthetic UF-F2 Finding for rendering tests."""
     from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF, RULES
 
     rule = RULES["UF-F2"]
@@ -393,109 +378,62 @@ def _make_f2_finding(location: str, observed: str = "LMRoman12-Regular") -> Find
     )
 
 
-def _make_f3_finding(location: str, observed: str = "20.0pt body text") -> Finding:
-    """Build a synthetic UF-F3 Finding for testing consolidation."""
-    from latex2ufdissertation.pipeline.rules import MUST_FIX, PDF, RULES
-
-    rule = RULES["UF-F3"]
-    return Finding(
-        severity=MUST_FIX,
-        rule_id="UF-F3",
-        layer=PDF,
-        location=location,
-        observed=observed,
-        required="12-point body text",
-        fix_hint=rule.fix_hint,
-        source_url=rule.source_url,
-    )
-
-
 def _count_finding_lines(out: str, rule_id: str) -> int:
-    """Count rendered finding lines for a given rule_id (lines starting with
-    '    [' that contain the rule_id). Excludes framing/advisory text."""
-    return sum(1 for line in out.splitlines() if line.startswith("    [") and rule_id in line)
+    """Count rendered per-finding lines for a rule_id. A finding line is
+    '  RULE  location  observed' (two-space indent, rule_id first token);
+    the 'Fix:' and framing lines are excluded."""
+    prefix = f"  {rule_id}  "
+    return sum(1 for line in out.splitlines() if line.startswith(prefix))
 
 
-def test_f2_multiple_pages_same_observed_consolidated():
-    """N>1 UF-F2 findings with the same observed value → one line with 'pp.'
-    and '(N pages)'.
-    """
+def test_each_finding_renders_one_line():
+    """Every finding gets its own line — no page-range collapsing. 13 F2
+    findings → 13 lines, and no 'pp.' / '(N pages)' grouping syntax."""
     issues = Issues()
     for page in [12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26]:
         issues.findings.append(_make_f2_finding(f"p.{page}"))
     out = format_human(issues)
-    # Exactly one grouped finding line (not 13 separate lines)
-    assert _count_finding_lines(out, "UF-F2") == 1
-    assert "pp." in out
-    assert "(13 pages)" in out
+    assert _count_finding_lines(out, "UF-F2") == 13
+    assert "pp." not in out
+    assert "pages)" not in out
     assert "LMRoman12-Regular" in out
 
 
-def test_f2_single_page_no_count_suffix():
-    """A single-page UF-F2 renders 'p.12' with NO '(1 pages)' suffix."""
+def test_section_count_equals_finding_count():
+    """The section header count must equal the number of rendered finding
+    lines beneath it, so the Summary reconciles with what is shown."""
     issues = Issues()
-    issues.findings.append(_make_f2_finding("p.12"))
+    for page in [1, 2, 3, 4, 5]:
+        issues.findings.append(_make_f2_finding(f"p.{page}"))
     out = format_human(issues)
-    assert "p.12" in out
-    assert "(1 pages)" not in out
-    # Should be one finding line only
-    assert _count_finding_lines(out, "UF-F2") == 1
+    assert "Must-fix (5)" in out
+    assert _count_finding_lines(out, "UF-F2") == 5
+    assert "Summary: 5 must-fix, 0 review." in out
 
 
-def test_f2_two_different_observed_fonts_two_lines():
-    """Two different observed fonts → two separate grouped lines."""
+def test_fix_hint_shown_once_per_rule_group():
+    """A rule's Fix hint appears once for the whole group, not per finding."""
     issues = Issues()
-    for page in [1, 2, 3]:
-        issues.findings.append(_make_f2_finding(f"p.{page}", observed="LMRoman12-Regular"))
-    for page in [4, 5, 6]:
-        issues.findings.append(_make_f2_finding(f"p.{page}", observed="ComicSansMS"))
+    for page in [1, 2, 3, 4, 5]:
+        issues.findings.append(_make_f2_finding(f"p.{page}"))
     out = format_human(issues)
-    assert _count_finding_lines(out, "UF-F2") == 2
-    assert "LMRoman12-Regular" in out
-    assert "ComicSansMS" in out
+    assert out.count("    Fix:") == 1
 
 
-def test_f3_consolidation_same_treatment():
-    """UF-F3 findings with same observed collapse the same way as UF-F2."""
-    issues = Issues()
-    for page in [3, 4, 5]:
-        issues.findings.append(_make_f3_finding(f"p.{page}"))
+def test_no_see_urls_in_report():
+    """The per-finding 'see: <url>' documentation lines are gone."""
+    issues = _populated_issues()
     out = format_human(issues)
-    assert _count_finding_lines(out, "UF-F3") == 1
-    assert "pp." in out
-    assert "(3 pages)" in out
+    assert "see:" not in out
+    assert "https://" not in out
 
 
-def test_f2_json_still_one_finding_per_page():
-    """format_json must still emit one finding per page (consolidation is
-    human-only; JSON schema is frozen).
-    """
+def test_json_still_one_finding_per_page():
+    """format_json must still emit one finding per page (the flat human
+    rendering does not touch the frozen JSON schema)."""
     issues = Issues()
     for page in [1, 2, 3, 4, 5]:
         issues.findings.append(_make_f2_finding(f"p.{page}"))
     payload = format_json(issues)
     f2_findings = [f for f in payload["findings"] if f["rule_id"] == "UF-F2"]
     assert len(f2_findings) == 5, f"Expected 5 per-page F2 findings in JSON, got {len(f2_findings)}"
-
-
-def test_f2_page_range_consecutive_runs():
-    """Pages 12-16 and 19-26 collapse to 'pp.12-16,19-26'."""
-    issues = Issues()
-    for page in [12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26]:
-        issues.findings.append(_make_f2_finding(f"p.{page}"))
-    out = format_human(issues)
-    assert "pp.12-16,19-26" in out
-
-
-def test_f2_non_pn_location_renders_individually():
-    """A UF-F2 finding whose location does NOT match 'p.N' falls back to
-    individual rendering (no consolidation).
-    """
-    issues = Issues()
-    # Two F2 findings with non-"p.N" location — must render as two lines.
-    for loc in ["section:intro", "appendix"]:
-        issues.findings.append(_make_f2_finding(loc))
-    out = format_human(issues)
-    # Two individual UF-F2 finding lines (no consolidation because no "p.N" locations)
-    assert _count_finding_lines(out, "UF-F2") == 2
-    assert "pp." not in out

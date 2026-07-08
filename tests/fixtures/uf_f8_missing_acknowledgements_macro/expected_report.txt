@@ -1,13 +1,10 @@
 
-[source layer]
-  (F-series)
-    [must-fix] UF-F8 main.tex — \setAcknowledgementsFile not set (required: \setAcknowledgementsFile{<acknowledgements-file-stem>})
-      fix: Set the missing \set*File macro in main.tex and ensure the file exists.
-      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f8--required-page-order--presence
-  (S-series)
-    [must-fix] UF-S2 main.tex — Acknowledgements section absent (required: \setAcknowledgementsFile{<acknowledgements-file-stem>} must be set)
-      fix: Acknowledgements section absent — missing required sections (Acknowledgements/Abstract/References/Biographical) is among the most common UF rejection reasons.
-      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-s2--required-sections-present-rejection-driver-subset-of-f8
+Must-fix (2)
+
+  UF-F8  main.tex  \setAcknowledgementsFile not set
+    Fix: Set the missing \set*File macro in main.tex and ensure the file exists.
+  UF-S2  main.tex  Acknowledgements section absent
+    Fix: Acknowledgements section absent — missing required sections (Acknowledgements/Abstract/References/Biographical) is among the most common UF rejection reasons.
 
 Summary: 2 must-fix, 0 review.
 Severity guide: must-fix = will likely cause UF Graduate School rejection; review = discretionary, verify manually.

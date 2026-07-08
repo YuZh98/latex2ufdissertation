@@ -1003,15 +1003,15 @@ def test_json_mode_stdout_is_json_report_on_stderr(
     cap = capsys.readouterr()
     json.loads(cap.out)  # stdout still a valid single JSON document
     assert rc == 1  # missing required sections → must-fix findings
-    assert "[must-fix]" in cap.err  # consolidated report on stderr
+    assert "Must-fix" in cap.err  # consolidated report on stderr
 
 
 def test_no_live_per_finding_stream(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """Findings are rendered only by the consolidated report (4-space indented
-    lines). The old 2-space "  [severity] RULE" live stream is gone, so each
-    finding appears exactly once and is never duplicated."""
+    """Findings are rendered only by the consolidated severity-grouped report.
+    The old '  [severity] RULE' live stream is gone, so each finding appears
+    exactly once and is never duplicated."""
     proj = _minimal_master_with_findings(tmp_path)
     main(["--dry-run", str(proj)])
     err = capsys.readouterr().err
-    assert "\n  [" not in err  # no 2-space live diagnostic lines
-    assert "\n    [" in err  # consolidated 4-space report lines present
+    assert "\n  [" not in err  # no live '  [severity] RULE' diagnostic lines
+    assert "Must-fix (" in err  # consolidated severity section present

@@ -268,9 +268,8 @@ def _check_f3(pages: list[PageData], issues: Issues) -> None:
             severity = REVIEW
             observed = f"{page.body_size}pt text on a figure/table-dominated page"
             fix_hint = (
-                "This page's dominant text is under 12 pt while the document body is 12 pt "
-                "— usually a figure sub-caption or table font, which UF tolerates. "
-                "Confirm this page has no running body text below 12 pt."
+                "Likely a figure caption or table cell (UF tolerates); "
+                "confirm no running body text is under 12 pt."
             )
         issues.add(
             "UF-F3",

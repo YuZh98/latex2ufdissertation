@@ -1,9 +1,8 @@
 
-[source layer]
-  (F-series)
-    [must-fix] UF-F5 main.tex — \justifying overrides template's \raggedright (required: no \justifying / \justify / \rightskip-zero override in source (template's \raggedright produces ragged-right))
-      fix: Remove the override; the UF template's `\raggedright` (cls:171) produces the required ragged-right alignment.
-      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f5--text-alignment-ragged-right
+Must-fix (1)
+
+  UF-F5  main.tex  \justifying overrides template's \raggedright
+    Fix: Remove the override; the UF template's `\raggedright` (cls:171) produces the required ragged-right alignment.
 
 Summary: 1 must-fix, 0 review.
 Severity guide: must-fix = will likely cause UF Graduate School rejection; review = discretionary, verify manually.
