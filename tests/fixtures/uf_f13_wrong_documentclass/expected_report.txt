@@ -1,9 +1,8 @@
 
-[source layer]
-  (F-series)
-    [must-fix] UF-F13 main.tex — \documentclass{article} (required: \documentclass{ufdissertation})
-      fix: Set \documentclass{ufdissertation} (Fall 2025+ template required).
-      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f13--document-class-is-ufdissertation
+Must-fix (1)
+
+  UF-F13  main.tex  \documentclass{article}
+    Fix: Set \documentclass{ufdissertation} (Fall 2025+ template required).
 
 Summary: 1 must-fix, 0 review.
 Severity guide: must-fix = will likely cause UF Graduate School rejection; review = discretionary, verify manually.

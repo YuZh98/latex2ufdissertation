@@ -1,18 +1,11 @@
 
-[source layer]
-  (F-series)
-    [must-fix] UF-F14 main.tex — \degreeYear missing or empty (required: \degreeYear{...} with a non-empty argument)
-      fix: Set the missing metadata macro with a non-empty value in main.tex.
-      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f14--required-metadata-macros-set
-    [must-fix] UF-F14 main.tex — \degreeMonth missing or empty (required: \degreeMonth{...} with a non-empty argument)
-      fix: Set the missing metadata macro with a non-empty value in main.tex.
-      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f14--required-metadata-macros-set
-    [must-fix] UF-F14 main.tex — \major missing or empty (required: \major{...} with a non-empty argument)
-      fix: Set the missing metadata macro with a non-empty value in main.tex.
-      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f14--required-metadata-macros-set
-    [must-fix] UF-F14 main.tex — \chair missing or empty (required: \chair{...} with a non-empty argument)
-      fix: Set the missing metadata macro with a non-empty value in main.tex.
-      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f14--required-metadata-macros-set
+Must-fix (4)
+
+  UF-F14  main.tex  \degreeYear missing or empty
+  UF-F14  main.tex  \degreeMonth missing or empty
+  UF-F14  main.tex  \major missing or empty
+  UF-F14  main.tex  \chair missing or empty
+    Fix: Set the missing metadata macro with a non-empty value in main.tex.
 
 Summary: 4 must-fix, 0 review.
 Severity guide: must-fix = will likely cause UF Graduate School rejection; review = discretionary, verify manually.

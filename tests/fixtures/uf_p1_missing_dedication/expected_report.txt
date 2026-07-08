@@ -1,9 +1,8 @@
 
-[source layer]
-  (P-series)
-    [must-fix] UF-P1 main.tex — \setDedicationFile{'dedication'} but no matching file found next to the master .tex (required: dedication (or dedication.tex) exists alongside the master .tex)
-      fix: Create the named file next to the master .tex (or fix the macro argument).
-      see: https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-p1--setfile-companions-exist-on-disk
+Must-fix (1)
+
+  UF-P1  main.tex  \setDedicationFile{'dedication'} but no matching file found next to the master .tex
+    Fix: Create the named file next to the master .tex (or fix the macro argument).
 
 Summary: 1 must-fix, 0 review.
 Severity guide: must-fix = will likely cause UF Graduate School rejection; review = discretionary, verify manually.

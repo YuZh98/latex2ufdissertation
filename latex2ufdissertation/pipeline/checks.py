@@ -66,15 +66,13 @@ _F5_RIGHTSKIP_SPACE = re.compile(r"\\rightskip\s+0(?![^\\}]*fil)")
 
 
 _F2_SOURCE_FIX_HINT = (
-    "Font override present; the UF template's newtx reload at "
-    "\\begin{document} may neutralize it. The PDF layer confirms "
-    "whether the rendered body is actually non-Times."
+    "Font override present (may be neutralized by the template's newtx reload); "
+    "the PDF layer confirms whether the rendered body is actually non-Times."
 )
 
 _F3_SOURCE_FIX_HINT = (
-    "A \\fontsize{...}{...}\\selectfont may be legal localized sizing "
-    "(e.g. on a title page or caption). The PDF layer confirms the "
-    "rendered body-mode size."
+    "May be legal localized sizing (e.g. a title page or caption); "
+    "the PDF layer confirms the rendered body-mode size."
 )
 
 

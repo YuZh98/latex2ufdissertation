@@ -67,14 +67,12 @@ Compile is invoked transparently when source-only input arrives without a bundle
 
 ### Human-readable report (default)
 
-Grouped by rule category. Each finding includes:
-
-- Severity tier (`must-fix` or `review`)
-- UF rule ID (e.g. `UF-F1`)
-- Location: file and line (source-layer) or page number (PDF-layer)
-- Observed vs required
-- Fix hint
-- URL to the originating UF rule
+Grouped by severity (`must-fix` first, then `review`); the section header
+count equals the number of finding lines shown. Within a section, one line
+per finding — `UF-<rule>  <location>  <observed>` — ordered by rule then
+location, with the fix hint shown once per rule group. Location is a source
+file (source-layer) or a page number (PDF-layer), in one uniform column.
+No per-finding documentation URLs.
 
 ### Machine-readable JSON (`--json`)
 
