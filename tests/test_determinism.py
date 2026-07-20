@@ -2,8 +2,8 @@
 
 CONTRIBUTING.md and docs/spec-v1.0.md promise byte-identical JSON
 output across two consecutive runs on the same input. This test
-exercises the contract on the demo dissertation via --dry-run + --json,
-captures stdout twice, asserts equality.
+exercises the contract on the demo dissertation via --json (validate-only,
+the default), captures stdout twice, asserts equality.
 """
 
 from __future__ import annotations
@@ -20,10 +20,10 @@ DEMO = Path(__file__).resolve().parent.parent / "examples" / "demo_dissertation"
 
 
 def _run_dry_json() -> tuple[int, str]:
-    """Run the CLI in dry-run + JSON mode, return (exit_code, stdout)."""
+    """Run the CLI in validate-only + JSON mode, return (exit_code, stdout)."""
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
-        rc = main(["--dry-run", "--json", str(DEMO)])
+        rc = main(["--json", str(DEMO)])
     return rc, out.getvalue()
 
 

@@ -1,8 +1,8 @@
 """PDF-layer validation checks for UF dissertations.
 
 Entry point: `run_pdf_checks(pdf_path, issues)`. pdfminer.six is lazy-
-imported inside the function so source-only / --dry-run paths never import
-it. All checks are named `_check_*` private helpers called from
+imported inside the function so validate-only (source-only) paths never
+import it. All checks are named `_check_*` private helpers called from
 `run_pdf_checks`; later units (F2, F3, S5, ...) add their helpers here.
 """
 
@@ -381,7 +381,7 @@ def _check_s5(pdf_path: Path, issues: Issues) -> None:
 def run_pdf_checks(pdf_path: Path, issues: Issues) -> None:
     """Run all PDF-layer checks against *pdf_path*, appending findings to
     *issues*. pdfminer.six is imported lazily here so callers that never
-    reach the PDF layer (--dry-run, source-only) do not pay the import cost.
+    reach the PDF layer (validate-only, source-only) do not pay the import cost.
 
     Raises MissingToolchain (exit 3) if pdfminer.six is not installed.
     Raises UnreadableInput (exit 2) if the PDF cannot be parsed at all.

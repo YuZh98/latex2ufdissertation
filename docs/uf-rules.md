@@ -373,7 +373,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 - **Source:** S3 (*"Cite on first page in unnumbered footnote with full citation"*)
 - **Layer:** source content check
 - **Strategy:** detect `\footnotetext[0]{...}` pattern at chapter start (the pattern C4:4 demonstrates). If chapter contains this pattern → presence confirmed. If document looks like a multi-article dissertation (multiple chapters with `\footnotetext[0]` patterns) but missing on one → flag for review.
-- **Note:** Can't auto-detect "is this chapter from a published article" w/o student annotation. Intended to surface as a checklist item in `--guide` mode. **Status: no automated check. J1 has no emit site in the current build. `--guide` is planned but not yet implemented.**
+- **Note:** Can't auto-detect "is this chapter from a published article" w/o student annotation, so this stays a manual checklist item documented here. **Status: no automated check; J1 has no emit site in the current build.**
 
 ### UF-J2 — Co-author acknowledgment (when applicable)
 
@@ -436,7 +436,7 @@ The UF LaTeX template (`ufdissertation.cls`) does heavy lifting. Most formatting
 | D2 LuaLaTeX directive | must-fix | source | `% !TEX program` scan |
 | D3 overrideTitles/Chapters | review | source | `\documentclass` option scan |
 | P1 setFile companions exist | must-fix | source | filesystem check |
-| J1 self-pub footnote | review (checklist) | content | `\footnotetext[0]` pattern (**no automated check — deferred; `--guide` planned**) |
+| J1 self-pub footnote | review (checklist) | content | `\footnotetext[0]` pattern (**no automated check — manual checklist item**) |
 | J2 co-author ack | review (checklist) | content | manual checklist if article mode signaled (**no automated check — deferred**) |
 | A1 PDF tagged | review | pdf | `/StructTreeRoot` parse (**no automated check — informational only; unverifiable on this template**) |
 | A2 template caveats | review | pdf | informational surfacing |

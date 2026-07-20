@@ -53,23 +53,23 @@ def test_missing_input_returns_2(tmp_path):
     assert r.returncode == 2
 
 
-def test_dry_run_on_valid_fixture(tmp_path):
+def test_validate_valid_fixture(tmp_path):
     proj = _make_valid_project(tmp_path)
-    r = _run(str(proj), "--dry-run")
+    r = _run(str(proj))
     assert r.returncode == 0, r.stderr + r.stdout
 
 
-def test_dry_run_errors_exit_1(tmp_path):
+def test_validate_errors_exit_1(tmp_path):
     proj = tmp_path / "p"
     proj.mkdir()
     (proj / "master.tex").write_text(r"\documentclass{article}", encoding="utf-8")
-    r = _run(str(proj), "--dry-run")
+    r = _run(str(proj))
     assert r.returncode == 1
 
 
 def test_json_output_summary(tmp_path):
     proj = _make_valid_project(tmp_path)
-    r = _run(str(proj), "--dry-run", "--json")
+    r = _run(str(proj), "--json")
     # stdout is JSON-only per the v1 contract; parse the whole thing.
     payload = json.loads(r.stdout)
     assert payload["schema_version"] == "1.0"

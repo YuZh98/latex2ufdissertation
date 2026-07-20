@@ -339,7 +339,7 @@ def test_framing_scope_present_with_findings():
 
 def test_framing_no_pdf_note_present_when_pdf_layer_not_ran():
     issues = Issues()
-    # pdf_layer_ran=False by default → dry-run note must appear
+    # pdf_layer_ran=False by default → validate-only note must appear
     out = format_human(issues)
     assert _FRAMING_NO_PDF in out
 

@@ -10,7 +10,7 @@ All of the following must hold before any commit lands on `main`, and are gated 
 - **Coverage.** A CI gate enforces a coverage floor (currently 70%). The floor ratchets up with every PR that raises actual coverage; the target for v1.0 release is 85%.
 - **Pre-commit.** The pre-commit hook set covers formatting, trailing whitespace, end-of-file newline, merge-conflict markers, and YAML/TOML syntax validity.
 - **Deprecation-strict.** `pytest -W error::DeprecationWarning` passes. Run this locally before any major dependency bump.
-- **Determinism pinning test.** `tests/test_determinism.py` runs the validator twice on the demo dissertation with `--dry-run --json` and asserts byte-identical stdout. Enforces the determinism behavior promised in the spec.
+- **Determinism pinning test.** `tests/test_determinism.py` runs the validator twice on the demo dissertation with `--json` (validate-only, the default) and asserts byte-identical stdout. Enforces the determinism behavior promised in the spec.
 
 ## What goes in committed artifacts
 

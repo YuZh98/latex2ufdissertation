@@ -7,4 +7,4 @@ Review (1)
 Summary: 0 must-fix, 1 review.
 Severity guide: must-fix = will likely cause UF Graduate School rejection; review = discretionary, verify manually.
 Scope: clean means no violations of the rules this tool checks (targeting the Fall-2025+ UF ufdissertation template). It does NOT guarantee Graduate School acceptance — the editorial office checks requirements beyond this tool's scope.
-PDF layer did not run (--dry-run or source-only mode). UF-F2, UF-F3, and other PDF-authoritative rules were not verified. Re-run without --dry-run for full coverage.
+PDF layer did not run (validate-only mode, the default). UF-F2, UF-F3, and other PDF-authoritative rules were not verified. Re-run with --compile for full coverage.
