@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · SemVer.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-20
+
 ### Added
 - Add version-sync guard (`tests/test_version_sync.py`): asserts installed package metadata, `pyproject.toml` `[project].version`, and the CLI `--version` output all agree, so a stale editable install or an unrebuilt release can no longer silently ship a runtime version that diverges from source (#89)
 - `review_present` exit reason: review-only runs report `exit_reason: "review_present"` instead of bare `clean` (exit code stays `0`) so the JSON verdict stops implying nothing needs attention (#91)
