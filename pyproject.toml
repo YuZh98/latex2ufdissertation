@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "latex2ufdissertation"
-version = "0.4.0"
+version = "0.5.0"
 description = "Validate and compile UF Graduate School dissertations and theses"
 readme = "README.md"
 requires-python = ">=3.10"
