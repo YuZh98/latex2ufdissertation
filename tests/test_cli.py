@@ -62,7 +62,7 @@ def test_main_json_directory_input_reports_detected_mode_dir(
         r"\documentclass{ufdissertation}" + "\n\\begin{document}\n\\end{document}\n",
         encoding="utf-8",
     )
-    rc = main(["--json", "--dry-run", str(tmp_path)])
+    rc = main(["--json", str(tmp_path)])
     payload = json.loads(capsys.readouterr().out)
     assert payload["detected_mode"] == "dir"
     assert payload["input"] == str(tmp_path)
@@ -109,7 +109,7 @@ def test_main_outside_root_exits_2_no_traceback(
 ) -> None:
     """--main pointing outside root must exit 2 with a clean message, no ValueError."""
     (tmp_path / "main.tex").write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
-    rc = main(["--dry-run", "--main", "/etc/passwd", str(tmp_path)])
+    rc = main(["--main", "/etc/passwd", str(tmp_path)])
     assert rc == 2
     err = capsys.readouterr().err
     assert "Error:" in err
@@ -123,7 +123,7 @@ def test_main_outside_root_json_is_valid(
 ) -> None:
     """--json --main <outside root> must emit valid JSON to stdout."""
     (tmp_path / "main.tex").write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
-    rc = main(["--json", "--dry-run", "--main", "/etc/passwd", str(tmp_path)])
+    rc = main(["--json", "--main", "/etc/passwd", str(tmp_path)])
     assert rc == 2
     out = capsys.readouterr().out
     payload = json.loads(out)  # must not raise
@@ -133,7 +133,7 @@ def test_main_outside_root_json_is_valid(
 def test_main_nonexistent_file_exits_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """--main pointing at a non-existent file must exit 2 cleanly."""
     (tmp_path / "main.tex").write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
-    rc = main(["--dry-run", "--main", "ghost.tex", str(tmp_path)])
+    rc = main(["--main", "ghost.tex", str(tmp_path)])
     assert rc == 2
     assert "Error:" in capsys.readouterr().err
 
@@ -142,7 +142,7 @@ def test_main_hint_not_a_file_exits_2(tmp_path: Path, capsys: pytest.CaptureFixt
     """--main pointing at a directory must exit 2 cleanly."""
     sub = tmp_path / "subdir"
     sub.mkdir()
-    rc = main(["--dry-run", "--main", "subdir", str(tmp_path)])
+    rc = main(["--main", "subdir", str(tmp_path)])
     assert rc == 2
     assert "Error:" in capsys.readouterr().err
 
@@ -156,7 +156,7 @@ def test_main_dash_prefix_hint_exits_2(tmp_path: Path, capsys: pytest.CaptureFix
     """
     (tmp_path / "-x.tex").write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
     with pytest.raises(SystemExit) as exc_info:
-        main(["--dry-run", "--main", "-x.tex", str(tmp_path)])
+        main(["--main", "-x.tex", str(tmp_path)])
     assert exc_info.value.code == 2
 
 
@@ -192,7 +192,7 @@ def test_init_unwritable_dir_exits_2_no_traceback(
 
 def test_json_contract_resolve_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """A missing input with --json must emit valid JSON to stdout."""
-    rc = main(["--json", "--dry-run", str(tmp_path / "nonexistent.zip")])
+    rc = main(["--json", str(tmp_path / "nonexistent.zip")])
     assert rc == 2
     out = capsys.readouterr().out
     payload = json.loads(out)
@@ -202,7 +202,7 @@ def test_json_contract_resolve_error(tmp_path: Path, capsys: pytest.CaptureFixtu
 def test_json_contract_detect_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """A dir with no .tex master + --json must emit valid JSON to stdout."""
     (tmp_path / "empty.txt").write_text("hello", encoding="utf-8")
-    rc = main(["--json", "--dry-run", str(tmp_path)])
+    rc = main(["--json", str(tmp_path)])
     assert rc == 2
     out = capsys.readouterr().out
     payload = json.loads(out)
@@ -220,7 +220,7 @@ _THESIS_MAIN = (
 def test_thesis_input_exits_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     """A \\thesisType{Thesis} project must exit 2 (master's theses out of scope)."""
     (tmp_path / "main.tex").write_text(_THESIS_MAIN, encoding="utf-8")
-    rc = main(["--dry-run", str(tmp_path)])
+    rc = main([str(tmp_path)])
     assert rc == 2
 
 
@@ -230,7 +230,7 @@ def test_thesis_input_json_is_valid_and_reports_reason(
     """The thesis-refusal path with --json must emit valid JSON with
     exit_reason == thesis_input."""
     (tmp_path / "main.tex").write_text(_THESIS_MAIN, encoding="utf-8")
-    rc = main(["--json", "--dry-run", str(tmp_path)])
+    rc = main(["--json", str(tmp_path)])
     assert rc == 2
     payload = json.loads(capsys.readouterr().out)
     assert payload["summary"]["exit_reason"] == "thesis_input"
@@ -244,7 +244,7 @@ def test_json_contract_missing_toolchain(
     """When lualatex is missing + --json must emit valid JSON to stdout."""
     (tmp_path / "main.tex").write_text(r"\documentclass{ufdissertation}", encoding="utf-8")
     monkeypatch.setattr("latex2ufdissertation.cli.lualatex_available", lambda: False)
-    rc = main(["--json", str(tmp_path)])
+    rc = main(["--json", "--compile", str(tmp_path)])
     assert rc == 3
     out = capsys.readouterr().out
     payload = json.loads(out)
@@ -265,7 +265,7 @@ def test_json_contract_compile_failure(
         "latex2ufdissertation.cli.compile_pdf",
         lambda *a, **k: (_ for _ in ()).throw(ConverterError("boom")),
     )
-    rc = main(["--json", str(tmp_path)])
+    rc = main(["--json", "--compile", str(tmp_path)])
     assert rc == 2
     out = capsys.readouterr().out
     payload = json.loads(out)
@@ -380,8 +380,8 @@ def test_git_input_mode_end_to_end(tmp_path: Path, capsys: pytest.CaptureFixture
 
     Assertions:
     - detected_mode == "git" in the JSON payload.
-    - Exit code 0 (demo satisfies all source-layer must-fix rules; --dry-run
-      skips compilation and PDF checks).
+    - Exit code 0 (demo satisfies all source-layer must-fix rules; the default
+      validate-only mode skips compilation and PDF checks).
     - The temp clone directory is cleaned up by the time main() returns.
     """
     git_url = "https://github.com/someuser/somerepo.git"
@@ -410,7 +410,7 @@ def test_git_input_mode_end_to_end(tmp_path: Path, capsys: pytest.CaptureFixture
             side_effect=spy_mkdtemp,
         ),
     ):
-        rc = main(["--json", "--dry-run", git_url])
+        rc = main(["--json", git_url])
 
     payload = json.loads(capsys.readouterr().out)
 
@@ -419,7 +419,7 @@ def test_git_input_mode_end_to_end(tmp_path: Path, capsys: pytest.CaptureFixture
         f"expected detected_mode='git', got {payload['detected_mode']!r}"
     )
 
-    # Exit 0: demo satisfies every source-layer must-fix rule under --dry-run.
+    # Exit 0: demo satisfies every source-layer must-fix rule in validate-only mode.
     assert rc == 0, (
         f"expected exit 0 for clean demo via git input, got {rc}; findings: {payload['findings']}"
     )
@@ -557,15 +557,15 @@ def _make_compile_failure_dir(tmp_path: Path) -> Path:
         # Resolve-layer error: corrupt zip → UnreadableInput
         ("corrupt_zip", _make_corrupt_zip, [], False, False),
         # Detect-layer error: directory with no .tex master
-        ("no_tex_master", _make_no_master_dir, ["--dry-run"], False, False),
+        ("no_tex_master", _make_no_master_dir, [], False, False),
         # Thesis input path
-        ("thesis_input", _make_thesis_dir, ["--dry-run"], False, False),
+        ("thesis_input", _make_thesis_dir, [], False, False),
         # --main outside root
-        ("main_outside_root", None, ["--dry-run", "--main", "/etc/passwd"], False, False),
-        # Missing toolchain
-        ("missing_toolchain", _make_missing_toolchain_dir, [], True, False),
-        # Compile failure
-        ("compile_failure", _make_compile_failure_dir, [], False, True),
+        ("main_outside_root", None, ["--main", "/etc/passwd"], False, False),
+        # Missing toolchain (compile path is opt-in via --compile)
+        ("missing_toolchain", _make_missing_toolchain_dir, ["--compile"], True, False),
+        # Compile failure (compile path is opt-in via --compile)
+        ("compile_failure", _make_compile_failure_dir, ["--compile"], False, True),
     ],
 )
 def test_json_stdout_is_single_parseable_document_on_all_error_paths(
@@ -722,7 +722,7 @@ def test_build_phase_missing_toolchain_exits_exactly_3_with_valid_json(
         "latex2ufdissertation.pipeline.pdf_checks.run_pdf_checks",
         side_effect=MissingToolchain("pdfminer.six not installed"),
     ):
-        rc = main(["--json", str(project)])
+        rc = main(["--json", "--compile", str(project)])
 
     assert rc == 3, f"build-phase MissingToolchain must exit EXACTLY 3, not {rc} (mutant ID348)"
     out = capsys.readouterr().out
@@ -752,7 +752,7 @@ def test_build_phase_unreadable_input_exits_exactly_2_with_valid_json(
         "latex2ufdissertation.pipeline.pdf_checks.run_pdf_checks",
         side_effect=UnreadableInput("cannot parse PDF"),
     ):
-        rc = main(["--json", str(project)])
+        rc = main(["--json", "--compile", str(project)])
 
     assert rc == 2, f"build-phase UnreadableInput must exit EXACTLY 2, not {rc} (mutant ID351)"
     out = capsys.readouterr().out
@@ -800,18 +800,13 @@ def test_bundled_pdf_message_shows_resolved_path_and_caveat(
     pdf = project / "main.pdf"
     pdf.write_bytes(b"%PDF-1.7\n")
 
+    # The bundled-PDF path is only reached under --compile; validate-only
+    # (the default) never inspects a bundled PDF.
     with patch(
         "latex2ufdissertation.pipeline.pdf_checks.run_pdf_checks",
         return_value=None,
     ):
-        rc = main(["--dry-run", str(project)])
-
-    # --dry-run skips the bundled-PDF path; re-run without --dry-run.
-    with patch(
-        "latex2ufdissertation.pipeline.pdf_checks.run_pdf_checks",
-        return_value=None,
-    ):
-        rc = main([str(project)])
+        rc = main(["--compile", str(project)])
 
     err = capsys.readouterr().err
     resolved = str(pdf.resolve())
@@ -823,39 +818,56 @@ def test_bundled_pdf_message_shows_resolved_path_and_caveat(
 
 
 # ---------------------------------------------------------------------------
-# FIX #11: --dry-run + .pdf input → warning emitted, PDF checks still run
+# --compile + .pdf input → no-effect warning emitted, PDF checks still run
 # ---------------------------------------------------------------------------
 
 
-def test_dry_run_with_pdf_input_warns_and_continues(
+def test_compile_flag_with_pdf_input_warns_and_continues(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """FIX #11: --dry-run with a .pdf input must emit the no-effect warning
-    on stderr AND still run PDF checks (exit 2 when PDF is garbage).
+    """--compile with a .pdf input must emit the no-effect warning on stderr
+    (the input is already compiled) AND still run PDF checks (exit 2 when the
+    PDF is garbage).
     """
     garbage_pdf = tmp_path / "paper.pdf"
     garbage_pdf.write_bytes(b"%PDF-1.7\n")  # minimal PDF header, no /Root → fails parse
 
-    rc = main(["--dry-run", str(garbage_pdf)])
+    rc = main(["--compile", str(garbage_pdf)])
     err = capsys.readouterr().err
 
-    assert "Warning" in err and "--dry-run" in err and ".pdf input" in err, (
+    assert "Warning" in err and "--compile" in err and ".pdf input" in err, (
         f"warning line not found in stderr; got:\n{err}"
     )
     # PDF checks still ran (garbage PDF → exit 2, unreadable_input).
     assert rc == 2
 
 
-def test_dry_run_with_pdf_json_warning_present(
+def test_pdf_input_without_compile_runs_checks_silently(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """FIX #11: --json --dry-run with .pdf input emits warning on stderr
+    """A bare .pdf input (no --compile) runs the PDF layer with no warning; a
+    garbage PDF still exits 2.
+    """
+    garbage_pdf = tmp_path / "paper_bare.pdf"
+    garbage_pdf.write_bytes(b"%PDF-1.7\n")
+
+    rc = main([str(garbage_pdf)])
+    err = capsys.readouterr().err
+
+    assert "Warning" not in err, f"no --compile warning expected on bare .pdf; got:\n{err}"
+    assert rc == 2
+
+
+def test_compile_flag_with_pdf_json_warning_present(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """--json --compile with .pdf input emits the no-effect warning on stderr
     and still a valid JSON payload on stdout.
     """
     garbage_pdf = tmp_path / "paper2.pdf"
     garbage_pdf.write_bytes(b"%PDF-1.7\n")
 
-    rc = main(["--dry-run", "--json", str(garbage_pdf)])
+    rc = main(["--compile", "--json", str(garbage_pdf)])
     captured = capsys.readouterr()
     err = captured.err
 
@@ -884,7 +896,7 @@ def test_tex_master_input_validates_and_detects_mode_dir(
     tex = tmp_path / "main.tex"
     tex.write_text(_MASTER_TEX, encoding="utf-8")
 
-    rc = main(["--json", "--dry-run", str(tex)])
+    rc = main(["--json", str(tex)])
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
 
@@ -914,7 +926,7 @@ def test_tex_master_with_documentclass_options_is_accepted(
         encoding="utf-8",
     )
 
-    rc = main(["--json", "--dry-run", str(tex)])
+    rc = main(["--json", str(tex)])
     payload = json.loads(capsys.readouterr().out)
 
     assert rc in (0, 1), f"options-bracket master must be accepted, got rc={rc}"
@@ -962,7 +974,7 @@ def test_tex_input_json_detects_dir_mode(
     tex = tmp_path / "dissertation.tex"
     tex.write_text(_MASTER_TEX, encoding="utf-8")
 
-    rc = main(["--json", "--dry-run", str(tex)])
+    rc = main(["--json", str(tex)])
     payload = json.loads(capsys.readouterr().out)
 
     assert payload["detected_mode"] == "dir"
@@ -985,7 +997,7 @@ def test_nonexistent_tex_falls_through_to_resolve_error(
 
 def _minimal_master_with_findings(tmp_path: Path) -> Path:
     # A bare ufdissertation master with no \set*File macros → required-section
-    # must-fix findings fire on --dry-run (source layer).
+    # must-fix findings fire in the default validate-only (source) layer.
     (tmp_path / "main.tex").write_text(
         r"\documentclass{ufdissertation}" + "\n\\begin{document}\n\\end{document}\n",
         encoding="utf-8",
@@ -999,7 +1011,7 @@ def test_json_mode_stdout_is_json_report_on_stderr(
     """Under --json, stdout carries a single valid JSON document and the
     human report still prints to stderr so `--json | jq` works unfiltered."""
     proj = _minimal_master_with_findings(tmp_path)
-    rc = main(["--json", "--dry-run", str(proj)])
+    rc = main(["--json", str(proj)])
     cap = capsys.readouterr()
     json.loads(cap.out)  # stdout still a valid single JSON document
     assert rc == 1  # missing required sections → must-fix findings
@@ -1011,7 +1023,7 @@ def test_no_live_per_finding_stream(tmp_path: Path, capsys: pytest.CaptureFixtur
     The old '  [severity] RULE' live stream is gone, so each finding appears
     exactly once and is never duplicated."""
     proj = _minimal_master_with_findings(tmp_path)
-    main(["--dry-run", str(proj)])
+    main([str(proj)])
     err = capsys.readouterr().err
     assert "\n  [" not in err  # no live '  [severity] RULE' diagnostic lines
     assert "Must-fix (" in err  # consolidated severity section present

@@ -40,7 +40,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("input", nargs="?", help="Input: .zip, directory, .tex, .pdf, or git URL")
     p.add_argument("output", nargs="?", help="Output PDF path (optional)")
     p.add_argument("--init", metavar="DIR", help="Scaffold a new project at DIR")
-    p.add_argument("--dry-run", action="store_true", help="Validate only, skip compile")
+    p.add_argument(
+        "--compile",
+        action="store_true",
+        help="Also compile with LuaLaTeX and run PDF-layer checks (default: validate only)",
+    )
     p.add_argument("--main", metavar="FILE", help="Override master .tex auto-detect")
     p.add_argument(
         "--demo",
@@ -70,9 +74,18 @@ def _err(msg: str) -> None:
     sys.stderr.write(msg + "\n")
 
 
+def _out(msg: str = "") -> None:
+    """Write *msg* followed by a newline to stdout.
+
+    The stdout counterpart of _err: the JSON payload and the --demo location
+    banner are the tool's stdout output and funnel through here.
+    """
+    sys.stdout.write(msg + "\n")
+
+
 def _emit_json(issues: Issues) -> None:
     # sort_keys keeps byte-identical output across runs on the same input.
-    print(json.dumps(format_json(issues), indent=2, sort_keys=True))
+    _out(json.dumps(format_json(issues), indent=2, sort_keys=True))
 
 
 def _emit_report(issues: Issues, json_out: bool) -> None:
@@ -167,7 +180,9 @@ def _run_project_validation(
         _err(f"  validating {issues.main_tex}")
         run_checks(master, root, issues)
 
-        if args.dry_run:
+        if not args.compile:
+            # Default: validate the source only. The PDF layer (compile or
+            # bundled-PDF inspection) is opt-in via --compile.
             _emit_report(issues, args.json_out)
             return exit_code(issues)
 
@@ -235,23 +250,23 @@ def _run_project_validation(
 
 
 def _print_demo_location() -> int:
-    print("Bundled demo dissertation — a known-good UF project that")
-    print("satisfies every must-fix rule. Read it top-to-bottom as a")
-    print("teaching reference, or run the validator against it to see")
-    print("what a clean report looks like.")
-    print()
-    print(f"  Browse on GitHub: {DEMO_GITHUB_URL}")
+    _out("Bundled demo dissertation — a known-good UF project that")
+    _out("satisfies every must-fix rule. Read it top-to-bottom as a")
+    _out("teaching reference, or run the validator against it to see")
+    _out("what a clean report looks like.")
+    _out()
+    _out(f"  Browse on GitHub: {DEMO_GITHUB_URL}")
     # If running from a source checkout, surface the local path too.
     pkg_root = Path(__file__).resolve().parent.parent
     local = pkg_root / "examples" / "demo_dissertation"
     if local.is_dir():
-        print(f"  Local path:       {local}")
-        print()
-        print(f"  Validate:         latex2ufdissertation --dry-run {local}")
+        _out(f"  Local path:       {local}")
+        _out()
+        _out(f"  Validate:         latex2ufdissertation {local}")
     else:
-        print()
-        print("  To use locally, clone the repo or download the directory")
-        print("  from GitHub. A `--demo DEST` copy mode is planned for v1.0.")
+        _out()
+        _out("  To use locally, clone the repo or download the directory")
+        _out("  from GitHub. A `--demo DEST` copy mode is planned for v1.0.")
     return 0
 
 
@@ -299,10 +314,10 @@ def main(argv: list[str] | None = None) -> int:
             if args.json_out:
                 _emit_json(issues)
             return 2
-        if args.dry_run:
+        if args.compile:
             _err(
-                "Warning: --dry-run has no effect with .pdf input "
-                "(no source layer); running PDF checks."
+                "Warning: --compile has no effect with .pdf input "
+                "(the input is already compiled); running PDF checks."
             )
         _err("  source layer skipped (PDF-only input)")
         issues.source_layer_ran = False

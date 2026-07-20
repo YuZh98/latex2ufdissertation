@@ -21,16 +21,16 @@ The tool is **advisory**. The student remains responsible for the dissertation. 
 ### In scope
 
 - Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+ UF template, and the immediately-prior UF template revision it superseded). The two revisions share an **identical student-facing macro surface** — every `\set*File`, metadata macro, and `\thesisType` the validator keys on is defined the same in both; the differences are template-maintainer formatting internals (caption `labelsep`, TOC `\titlecontents` layout, `algorithm`/`natbib` package options) that do not affect any rule the validator checks. Both revisions are therefore supported (see hard-rule 9).
-- Two-layer validation: LaTeX source + compiled PDF. The PDF layer uses `pdfminer.six`, which is **lazy-imported** so `--dry-run` and source-only execution paths do not import it at runtime; it is still a required install dependency listed in `[project] dependencies`. This is a deliberate, documented departure from the prior stdlib-only constraint.
+- Two-layer validation: LaTeX source + compiled PDF. The PDF layer uses `pdfminer.six`, which is **lazy-imported** so the default validate-only (source-only) execution path does not import it at runtime; it is still a required install dependency listed in `[project] dependencies`. This is a deliberate, documented departure from the prior stdlib-only constraint.
 - Four input modes: project zip, project directory, git URL, compiled PDF (PDF-only input mode)
-- Compilation as a means to obtain the PDF when source input is given (utility, not headline feature)
+- Compilation as an **opt-in** means to obtain the PDF when source input is given (utility, not headline feature; enabled with `--compile`, off by default)
 - CLI as the engine
 - Machine-readable JSON output for downstream tooling
-- An ETD-upload walkthrough (`--guide` flag) summarizing the student's next steps in GIMS (**planned — not yet implemented; see §8 gate status**)
 
 ### Out of scope for v1.0
 
 - Master's theses (deferred — same template, different `\thesisType`; revisit after v1.0)
+- An ETD-upload walkthrough (`--guide` flag): **dropped.** Originally planned, but the tool is scoped to validation only; UF's own submission guides cover the GIMS/ETD next steps (linked from the README).
 - UF templates older than the immediately-prior revision (no such template has been compared against the rule set; support is not claimed and detection is not attempted)
 - Tex cleanup, file pruning, or any Overleaf-export normalization (that's what `latex2arxiv` does for a different submission target)
 - External URL liveness checking (network-dependent; reserved for a future `--check-links` opt-in)
@@ -51,13 +51,15 @@ Some compliance dimensions are **unverifiable by either layer**, and a clean rep
 
 ## 4. Inputs (locked)
 
+The default action is **validate-only**: the source layer runs and the report is emitted, with no compilation and no PDF layer. Passing `--compile` additionally runs the PDF layer — on a bundled PDF if one is present, otherwise on freshly compiled output. (Compilation is thus opt-in; a student without a TeX install still gets full source-layer validation by default.) The `*.tex` and git-URL inputs behave like `directory` after normalization.
+
 | Input | Detection | Source layer runs? | PDF layer runs? | Compile? |
 |---|---|---|---|---|
-| `*.zip` (project archive) | extension | yes | yes (on bundled PDF if present; otherwise on compiled output) | only if no PDF in archive |
-| directory path | `path.is_dir()` | yes | yes (on bundled `main.pdf` if present; otherwise on compiled output) | only if no PDF in directory |
-| `*.pdf` | extension | **skip + note in report** | yes | no |
+| `*.zip` (project archive) | extension | yes | only with `--compile` (on bundled PDF if present; otherwise on compiled output) | only with `--compile`, and only if no PDF in archive |
+| directory path | `path.is_dir()` | yes | only with `--compile` (on bundled `main.pdf` if present; otherwise on compiled output) | only with `--compile`, and only if no PDF in directory |
+| `*.pdf` | extension | **skip + note in report** | yes | no (`--compile` is a no-op with a warning) |
 
-Compile is invoked transparently when source-only input arrives without a bundled PDF. Compile failure is a fatal error (exit 2), not a finding — if the project does not compile, there is nothing meaningful for the PDF layer to inspect.
+Under `--compile`, compilation is invoked when source input arrives without a bundled PDF. Compile failure is a fatal error (exit 2), not a finding — if the project does not compile, there is nothing meaningful for the PDF layer to inspect.
 
 **Source-PDF consistency is not verified.** When a zip or directory input bundles both source and a compiled PDF, the source layer runs on the source and the PDF layer runs on the bundled PDF independently. The tool does not check that the PDF was compiled from the current source. A student who edited `.tex` after compiling and then bundled the outdated `.pdf` will see PDF-layer findings from the stale PDF. A `--recompile` flag that forces a fresh compile when both are present is reserved for v1.1 or later.
 
@@ -159,7 +161,7 @@ These are decisions that are committed *for now* but may change before the v1.0 
 4. **External URL liveness (UF-S4) is deferred entirely.**
    *Revisit if:* user feedback indicates broken external URLs are a meaningful rejection driver and an opt-in `--check-links` flag would be used.
 
-5. **Journal-article-specific checks (UF-J1, UF-J2) are surfaced only in `--guide` output, not auto-detected.**
+5. **Journal-article-specific checks (UF-J1, UF-J2) are documented in the rule catalog but not auto-detected.**
    *Revisit if:* a reliable discriminator for journal-article mode emerges (e.g., a UF-published class option).
 
 6. **Solo-subsection detection (UF-F16) is `review`, not `must-fix`.**
@@ -171,7 +173,7 @@ These are decisions that are committed *for now* but may change before the v1.0 
 8. **The validator runs all applicable checks every time; there is no `--only=<rule_id>` filter in v1.0.**
    *Revisit if:* run time becomes long enough that selective re-checking is needed.
 
-9. **UF-F2 (font family) and UF-F3 (font size) fire as `review` at the source layer and `must-fix` at the PDF layer.** The source override-scan flags intent; the PDF layer adjudicates the rendered result (per §7.1.2). On `--dry-run` / PDF-absent paths, only the source-layer `review` is available.
+9. **UF-F2 (font family) and UF-F3 (font size) fire as `review` at the source layer and `must-fix` at the PDF layer.** The source override-scan flags intent; the PDF layer adjudicates the rendered result (per §7.1.2). In the default validate-only mode (no `--compile`) / PDF-absent paths, only the source-layer `review` is available.
    *Revisit if:* a source-only signal proves sound enough to carry the must-fix verdict without the PDF, or the PDF check proves too noisy to be must-fix.
 
 10. **UF-F5 (alignment) is a `must-fix` at the source layer.** The originally-planned PDF right-edge check was deferred; the source scan was retargeted from `\justifying` (undefined in this template — never compiles) to the compilable `\rightskip`-zero re-justification vector (guarded against stretch-glue false positives), making the source check sound. A PDF right-edge distribution check remains a possible defense-in-depth addition in v1.1.
@@ -203,7 +205,7 @@ These are gates, not aspirations. A release that misses any of them is not v1.0.
 **Current gate status (pre-1.0):** Gates 1, 2, 5, 6, 7 are met; the following are the remaining gaps:
 
 - **Gate 3** ("each must-fix rule has an isolating fixture"): one gap — UF-S2 (absent rejection-driver section) has a detector but no `tests/fixtures/uf_s2_*` fixture.
-- **Gate 4** ("all four input modes exercised in tests"): `dir` and `pdf` run full validate cycles; `zip` and `git` are covered only by resolve/detection and error-path tests — no happy-path clone-or-extract → checks → report cycle.
+- **Gate 4** ("all four input modes exercised in tests"): `dir`, `pdf`, and `git` run full validate cycles (`git` via `test_git_input_mode_end_to_end`, a mocked clone → detect → checks → report); `zip` is still covered only by resolve/detection and error-path tests — no happy-path extract → checks → report cycle.
 - **Gate 8** (PyPI `Production/Stable`): `pyproject.toml` classifier is currently `4 - Beta`. Will be updated to `5 - Production/Stable` at the v1.0.0 release.
 
 Hard-rule 9 is no longer a prerequisite for gates 1–3: old-template refusal was dropped, so those gates stand on the rule set alone.

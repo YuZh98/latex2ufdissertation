@@ -42,9 +42,9 @@ _FRAMING_SCOPE = (
     "the editorial office checks requirements beyond this tool's scope."
 )
 _FRAMING_NO_PDF = (
-    "PDF layer did not run (--dry-run or source-only mode). "
+    "PDF layer did not run (validate-only mode, the default). "
     "UF-F2, UF-F3, and other PDF-authoritative rules were not verified. "
-    "Re-run without --dry-run for full coverage."
+    "Re-run with --compile for full coverage."
 )
 _FRAMING_NO_SOURCE = (
     "Source layer did not run (PDF-only input). "
@@ -143,8 +143,8 @@ def format_human(issues: Issues) -> str:
     header count equals the finding count, so the Summary line reconciles
     with the lines shown. Empty findings → a short success message.
 
-    A framing block (severity guide + scope disclaimer + optional dry-run /
-    pdf-only note) follows the Summary line on every report.
+    A framing block (severity guide + scope disclaimer + optional validate-only
+    / pdf-only note) follows the Summary line on every report.
     """
     framing = _build_framing(issues.pdf_layer_ran, issues.source_layer_ran)
 

@@ -388,15 +388,15 @@ def test_cli_dir_input_uses_bundled_pdf_not_compile(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """The demo directory contains a bundled main.pdf. Running the CLI
-    against the directory must pick up that PDF (not attempt compilation)
-    and produce exit 0 (zero must-fix findings on the clean demo).
+    against the directory under --compile must pick up that PDF (not attempt
+    compilation) and produce exit 0 (zero must-fix findings on the clean demo).
 
     Verifies spec §4: 'prefer bundled PDF if present; otherwise compile'.
     """
     from latex2ufdissertation.cli import main
 
     demo_dir = _DEMO_PDF.parent
-    rc = main([str(demo_dir)])
+    rc = main(["--compile", str(demo_dir)])
     captured = capsys.readouterr()
     assert "using bundled PDF" in captured.err, "Expected bundled-PDF branch to be taken"
     assert rc == 0

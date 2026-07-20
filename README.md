@@ -4,118 +4,190 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 
-A safety-net validator for UF doctoral dissertations using the Fall 2025+ University of Florida LaTeX template. Given a project archive, project directory, `.tex` master file, git URL, or compiled PDF, it produces a severity-tiered report citing the originating UF rule for each finding — one more pair of eyes before clicking submit.
+A safety-net validator for UF doctoral dissertations written with the University of Florida `ufdissertation` LaTeX template (Fall 2025+, and the immediately-prior revision). Point it at your project and it prints a severity-tiered report — every finding tagged with the UF rule it comes from — so you get one more pair of eyes before clicking submit.
 
-> **The validator is advisory.** It is not a substitute for review by the UF Graduate Editorial Office. A clean report means none of the documented mechanical formatting rules in [`docs/uf-rules.md`](./docs/uf-rules.md) were violated; it does not guarantee UF will accept the dissertation. The student remains responsible.
+> **Advisory only.** A clean report means none of the mechanical formatting rules in [`docs/uf-rules.md`](./docs/uf-rules.md) were violated. It is **not** a substitute for review by the UF Graduate Editorial Office and does **not** guarantee your dissertation will be accepted. You remain responsible for your submission.
 
 ## Install
 
-Not yet published to PyPI (a `pip install latex2ufdissertation` lands with the v1.0.0 release). For now, install from GitHub — pin a release tag, or omit `@v…` for the latest `main`:
+Requires **Python 3.10+**. Not yet on PyPI (a `pip install latex2ufdissertation` lands with v1.0.0). For now, install from GitHub — pin a release tag, or drop `@v…` for the latest `main`:
 
-    pip install "git+https://github.com/YuZh98/latex2ufdissertation.git@v0.2.0"
+```bash
+pip install "git+https://github.com/YuZh98/latex2ufdissertation.git@v0.4.0"
+```
 
-Requires Python 3.10+ and (for the compile path) LuaLaTeX with TeX Live 2025.
+The default validation is pure Python and needs no LaTeX install. The optional `--compile` step (below) additionally requires **LuaLaTeX with TeX Live 2025**, which is the toolchain UF mandates for the template.
 
 ## Demo dissertation
 
-A hand-crafted UF dissertation that satisfies every must-fix rule lives at [**`examples/demo_dissertation/`**](./examples/demo_dissertation/) — a known-good reference you can compile and read top-to-bottom to see what a compliant project looks like. Every section file is annotated with the UF rule it satisfies, so the demo doubles as a teaching aid for students.
+[`examples/demo_dissertation/`](./examples/demo_dissertation/) is a hand-crafted "fake" UF dissertation that passes every rule we test for, so it serves as a known-good reference. The file contains the illustration of this tool latex2ufdissertation and lists UF rules on dissertation formatting, so it doubles as a teaching aid.
 
-- Browse the source: [`examples/demo_dissertation/`](./examples/demo_dissertation/)
-- View the compiled output: [`examples/demo_dissertation/main.pdf`](./examples/demo_dissertation/main.pdf) (26 pages, LuaLaTeX + TeX Live 2025)
-- Local compile: `cd examples/demo_dissertation && lualatex main && bibtex main && lualatex main && lualatex main`
-- From an install: `latex2ufdissertation --demo` prints the GitHub link (and a local path when run from a source checkout)
+- Compiled output: [`examples/demo_dissertation/main.pdf`](./examples/demo_dissertation/main.pdf) (20+ pages, LuaLaTeX + TeX Live 2025)
+- Compile it yourself: `cd examples/demo_dissertation && lualatex main && bibtex main && lualatex main && lualatex main`
+- `latex2ufdissertation --demo` prints its location.
 
-## Quickstart
+## Usage
 
-Scaffold a new project from the bundled UF template, then validate + compile:
+By default the tool **validates your LaTeX source and stops** — it does not compile:
 
-    latex2ufdissertation --init my-thesis/
-    cd my-thesis/
-    latex2ufdissertation .
-
-The default command validates the project and compiles to PDF with LuaLaTeX. If you do not have a TeX installation, validate without compiling:
-
-    latex2ufdissertation --dry-run .
-
-## Inputs
-
-| Input | Source-layer validation | PDF-layer validation | Compile |
-|---|---|---|---|
-| Project directory | yes | yes (after compile or on bundled PDF) | yes (unless `--dry-run`) |
-| `*.zip` archive | yes | yes (after compile or on bundled PDF) | yes (unless `--dry-run`) |
-| Git URL (https or ssh) | yes | yes (after compile) | yes (unless `--dry-run`) |
-| `*.tex` master file | yes (treats parent dir as root) | yes (after compile or on bundled PDF) | yes (unless `--dry-run`) |
-| `*.pdf` (compiled PDF) | skipped | yes | no |
-
-PDF-layer checks currently implemented: F2 (font family), F3 (font size), S1 (PDF present/readable), S5 (hyperlink annotations). Additional PDF backups (F1, F4, F6, F12) are deferred to later releases.
-
-## Outputs
-
-- **Human-readable report** (default): findings grouped by severity (must-fix, then review), one line per finding showing the `UF-*` rule ID, its location (source file or PDF page), and the observed value; each rule group carries a one-line fix hint. The section-header count equals the lines shown.
-- **Machine-readable JSON** (`--json`): emits the v1 schema to stdout (single JSON document, `sort_keys=True` for byte-identical output across runs). Progress messages go to stderr so `latex2ufdissertation --json … | jq …` works without filtering.
-
-The JSON schema v1 shape:
-
+```bash
+latex2ufdissertation my-thesis/
 ```
+
+Point it at any of these — the input type is auto-detected:
+
+```bash
+latex2ufdissertation thesis.zip            # a project archive
+latex2ufdissertation main.tex              # the master .tex (its folder becomes the project root)
+latex2ufdissertation https://github.com/you/thesis.git   # a git URL
+latex2ufdissertation dissertation.pdf      # a compiled PDF (PDF-layer checks only)
+```
+
+Add `--compile` to also compile with LuaLaTeX and run the PDF-layer checks (font family/size, hyperlinks) against the rendered output:
+
+```bash
+latex2ufdissertation --compile my-thesis/
+```
+
+Starting fresh? Scaffold a project from the bundled UF template, then validate it:
+
+```bash
+latex2ufdissertation --init my-thesis/
+latex2ufdissertation my-thesis/
+```
+
+## Example
+
+A clean project — exit code `0`:
+
+```console
+$ latex2ufdissertation my-thesis/
+  validating main.tex
+
+Summary: 0 must-fix, 0 review — clean.
+Severity guide: must-fix = will likely cause UF Graduate School rejection; review = discretionary, verify manually.
+Scope: clean means no violations of the rules this tool checks (targeting the Fall-2025+ UF ufdissertation template). It does NOT guarantee Graduate School acceptance — the editorial office checks requirements beyond this tool's scope.
+PDF layer did not run (validate-only mode, the default). UF-F2, UF-F3, and other PDF-authoritative rules were not verified. Re-run with --compile for full coverage.
+```
+
+A project with problems — findings grouped by severity, one line each, and exit code `1`:
+
+```console
+$ latex2ufdissertation my-thesis/
+  validating main.tex
+
+Must-fix (4)
+
+  UF-F14  main.tex  \degreeYear missing or empty
+  UF-F14  main.tex  \degreeMonth missing or empty
+  UF-F14  main.tex  \major missing or empty
+  UF-F14  main.tex  \chair missing or empty
+    Fix: Set the missing metadata macro with a non-empty value in main.tex.
+
+Summary: 4 must-fix, 0 review.
+[ ... severity guide + scope notes, as above ... ]
+```
+
+Every finding line is `UF-<rule>  <location>  <observed>`. Look up any rule ID in [`docs/uf-rules.md`](./docs/uf-rules.md) for the full requirement and its UF source.
+
+For scripting, `--json` emits the machine-readable v1 schema on stdout (progress stays on stderr, so `latex2ufdissertation --json my-thesis/ | jq …` works unfiltered):
+
+```json
 {
   "schema_version": "1.0",
-  "input": "...",
-  "template_version": "unknown",   // detection deferred; always "unknown" today
-  "findings": [ {severity, rule_id, layer, location, observed, required, fix_hint, source_url}, ... ],
-  "summary": {must_fix_count, review_count, exit_code, exit_reason}
+  "input": "my-thesis/",
+  "detected_mode": "dir",
+  "template_version": "unknown",
+  "findings": [
+    {
+      "severity": "must-fix",
+      "rule_id": "UF-F14",
+      "layer": "source",
+      "location": "main.tex",
+      "observed": "\\degreeYear missing or empty",
+      "required": "\\degreeYear{...} with a non-empty argument",
+      "fix_hint": "Set the missing metadata macro with a non-empty value in main.tex.",
+      "source_url": "https://github.com/YuZh98/latex2ufdissertation/blob/main/docs/uf-rules.md#uf-f14--required-metadata-macros-set"
+    }
+  ],
+  "summary": { "must_fix_count": 4, "review_count": 0, "exit_code": 1, "exit_reason": "must_fix_present" }
 }
 ```
 
-### Exit codes
+Output is deterministic: the same input produces byte-identical JSON (`sort_keys=True`).
+
+## Inputs
+
+| Input | Source-layer checks | PDF-layer checks | Compiles? |
+|---|---|---|---|
+| Project directory | yes | only with `--compile` | only with `--compile` (uses a bundled `main.pdf` if present) |
+| `*.zip` archive | yes | only with `--compile` | only with `--compile` (uses a bundled PDF if present) |
+| Git URL (https or ssh) | yes | only with `--compile` | only with `--compile` |
+| `*.tex` master file | yes (parent dir becomes the root) | only with `--compile` | only with `--compile` |
+| `*.pdf` (already compiled) | skipped | yes | no |
+
+PDF-layer checks currently implemented: **F2** (font family), **F3** (font size), **S1** (PDF present/readable), **S5** (hyperlink annotations). Further PDF backups (F1, F4, F6, F12) are planned.
+
+## Exit codes
 
 | Code | Meaning |
 |---|---|
-| `0` | Zero `must-fix` findings (`review`-only findings are advisory) |
+| `0` | No `must-fix` findings (`review` findings are advisory and do not change this) |
 | `1` | One or more `must-fix` findings |
-| `2` | Fatal on this input (compile failure, unreadable input, master's thesis input) |
-| `3` | Fatal on this environment (missing required toolchain, e.g. no LuaLaTeX) |
+| `2` | Fatal on this input (compile failure, unreadable input, master's-thesis input) |
+| `3` | Fatal on this environment (missing toolchain, e.g. no LuaLaTeX with `--compile`) |
 
 ## Severity tiers
 
-Two tiers only:
+- **`must-fix`** — a documented UF rule violation the Editorial Office is expected to require fixing. Trips exit code `1`.
+- **`review`** — a likely issue needing human judgment: the tool flags, you decide. Does not affect the exit code.
 
-- **`must-fix`** — documented UF rule violation that the Editorial Office is expected to require fixing. Contributes to exit code 1. A few must-fix rules rest on heuristics or soft sources — see [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) §7.2 for caveats.
-- **`review`** — likely issue requiring human judgment; the tool flags, the student decides. Does not contribute to exit code.
-
-Every finding carries a `UF-*` rule ID and a link back to the rule's catalog entry in [`docs/uf-rules.md`](./docs/uf-rules.md). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full output contract.
+Some `must-fix` rules rest on heuristics or soft sources — see [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) §7.2 for the caveats.
 
 ## Flags
 
 | Flag | What it does |
 |---|---|
-| (no flag) | Validate + compile → emit PDF |
-| `--init DIR` | Scaffold a new project at DIR |
-| `--demo` | Print location of the bundled demo dissertation and exit |
-| `--dry-run` | Validate only, skip compile |
-| `--main FILE` | Override master `.tex` auto-detect |
-| `--json` | Machine-readable summary on stdout |
-| `--version` | Print version and exit |
+| (no flag) | Validate the LaTeX source and print the report |
+| `--compile` | Also compile with LuaLaTeX and run the PDF-layer checks |
+| `--init DIR` | Scaffold a new project from the bundled UF template at `DIR` |
+| `--main FILE` | Override master `.tex` auto-detection |
+| `--json` | Emit the machine-readable v1 schema on stdout |
+| `--demo` | Print the location of the bundled demo dissertation and exit |
+| `--version` | Print the version and exit |
+
+## UF dissertation submission resources
+
+This tool checks a subset of the mechanical rules; UF's own resources are authoritative for the full process.
+
+| Resource | What it covers |
+|---|---|
+| [Graduate ETD support hub](https://it.ufl.edu/helpdesk/graduate-resources/) | The Thesis & Dissertation Support Center — the starting point for template, tutorials, and reviews |
+| [Official MS Word & LaTeX templates](https://it.ufl.edu/helpdesk/graduate-resources/ms-word--latex-templates/) | The authoritative template downloads; LuaLaTeX + TeX Live 2025 required |
+| [Formatting tutorials](https://it.ufl.edu/helpdesk/graduate-resources/online-tutorials/) | How-to walkthroughs for tables, figures, and the template overall |
+| [Book a document review](https://it.ufl.edu/helpdesk/graduate-resources/book-an-appointment/) | One-on-one appointments and email document reviews |
+| [Graduate Editorial Office](https://it.ufl.edu/helpdesk/graduate-resources/graduate-editorial-office/) | Reference systems and copyright/documentation questions |
+| [UF Graduate School](https://graduateschool.ufl.edu/) | Submission deadlines and degree requirements |
+| [Deadlines](https://success.grad.ufl.edu/td/deadlines/) | The official UF Graduate School deadlines for each semester |
 
 ## Scope
 
-**Current (v0.3.x, pre-1.0).** Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+). Source-layer and PDF-layer validation. Five input modes: zip, directory, `.tex` master file, git URL, compiled PDF. CLI as the engine. LuaLaTeX compile driver.
+**In scope.** Doctoral dissertations using `\documentclass{ufdissertation}` (Fall 2025+ and the immediately-prior revision). Source-layer validation by default; PDF-layer validation with `--compile`. Five input modes: directory, zip, `.tex` master, git URL, compiled PDF. CLI + machine-readable JSON.
 
-**Planned for v1.0.** ETD-upload walkthrough (`--guide`). Full PDF-layer coverage (F1, F4, F6, F12 backups). See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the full v1.0 specification and gate status.
-
-**Out of scope for v1.0.** Master's theses (deferred, same template, different `\thesisType`). Source cleanup or Overleaf-export normalization. External URL liveness (reserved for `--check-links` in a future release). MCP server, browser extensions, editor extensions (separate artifacts that wrap the CLI). Hosted web service or GUI.
+**Out of scope.** Master's theses (deferred — same template, different `\thesisType`). Source cleanup or Overleaf-export normalization. External URL liveness. A hosted web service or GUI. See [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the locked specification.
 
 ## Security
 
-This tool compiles LaTeX. Only run it on sources you trust — see [`SECURITY.md`](./SECURITY.md) for the threat model.
+`--compile` runs LuaLaTeX on your sources. Only compile projects you trust — see [`SECURITY.md`](./SECURITY.md) for the threat model.
 
 ## Documentation
 
-- [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) — what v1.0 is and is not (locked sections + acceptance criteria).
-- [`docs/uf-rules.md`](./docs/uf-rules.md) — the rule catalog the validator checks against (UF-F1 … UF-A2 with citations).
-- [`examples/demo_dissertation/`](./examples/demo_dissertation/) — the known-good demo dissertation linked above; doubles as a teaching reference.
-- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — engineering gates and what goes in committed artifacts.
-- [`CHANGELOG.md`](./CHANGELOG.md) — release history.
+- [`docs/spec-v1.0.md`](./docs/spec-v1.0.md): what v1.0 is and is not (locked sections + acceptance gates).
+- [`docs/uf-rules.md`](./docs/uf-rules.md): the rule catalog (UF-F1 … UF-A2, each with its UF citation).
+- [`docs/json-schema.md`](./docs/json-schema.md): the `--json` output contract.
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md): engineering gates.
+- [`CHANGELOG.md`](./CHANGELOG.md): release history.
 
 ## Status
 
-v0.3.x released (pre-1.0). v1.0 work in progress; see [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the acceptance criteria and current gate status. MIT license.
+v0.4.0 released (pre-1.0). v1.0 work in progress (see [`docs/spec-v1.0.md`](./docs/spec-v1.0.md) for the tentative acceptance criteria and current gate status). MIT license.
